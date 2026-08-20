@@ -39,7 +39,7 @@ Volendo, `pip install -e .` per avere il comando `klimakontrol` nel PATH.
 ## Uso
 
 ```bash
-python3 -m klimakontrol login                     # chiede regione, email, password
+python3 -m klimakontrol login                     # chiede email e password, prova tutte le regioni
 python3 -m klimakontrol list
 python3 -m klimakontrol status 1
 python3 -m klimakontrol status 1 --full           # anche diagnostica e sensori
@@ -51,6 +51,10 @@ python3 -m klimakontrol energy 1 day
 python3 -m klimakontrol discover                  # cerca moduli sulla rete locale
 python3 -m klimakontrol raw 1                     # JSON grezzo, per il debug
 ```
+
+La regione (`ab`, `eu`, `ru`, `cn`) si scegle al primo avvio dell'app ufficiale e poi non
+è più visibile: se non la ricordi, `login` le prova in ordine e ti dice quale ha funzionato.
+Con `--region eu` la forzi.
 
 La password non viene salvata. La sessione sì, in `~/.config/klimakontrol/session.json`:
 il cloud blocca temporaneamente chi rifà il login troppo spesso (errore `-1036`).
@@ -105,6 +109,19 @@ tests/         88 test, tutti offline
    davvero. Il valore si legge; la corrispondenza bit → funzione va ancora ricavata.
 4. **`devicetypeflag`** viene passato come 0 se il cloud non lo fornisce. Da confermare sul
    campo.
+
+### Una nota sugli identificativi di regione
+
+I progetti open source esistenti usano `8503b08fa57729df9faa45e4c978852c` come *company id*
+della regione internazionale. Non lo è: quel valore compare identico in tutte e quattro le
+licenze BroadLink dell'app, è una costante globale. Il company id vero della regione
+internazionale è `a8452a8f48ae707edc12e9c52e21f00f`.
+
+Con la coppia sbagliata il cloud risponde `-1008`, cioè **"credenziali errate" a credenziali
+perfettamente corrette** — un messaggio che manda a caccia del problema nel posto sbagliato.
+Per non ripetere l'errore, `cloud.py` non contiene identificativi ricopiati a mano: tiene i
+blob di licenza estratti dall'APK e ne ricava licenseId e companyid a ogni avvio (primi 16
+byte e successivi 16, in chiaro).
 
 ## Prossimi passi
 

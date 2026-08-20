@@ -199,3 +199,97 @@ class TestSessionGuard(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TestRegionsFromLicense(unittest.TestCase):
+    """Le regioni sono derivate dai blob di licenza estratti dall'APK."""
+
+    def test_europe_pair(self):
+        r = REGIONS["eu"]
+        self.assertEqual(r.license_id, "aae72184369e2fc3e6ded53a90612586")
+        self.assertEqual(r.company_id, "57c9e5adbc9e118372539cd8f26e1239")
+
+    def test_international_company_id_is_not_the_shared_constant(self):
+        """8503b08f... compare in tutte e quattro le licenze: non e' un companyid.
+
+        Copiarlo come company id della regione internazionale e' l'errore che
+        faceva rispondere "credenziali errate" a credenziali corrette.
+        """
+        r = REGIONS["ab"]
+        self.assertEqual(r.company_id, "a8452a8f48ae707edc12e9c52e21f00f")
+        self.assertNotEqual(r.company_id, "8503b08fa57729df9faa45e4c978852c")
+
+    def test_every_region_has_distinct_pair(self):
+        pairs = {(r.license_id, r.company_id) for r in REGIONS.values()}
+        self.assertEqual(len(pairs), len(REGIONS))
+
+    def test_ids_are_32_hex_chars(self):
+        import re
+        for r in REGIONS.values():
+            self.assertRegex(r.license_id, r"^[0-9a-f]{32}$")
+            self.assertRegex(r.company_id, r"^[0-9a-f]{32}$")
+
+    def test_alias_resolution(self):
+        from klimakontrol.cloud import resolve_region
+        self.assertEqual(resolve_region("us"), "ab")
+        self.assertEqual(resolve_region("EU"), "eu")
+        self.assertEqual(resolve_region(" altro "), "ab")
+        with self.assertRaises(CloudError):
+            resolve_region("mars")
+
+    def test_client_accepts_alias(self):
+        self.assertEqual(CloudClient("us").region.code, "ab")
+
+
+class TestLoginAnyRegion(unittest.TestCase):
+    def test_returns_first_region_that_accepts(self):
+        from klimakontrol import cloud
+        from klimakontrol.cloud import AuthError, login_any_region
+        tried = []
+        original = cloud.CloudClient.login
+
+        def fake_login(self, user, pwd):
+            tried.append(self.region.code)
+            if self.region.code != "ab":
+                raise AuthError("credenziali errate")
+            self.restore_session("u", "s")
+
+        cloud.CloudClient.login = fake_login
+        try:
+            client = login_any_region("io@example.com", "segreta")
+            self.assertEqual(client.region.code, "ab")
+            self.assertEqual(tried, ["eu", "ab"])   # si ferma alla prima buona
+        finally:
+            cloud.CloudClient.login = original
+
+    def test_rate_limit_stops_immediately(self):
+        from klimakontrol import cloud
+        from klimakontrol.cloud import RateLimitError, login_any_region
+        tried = []
+        original = cloud.CloudClient.login
+
+        def fake_login(self, user, pwd):
+            tried.append(self.region.code)
+            raise RateLimitError("troppi tentativi")
+
+        cloud.CloudClient.login = fake_login
+        try:
+            with self.assertRaises(RateLimitError):
+                login_any_region("io@example.com", "segreta")
+            self.assertEqual(len(tried), 1)   # insistere peggiorerebbe
+        finally:
+            cloud.CloudClient.login = original
+
+    def test_all_failing_reports_every_region(self):
+        from klimakontrol import cloud
+        from klimakontrol.cloud import AuthError, login_any_region
+        original = cloud.CloudClient.login
+        cloud.CloudClient.login = lambda self, u, p: (_ for _ in ()).throw(
+            AuthError("credenziali errate"))
+        try:
+            with self.assertRaises(AuthError) as ctx:
+                login_any_region("io@example.com", "segreta")
+            for label in ("Europa", "Internazionale", "Russia", "Cina"):
+                self.assertIn(label, str(ctx.exception))
+        finally:
+            cloud.CloudClient.login = original

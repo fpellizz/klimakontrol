@@ -27,24 +27,76 @@ APP_VERSION = "1.0.12"
 TIMEOUT = 30.0
 
 
+#: Licenze BroadLink estratte da `com.tcl.smartdevice.AirApplication.initData`.
+#: Il blob e' in chiaro: i primi 16 byte sono il licenseId, i 16 successivi il
+#: companyid. Derivarli da qui invece di ricopiarli a mano evita l'errore che ci
+#: e' costato un pomeriggio: il valore che gira nei progetti della community come
+#: company id della regione internazionale (8503b08f...) e' in realta' una
+#: costante presente in tutte e quattro le licenze, non il companyid di nessuna.
+LICENSE_BLOBS = {
+    "ab": ("Internazionale / altro",
+           "9uniFWbhCaKHl6ulodjtfqhFKo9IrnB+3BLpxS4h8A8fL+VJIdyF+2ILFTC0PblZKVhhWwAAAABO"
+           "Pz4Zb6oe0ZlL1zmKVmrY2G6JnyY5iP/MgbRVK4EGBNngbjBXIrjugvbdRX/Eo+jEFLPwoaW2G+W/"
+           "0h0q6kkGhQOwj6V3Kd+fqkXkyXiFLAAAAAA="),
+    "cn": ("Cina",
+           "v/1NcC7FOTjDHrEMwBlLSrhnHVwBG6ur22sGiccKtlb88NLmRXYBBuBZzN0ftmg9g7rzWwAAAADX"
+           "CGl+jTb8dv8MuUV6Oe6Q0Qs3MVkr1CxkTbc9eCF9VA9IeSycC7T7L5/gZZyMbk6ZhKXe0Lj49+Xj"
+           "jTYOBlsChQOwj6V3Kd+fqkXkyXiFLAAAAAA="),
+    "eu": ("Europa",
+           "quchhDaeL8Pm3tU6kGElhlfJ5a28nhGDclOc2PJuEjlrVu1aWTUymLgy0lNthB1irlhhWwAAAADs"
+           "3b/pU8KzE42deOVVPI47q3AXOQdWLiiZnytJBYDqZMJe9bUxlnu2yrqpGqCWdsTLCQ2S8+ps6iui"
+           "X3T5hoYJhQOwj6V3Kd+fqkXkyXiFLAAAAAA="),
+    "ru": ("Russia",
+           "5g3odWUWbER6kM7pbalV91ZHeU3ti7xn32X/K9fQ+wPgkGNrwku8t1BjKi6Z/SE0RFhhWwAAAABJ"
+           "2/PWDRNYtxiTMJolraau62+ditV4GpJUTtEwYccq/2ROZvfPaUyM4m7LY/ZRSRJs8mLdI6W/5YpX"
+           "AZyAtsoAhQOwj6V3Kd+fqkXkyXiFLAAAAAA="),
+}
+
+#: nomi alternativi accettati dalla CLI
+REGION_ALIASES = {"us": "ab", "other": "ab", "altro": "ab", "world": "ab", "eu": "eu"}
+
+#: ordine in cui provare le regioni quando l'utente non sa quale ha scelto
+REGION_TRY_ORDER = ("eu", "ab", "ru", "cn")
+
+
 @dataclass(frozen=True)
 class Region:
     code: str
     label: str
     license_id: str
     company_id: str
+    license_blob: str = ""
 
     @property
     def base_url(self) -> str:
         return "https://%sappservice.ibroadlink.com" % self.license_id
 
 
-REGIONS: Dict[str, Region] = {r.code: r for r in (
-    Region("eu", "Europa", "aae72184369e2fc3e6ded53a90612586", "57c9e5adbc9e118372539cd8f26e1239"),
-    Region("us", "USA / altro", "f6e9e21566e109a28797aba5a1d8ed7e", "8503b08fa57729df9faa45e4c978852c"),
-    Region("cn", "Cina", "bffd4d702ec53938c31eb10cc0194b4a", "b8671d5c011bababdb6b0689c70ab656"),
-    Region("ru", "Russia", "e60de87565166c447a90cee96da955f7", "5647794ded8bbc67df65ff2bd7d0fb03"),
-)}
+def _region_from_license(code: str, label: str, blob_b64: str) -> Region:
+    raw = base64.b64decode(blob_b64)
+    if len(raw) < 32:
+        raise ValueError("licenza troppo corta per la regione %s" % code)
+    return Region(code=code, label=label,
+                  license_id=raw[0:16].hex(),
+                  company_id=raw[16:32].hex(),
+                  license_blob=blob_b64)
+
+
+REGIONS: Dict[str, Region] = {
+    code: _region_from_license(code, label, blob)
+    for code, (label, blob) in LICENSE_BLOBS.items()
+}
+
+
+def resolve_region(name: str) -> str:
+    """Accetta il codice dell'app o un alias comune ("us" -> "ab")."""
+    name = (name or "").strip().lower()
+    name = REGION_ALIASES.get(name, name)
+    if name not in REGIONS:
+        raise CloudError("regione sconosciuta: %r (usa %s)"
+                         % (name, ", ".join(sorted(REGIONS))))
+    return name
+
 
 #: report disponibili per lo storico consumi
 ENERGY_REPORTS = {
@@ -115,9 +167,7 @@ class CloudClient:
     """Client sincrono del cloud BroadLink."""
 
     def __init__(self, region: str = "eu", verify_tls: bool = True):
-        if region not in REGIONS:
-            raise CloudError("regione sconosciuta: %s (usa %s)" % (region, ", ".join(REGIONS)))
-        self.region = REGIONS[region]
+        self.region = REGIONS[resolve_region(region)]
         self.base = self.region.base_url
         self.userid: Optional[str] = None
         self.loginsession: Optional[str] = None
@@ -429,3 +479,29 @@ class CloudClient:
         }]}
         url = "%s/dataservice/v1/device/status" % self.base
         return self._request(url, self._control_headers(), _jd(body).encode())
+
+
+def login_any_region(username: str, password: str,
+                     regions: Optional[List[str]] = None,
+                     verify_tls: bool = True) -> CloudClient:
+    """Prova le regioni una dopo l'altra e restituisce il client che ha funzionato.
+
+    L'app chiede la regione al primo avvio e poi non la mostra piu': chi l'ha
+    scelta due anni fa non ha modo di ricordarsela. Invece di far indovinare,
+    proviamo. Al primo rate limit ci fermiamo: insistere peggiora la situazione.
+    """
+    codes = [resolve_region(r) for r in (regions or REGION_TRY_ORDER)]
+    errors = []
+    for code in codes:
+        client = CloudClient(code, verify_tls=verify_tls)
+        try:
+            client.login(username, password)
+            return client
+        except RateLimitError:
+            raise
+        except AuthError as exc:
+            errors.append("%s (%s): %s" % (REGIONS[code].label, code, exc))
+        except CloudError as exc:
+            errors.append("%s (%s): %s" % (REGIONS[code].label, code, exc))
+    raise AuthError("nessuna regione ha accettato le credenziali:\n  - "
+                    + "\n  - ".join(errors))

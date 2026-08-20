@@ -25,7 +25,8 @@ import sys
 from typing import Any, Dict, List, Optional
 
 from . import session
-from .cloud import AuthError, CloudClient, CloudDevice, CloudError, RateLimitError, REGIONS
+from .cloud import (AuthError, CloudClient, CloudDevice, CloudError, RateLimitError,
+                    REGION_TRY_ORDER, REGIONS, login_any_region)
 from .local import Device, LocalClient, LocalError, discover
 from .params import BASIC_SET, PARAMS, decode_status, describe, encode_changes
 
@@ -90,11 +91,19 @@ def _write_state(cli: CloudClient, dev: CloudDevice, transport: str,
 
 
 def cmd_login(args) -> None:
-    region = args.region or (input("Regione [%s]: " % ", ".join(REGIONS)).strip() or "eu")
     user = args.user or input("Email o telefono dell'account: ").strip()
     pwd = getpass.getpass("Password (non viene salvata): ")
-    cli = CloudClient(region)
-    cli.login(user, pwd)
+
+    if args.region:
+        cli = CloudClient(args.region)
+        cli.login(user, pwd)
+    else:
+        # la regione la scegli al primo avvio dell'app e poi non la rivedi mai:
+        # invece di farla indovinare, le proviamo in ordine
+        print("Regione non indicata: le provo tutte (%s)..."
+              % ", ".join(REGION_TRY_ORDER))
+        cli = login_any_region(user, pwd)
+    print("Regione: %s (%s)" % (cli.region.label, cli.region.code))
     devices = cli.devices()
     path = session.save(cli, devices)
     print("Login riuscito. %d unita' trovate:" % len(devices))
@@ -194,7 +203,7 @@ def build_parser() -> argparse.ArgumentParser:
     sub = p.add_subparsers(dest="command", required=True)
 
     sp = sub.add_parser("login", help="autentica e memorizza la sessione")
-    sp.add_argument("--region", choices=tuple(REGIONS))
+    sp.add_argument("--region", help="ab | eu | ru | cn (se omessa, le prova tutte)")
     sp.add_argument("--user")
     sp.set_defaults(func=cmd_login)
 
