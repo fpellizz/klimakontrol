@@ -11,6 +11,10 @@ Il protocollo è stato ricostruito dall'APK ufficiale — che include per errore
 del pannello di controllo, e quindi il suo codice sorgente. Le specifiche complete sono in
 [`docs/protocol.md`](docs/protocol.md).
 
+Se ci lavori con Claude Code, parti da [`CLAUDE.md`](CLAUDE.md): stato reale, convenzioni e le
+trappole in cui si cade tirando a indovinare. Poi [`docs/open-questions.md`](docs/open-questions.md)
+per il lavoro aperto e [`docs/roadmap.md`](docs/roadmap.md) per l'ordine.
+
 ## Cosa fa oggi
 
 | | |

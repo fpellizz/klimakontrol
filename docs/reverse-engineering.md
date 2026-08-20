@@ -71,7 +71,64 @@ direttive, incluso il campo `cookie` che porta al cloud la chiave AES del dispos
 typo `timstamp` nell'header — replicato di proposito nel nostro codice, perché è quello che
 il server si aspetta.
 
-## 4. Cosa resta nel nativo
+## 4. Le licenze, e due costanti sbagliate che girano in rete
+
+`com.tcl.smartdevice.AirApplication.initData` contiene le quattro licenze BroadLink dell'app,
+una per regione (`ab`, `cn`, `eu`, `ru`), come blob Base64. Il blob **non è cifrato**: i primi
+16 byte sono il `licenseId`, i 16 successivi il `companyid`.
+
+```python
+raw = base64.b64decode(blob)
+license_id, company_id = raw[0:16].hex(), raw[16:32].hex()
+```
+
+Due conseguenze:
+
+1. Il valore `8503b08fa57729df9faa45e4c978852c`, che nei progetti open source compare come
+   *company id* della regione internazionale, compare identico in tutte e quattro le licenze:
+   è una costante globale, non un companyid. Quello vero è
+   `a8452a8f48ae707edc12e9c52e21f00f`.
+2. Per non ripetere l'errore, `cloud.py` tiene i blob e ne deriva gli identificativi a ogni
+   avvio, invece di ricopiarli.
+
+Sempre da `initData`: i `pid` dei tre tipi di macchina (split, portatile, finestra) cambiano per
+regione — per la regione internazionale lo split è `0x507c`, per l'Europa `0x507a`.
+
+## 5. I sali dell'autenticazione: nel nativo, non nel dex
+
+Il login usa tre costanti che l'app chiede a `libBLAccountEncryptAPI.so`:
+
+| Funzione nativa | Uso | Valore |
+| --- | --- | --- |
+| `blAccountPasswordEncrypt()` | `SHA1(password + sale)` | `4969fj#k23#` |
+| `blAccountTokenEncrypt()` | `md5(timestamp + sale)` → chiave AES | `kdixkdqp54545^#*` |
+| `blAccountBodyEncrypt()` | `md5(corpo + sale)` → header `token` | `xgx3d*fe3478$ukx` |
+
+Nel dex compare solo il terzo (lo usano anche `/ec4` e `dataservice`). Gli altri due si leggono
+dalla libreria nativa, dove sono stringhe in chiaro:
+`python3 tools/extract_salts.py libBLAccountEncryptAPI.so`.
+
+Lezione di metodo: se `dex_inspect.py xref` non trova riferimenti a una stringa presente nel
+pool, quella costante **non è usata dal codice Java**. È il segnale che vive nel nativo, e non
+va data per buona solo perché la stringa c'è.
+
+## 6. Il resto della catena del login
+
+* host: `https://<licenseId>appservice.ibroadlink.com`. L'app inizializza l'SDK con
+  `APP_SERVICE_ENABLE=1`, e `BLApiUrls.setAppServiceHost` sovrascrive tutti gli host `biz*`
+  (`bizaccount`, `bizihcv0`, `bizpd`, …) con quello singolo. Gli host `biz*` valgono solo con
+  quel flag a zero.
+* corpo: `{email|phone, password, companyid, lid}` (`a.a.a.account.a.c`)
+* firma e cifratura: `a.a.a.account.a.b` — `AES/CBC/ZeroBytePadding`, IV
+  `eaaaaa3abb5862a21918b5771d1615aa`, chiave da `md5(timestamp + sale)` letta come esadecimale
+  (`BLCommonTools.aesNoPadding`, `parseStringToByte`)
+* la password arriva grezza dall'interfaccia: `LoginActivity$LoginTask.doInBackground` →
+  `BLAccount.login(utente, password)`, nessun hash intermedio.
+
+Nonostante tutto questo combaci, il login viene ancora rifiutato con `-1008`: vedi
+`docs/open-questions.md` §1.
+
+## 7. Cosa resta nel nativo
 
 Le pianificazioni (`dev_taskadd`, `dev_tasklist`, `dev_taskdata`, `dev_taskdel`) non passano
 per una direttiva dedicata: finiscono in `BLControllerDescParam.setCommand(...)` e da lì nel
@@ -84,7 +141,7 @@ Due modi per chiudere il buco:
 2. usare l'API cloud `/appfront/v1/timertask/{add,query,modify,delete}`, che pianifica lato
    server invece che nel modulo.
 
-## 5. Verifica indipendente
+## 8. Verifica indipendente
 
 Il payload di `set temp 23.0` prodotto da questo codice è identico byte per byte a quello
 osservato sul filo, checksum interno compreso:

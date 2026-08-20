@@ -11,3 +11,12 @@ session.json
 .coverage
 .idea/
 .vscode/
+apk/
+*.so
+*.apks
+*.xapk
+*.pcap
+*.pcapng
+ricostruito/
+docs/samples/*.json
+androguard.db

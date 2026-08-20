@@ -12,6 +12,7 @@ import hashlib
 import json
 import os
 import ssl
+import sys
 import time
 import urllib.error
 import urllib.request
@@ -57,8 +58,12 @@ def salt(kind: str) -> str:
         raise CloudError("sale sconosciuto: %s" % kind)
     return os.environ.get("KLIMAKONTROL_SALT_" + kind.upper(), default)
 REQUEST_IV = bytes.fromhex("eaaaaa3abb5862a21918b5771d1615aa")
-APP_VERSION = "1.0.12"
+APP_VERSION = os.environ.get("KLIMAKONTROL_APP_VERSION", "1.0.12")
 TIMEOUT = 30.0
+
+#: con KLIMAKONTROL_DEBUG=1 stampa su stderr richieste e risposte grezze.
+#: Serve quando il codice di errore da solo non basta a capire cosa rifiuta il server.
+DEBUG = os.environ.get("KLIMAKONTROL_DEBUG", "") not in ("", "0", "no")
 
 
 #: Licenze BroadLink estratte da `com.tcl.smartdevice.AirApplication.initData`.
@@ -235,6 +240,13 @@ class CloudClient:
             url = self.base + url
         req = urllib.request.Request(url, data=body, headers=self._common_headers(headers),
                                      method="POST" if body is not None else "GET")
+        if DEBUG:
+            print("[klimakontrol] POST %s" % url, file=sys.stderr)
+            for key, value in sorted(self._common_headers(headers).items()):
+                shown = value if key not in ("loginsession", "token") else "<%d caratteri>" % len(value)
+                print("[klimakontrol]   %s: %s" % (key, shown), file=sys.stderr)
+            if body is not None:
+                print("[klimakontrol]   corpo cifrato: %d byte" % len(body), file=sys.stderr)
         try:
             with urllib.request.urlopen(req, timeout=TIMEOUT, context=self._ctx) as resp:
                 raw = resp.read().decode("utf-8", "replace")
@@ -249,6 +261,8 @@ class CloudClient:
             raise CloudError("risposta non JSON da %s: %r" % (url, raw[:200])) from exc
         if not isinstance(data, dict):
             raise CloudError("risposta inattesa da %s" % url)
+        if DEBUG:
+            print("[klimakontrol] risposta grezza: %s" % raw[:1000], file=sys.stderr)
         return data
 
     @staticmethod
@@ -256,12 +270,21 @@ class CloudClient:
         code = resp.get("error", resp.get("status", 0))
         if code in (0, "0", None):
             return resp
-        msg = resp.get("msg") or resp.get("message") or "errore sconosciuto"
+        msg = resp.get("msg") or resp.get("message") or ""
+        # il messaggio del server distingue casi che il solo codice confonde
+        # (utente inesistente in questo scope, password errata, account bloccato):
+        # non va mai scartato.
+        detail = " - %s" % msg if msg else ""
+        extra = {k: v for k, v in resp.items()
+                 if k not in ("error", "status", "msg", "message")}
+        if extra:
+            detail += " | altri campi: %s" % _jd(extra)[:300]
         if str(code) == "-1008":
-            raise AuthError("%s: credenziali errate" % what)
+            raise AuthError("%s: il cloud rifiuta le credenziali (%s)%s" % (what, code, detail))
         if str(code) == "-1036":
-            raise RateLimitError("%s: troppi tentativi, il cloud ha messo in pausa i login" % what)
-        raise CloudError("%s: %s (%s)" % (what, msg, code))
+            raise RateLimitError("%s: troppi tentativi, il cloud ha messo in pausa i login (%s)%s"
+                                 % (what, code, detail))
+        raise CloudError("%s: errore %s%s" % (what, code, detail))
 
     # ------------------------------------------------------------ account
 

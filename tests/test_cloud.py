@@ -345,3 +345,34 @@ class TestSalts(unittest.TestCase):
         """IV letto da BLCommonTools.aesNoPadding nel dex."""
         from klimakontrol.cloud import REQUEST_IV
         self.assertEqual(REQUEST_IV.hex(), "eaaaaa3abb5862a21918b5771d1615aa")
+
+
+class TestErrorReporting(unittest.TestCase):
+    """Il messaggio del server non va mai scartato: distingue casi che il codice confonde."""
+
+    def test_auth_error_carries_the_server_message(self):
+        from klimakontrol.cloud import AuthError, CloudClient
+        client = CloudClient("eu")
+        with self.assertRaises(AuthError) as ctx:
+            client._ensure_ok({"error": -1008, "msg": "user not exist"}, "login")
+        self.assertIn("user not exist", str(ctx.exception))
+        self.assertIn("-1008", str(ctx.exception))
+
+    def test_extra_fields_are_reported(self):
+        from klimakontrol.cloud import CloudClient, CloudError
+        client = CloudClient("eu")
+        with self.assertRaises(CloudError) as ctx:
+            client._ensure_ok({"error": -2000, "detail": "qualcosa"}, "login")
+        self.assertIn("qualcosa", str(ctx.exception))
+
+    def test_rate_limit_still_recognised(self):
+        from klimakontrol.cloud import CloudClient, RateLimitError
+        client = CloudClient("eu")
+        with self.assertRaises(RateLimitError):
+            client._ensure_ok({"error": -1036, "msg": "too many"}, "login")
+
+    def test_success_passes_through(self):
+        from klimakontrol.cloud import CloudClient
+        client = CloudClient("eu")
+        resp = {"error": 0, "userid": "u"}
+        self.assertIs(client._ensure_ok(resp, "login"), resp)
