@@ -10,6 +10,7 @@ from __future__ import annotations
 import base64
 import hashlib
 import json
+import os
 import ssl
 import time
 import urllib.error
@@ -19,9 +20,42 @@ from typing import Any, Dict, List, Optional
 
 from .aes import encrypt_cbc
 
-BODY_SALT = "xgx3d*fe3478$ukx"
-TOKEN_SALT = "kdixkdqp54545^#*"
-PASSWORD_SALT = "4969fj#k23#"
+# --------------------------------------------------------------------------
+# I tre "sali" dell'autenticazione.
+#
+# L'app non li tiene in Java: li chiede a tre funzioni native di
+# libBLAccountEncryptAPI.so
+#
+#     blAccountPasswordEncrypt()   -> sale della password
+#     blAccountTokenEncrypt()      -> sale della chiave AES del corpo
+#     blAccountBodyEncrypt()       -> sale della firma del corpo
+#
+# Solo BODY_SALT e' verificato: la stringa e' presente nel dex, usata anche
+# dalle chiamate /ec4 e dataservice. Gli altri due sono i valori che circolano
+# nei progetti open source, e NON compaiono in questo APK: vengono da un altro
+# build dell'SDK e potrebbero non valere piu'. Con un sale sbagliato il cloud
+# risponde -1008, cioe' "credenziali errate" anche a credenziali giuste.
+#
+# Si possono sostituire senza toccare il codice:
+#     export KLIMAKONTROL_SALT_PASSWORD='...'
+#     export KLIMAKONTROL_SALT_TOKEN='...'
+#     export KLIMAKONTROL_SALT_BODY='...'
+# --------------------------------------------------------------------------
+
+DEFAULT_SALTS = {
+    "body": "xgx3d*fe3478$ukx",      # verificato: presente nel dex
+    "token": "kdixkdqp54545^#*",     # da verificare: assente da questo APK
+    "password": "4969fj#k23#",       # da verificare: assente da questo APK
+}
+
+
+def salt(kind: str) -> str:
+    """Il sale in uso, con precedenza all'ambiente (letto a ogni chiamata)."""
+    try:
+        default = DEFAULT_SALTS[kind]
+    except KeyError:
+        raise CloudError("sale sconosciuto: %s" % kind)
+    return os.environ.get("KLIMAKONTROL_SALT_" + kind.upper(), default)
 REQUEST_IV = bytes.fromhex("eaaaaa3abb5862a21918b5771d1615aa")
 APP_VERSION = "1.0.12"
 TIMEOUT = 30.0
@@ -236,16 +270,16 @@ class CloudClient:
         ident = "phone" if username.isdigit() else "email"
         body = {
             ident: username,
-            "password": _sha1(password + PASSWORD_SALT),
+            "password": _sha1(password + salt("password")),
             "companyid": self.region.company_id,
             "lid": self.region.license_id,
         }
         bj = _jd(body)
         ts = str(int(time.time()))
-        key = bytes.fromhex(_md5(ts + TOKEN_SALT))
+        key = bytes.fromhex(_md5(ts + salt("token")))
         headers = {
             "timestamp": ts,
-            "token": _md5(bj + BODY_SALT),
+            "token": _md5(bj + salt("body")),
             "lid": self.region.license_id,
             "licenseId": self.region.license_id,
             ident: username,
@@ -284,7 +318,7 @@ class CloudClient:
         ts = str(self._fts)
         headers = {
             "timestamp": ts,
-            "token": _md5(bj + BODY_SALT + ts + self.userid),
+            "token": _md5(bj + salt("body") + ts + self.userid),
             "userid": self.userid,
             "loginsession": self.loginsession,
             "licenseid": self.region.license_id,

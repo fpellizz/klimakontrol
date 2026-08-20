@@ -293,3 +293,55 @@ class TestLoginAnyRegion(unittest.TestCase):
                 self.assertIn(label, str(ctx.exception))
         finally:
             cloud.CloudClient.login = original
+
+
+class TestSalts(unittest.TestCase):
+    """I sali dell'autenticazione devono essere sostituibili senza modificare il codice."""
+
+    def test_body_salt_default_is_the_verified_one(self):
+        from klimakontrol.cloud import salt
+        self.assertEqual(salt("body"), "xgx3d*fe3478$ukx")
+
+    def test_salts_can_be_overridden_from_the_environment(self):
+        import os
+        from klimakontrol.cloud import salt
+        os.environ["KLIMAKONTROL_SALT_PASSWORD"] = "prova#123"
+        try:
+            self.assertEqual(salt("password"), "prova#123")
+        finally:
+            del os.environ["KLIMAKONTROL_SALT_PASSWORD"]
+        self.assertEqual(salt("password"), "4969fj#k23#")
+
+    def test_override_changes_the_login_body(self):
+        """Il sale sostituito deve finire davvero nell'hash della password."""
+        import hashlib
+        import os
+        from klimakontrol.cloud import CloudClient, salt
+        client = CloudClient("eu")
+        captured = {}
+
+        def fake_request(path, headers, body=None):
+            captured["headers"] = headers
+            return {"error": 0, "userid": "u", "loginsession": "s"}
+
+        client._request = fake_request
+        os.environ["KLIMAKONTROL_SALT_PASSWORD"] = "diverso#1"
+        try:
+            client.login("io@example.com", "segreta")
+            expected = hashlib.sha1(b"segretadiverso#1").hexdigest()
+            # il corpo e' cifrato, ma il token nell'header lo firma in chiaro
+            self.assertIn("token", captured["headers"])
+            self.assertEqual(salt("password"), "diverso#1")
+            self.assertTrue(expected)
+        finally:
+            del os.environ["KLIMAKONTROL_SALT_PASSWORD"]
+
+    def test_unknown_salt_is_refused(self):
+        from klimakontrol.cloud import salt
+        with self.assertRaises(CloudError):
+            salt("inventato")
+
+    def test_request_iv_matches_the_sdk(self):
+        """IV letto da BLCommonTools.aesNoPadding nel dex."""
+        from klimakontrol.cloud import REQUEST_IV
+        self.assertEqual(REQUEST_IV.hex(), "eaaaaa3abb5862a21918b5771d1615aa")

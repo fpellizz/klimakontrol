@@ -110,6 +110,36 @@ tests/         88 test, tutti offline
 4. **`devicetypeflag`** viene passato come 0 se il cloud non lo fornisce. Da confermare sul
    campo.
 
+### I sali dell'autenticazione: il pezzo che manca davvero
+
+Il login manda `password = SHA1(password + sale)`, firma il corpo con un secondo sale e lo
+cifra con una chiave derivata da un terzo. L'app non tiene questi tre valori nel codice Java:
+li chiede a tre funzioni native di `libBLAccountEncryptAPI.so`, che non fanno altro che
+restituire una costante.
+
+Dei tre, **uno solo è verificato**: quello della firma del corpo (`xgx3d*fe3478$ukx`), che
+compare nel dex perché lo usano anche le chiamate `/ec4` e `dataservice`. Gli altri due sono
+i valori che circolano nei progetti open source, e **non compaiono in questo APK**: vengono
+da un altro build dell'SDK.
+
+Con un sale sbagliato il cloud risponde `-1008` — di nuovo "credenziali errate" a credenziali
+corrette. Per questo i tre sali sono sostituibili senza toccare il codice:
+
+```bash
+export KLIMAKONTROL_SALT_PASSWORD='...'
+export KLIMAKONTROL_SALT_TOKEN='...'
+export KLIMAKONTROL_SALT_BODY='...'
+```
+
+E per ricavarli dal `.so`, che è l'unico posto dove stanno:
+
+```bash
+python3 tools/extract_salts.py libBLAccountEncryptAPI.so
+```
+
+La libreria vive in `lib/<abi>/` dello **split APK** (`split_config.arm64_v8a.apk`), non
+dell'APK base: è per questo che nell'APK base la cartella `lib` non c'è.
+
 ### Una nota sugli identificativi di regione
 
 I progetti open source esistenti usano `8503b08fa57729df9faa45e4c978852c` come *company id*
