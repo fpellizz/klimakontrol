@@ -1,0 +1,20 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "klimakontrol"
+version = "0.1.0"
+description = "Controllo dei climatizzatori Wisnow/TCL con moduli BroadLink DNA, in locale e da remoto"
+readme = "README.md"
+requires-python = ">=3.8"
+license = {text = "MIT"}
+authors = [{name = "Fabio Pellizzaro"}]
+keywords = ["broadlink", "dna", "tcl", "wisnow", "climatizzatore", "hvac", "domotica"]
+dependencies = []
+
+[project.scripts]
+klimakontrol = "klimakontrol.cli:main"
+
+[tool.setuptools]
+packages = ["klimakontrol"]
