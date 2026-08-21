@@ -54,6 +54,7 @@ fun DetailScreen(
     onToggleEco: () -> Unit,
     onToggleTurbo: () -> Unit,
     onToggleNight: () -> Unit,
+    send: SendState = SendState.Idle,
 ) {
     val c = Klima.colors
     val mode = c.mode(unit.mode)
@@ -65,6 +66,10 @@ fun DetailScreen(
     Column(
         Modifier.fillMaxSize().background(c.bg).windowInsetsPadding(WindowInsets.safeDrawing),
     ) {
+        // filo di "invio in corso" in cima allo schermo
+        Box(Modifier.fillMaxWidth().height(2.dp)
+            .background(if (send == SendState.Sending) mode.accent else Color.Transparent))
+
         // ---- app bar (fondo = container modalità) ----
         Column(Modifier.fillMaxWidth().background(mode.container).padding(20.dp, 14.dp, 20.dp, 16.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -103,6 +108,20 @@ fun DetailScreen(
                         Spacer(Modifier.width(6.dp))
                         Text(unit.mode.label, style = QuadType.body, color = c.ink2)
                     }
+                    val sendText = when (send) {
+                        SendState.Sending -> "invio…"
+                        SendState.Ok -> "✓ confermato"
+                        SendState.Error -> "comando non riuscito"
+                        SendState.Idle -> ""
+                    }
+                    val sendColor = when (send) {
+                        SendState.Sending -> mode.accent
+                        SendState.Ok -> c.ok
+                        SendState.Error -> c.error
+                        SendState.Idle -> c.ink2
+                    }
+                    Text(sendText, style = QuadType.micro, color = sendColor,
+                        modifier = Modifier.height(18.dp))
                 }
             }
         }

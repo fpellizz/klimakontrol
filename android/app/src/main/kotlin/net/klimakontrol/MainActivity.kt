@@ -26,6 +26,7 @@ import net.klimakontrol.ui.DetailScreen
 import net.klimakontrol.ui.HomeScreen
 import net.klimakontrol.ui.KlimaViewModel
 import net.klimakontrol.ui.Phase
+import net.klimakontrol.ui.SendState
 import net.klimakontrol.ui.LoginScreen
 import net.klimakontrol.ui.theme.Klima
 import net.klimakontrol.ui.theme.KlimaTheme
@@ -58,6 +59,7 @@ private fun AppRoot(vm: KlimaViewModel = viewModel()) {
 @Composable
 private fun Connected(vm: KlimaViewModel, units: List<AcUnit>) {
     var selected by rememberSaveable { mutableStateOf<String?>(null) }
+    val send by vm.send.collectAsState()
     val c = Klima.colors
 
     AnimatedContent(
@@ -75,6 +77,7 @@ private fun Connected(vm: KlimaViewModel, units: List<AcUnit>) {
                 onPowerAllOff = { vm.powerAllOff() },
                 onRefresh = { vm.refresh() },
                 onSettings = { vm.logout() },
+                send = send,
             )
         } else {
             DetailScreen(
@@ -88,6 +91,7 @@ private fun Connected(vm: KlimaViewModel, units: List<AcUnit>) {
                 onToggleEco = { vm.toggleEco(current.id) },
                 onToggleTurbo = { vm.toggleTurbo(current.id) },
                 onToggleNight = { vm.toggleNight(current.id) },
+                send = send[current.id] ?: SendState.Idle,
             )
         }
     }

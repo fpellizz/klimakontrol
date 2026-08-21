@@ -46,6 +46,7 @@ fun HomeScreen(
     onPowerAllOff: () -> Unit,
     onRefresh: () -> Unit = {},
     onSettings: () -> Unit = {},
+    send: Map<String, SendState> = emptyMap(),
 ) {
     val c = Klima.colors
     val onCount = units.count { it.power }
@@ -76,7 +77,9 @@ fun HomeScreen(
             contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 16.dp, vertical = 2.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            items(units, key = { it.id }) { u -> UnitCard(u, onOpen, onTogglePower) }
+            items(units, key = { it.id }) { u ->
+                UnitCard(u, send[u.id] ?: SendState.Idle, onOpen, onTogglePower)
+            }
         }
 
         if (units.size >= 2 && onCount > 0) {
@@ -99,7 +102,7 @@ fun HomeScreen(
 }
 
 @Composable
-private fun UnitCard(u: AcUnit, onOpen: (AcUnit) -> Unit, onTogglePower: (AcUnit) -> Unit) {
+private fun UnitCard(u: AcUnit, send: SendState, onOpen: (AcUnit) -> Unit, onTogglePower: (AcUnit) -> Unit) {
     val c = Klima.colors
     val mode: ModeColors = c.mode(u.mode)
     val surface = if (!u.online) c.surface1 else if (u.power) c.surface1 else c.surfaceOff
@@ -147,11 +150,16 @@ private fun UnitCard(u: AcUnit, onOpen: (AcUnit) -> Unit, onTogglePower: (AcUnit
                 else -> Text("Spenta", style = QuadType.body, color = c.ink2)
             }
             Spacer(Modifier.height(6.dp))
-            Text(
-                if (!u.online) "ultimo dato 3 min fa"
-                else u.ambientTemp?.let { "ambiente ${fmt(it)}°" } ?: "",
-                style = QuadType.micro, color = c.ink3,
-            )
+            when (send) {
+                SendState.Sending -> Text("invio…", style = QuadType.micro, color = mode.accent)
+                SendState.Ok -> Text("✓ confermato", style = QuadType.micro, color = c.ok)
+                SendState.Error -> Text("comando non riuscito", style = QuadType.micro, color = c.error)
+                SendState.Idle -> Text(
+                    if (!u.online) "ultimo dato 3 min fa"
+                    else u.ambientTemp?.let { "ambiente ${fmt(it)}°" } ?: "",
+                    style = QuadType.micro, color = c.ink3,
+                )
+            }
         }
 
         // destra: target + power
