@@ -234,5 +234,5 @@ private fun BigPower(on: Boolean, accent: Color, onClick: () -> Unit) {
         Modifier.size(64.dp).clip(CircleShape)
             .background(if (on) c.surface2 else accent).clickable { onClick() },
         contentAlignment = Alignment.Center,
-    ) { Text("⏻", style = QuadType.unit, color = if (on) c.ink else Color(0xFF1A1208)) }
+    ) { PowerGlyph(color = if (on) c.ink else Color(0xFF1A1208), modifier = Modifier.size(28.dp)) }
 }

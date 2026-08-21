@@ -69,3 +69,28 @@ fun DialRing(
         }
     }
 }
+
+/** Simbolo di accensione (IEC): anello aperto in alto + barretta verticale. Disegnato, così non
+ *  dipende da un glifo del font (U+23FB non c'è nei font di sistema → apparirebbe come "tofu"). */
+@androidx.compose.runtime.Composable
+fun PowerGlyph(color: Color, modifier: Modifier = Modifier) {
+    Canvas(modifier) {
+        val s = min(size.width, size.height)
+        val sw = s * 0.11f
+        val r = s * 0.30f
+        val cx = size.width / 2f
+        val cy = size.height / 2f
+        val gap = 62f
+        drawArc(
+            color = color, startAngle = 270f + gap / 2f, sweepAngle = 360f - gap, useCenter = false,
+            topLeft = Offset(cx - r, cy - r), size = Size(2 * r, 2 * r),
+            style = Stroke(width = sw, cap = StrokeCap.Round),
+        )
+        drawLine(
+            color = color,
+            start = Offset(cx, cy - r * 0.12f),
+            end = Offset(cx, cy - r * 1.08f),
+            strokeWidth = sw, cap = StrokeCap.Round,
+        )
+    }
+}

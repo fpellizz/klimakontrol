@@ -84,18 +84,19 @@ fun HomeScreen(
 
         if (units.size >= 2 && onCount > 0) {
             Box(Modifier.fillMaxWidth().padding(20.dp)) {
-                Text(
-                    "⏻   Spegni tutte",
-                    style = QuadType.name.copy(fontWeight = FontWeight.SemiBold),
-                    color = c.ink,
-                    textAlign = TextAlign.Center,
-                    modifier = Modifier
-                        .fillMaxWidth()
+                Row(
+                    Modifier.fillMaxWidth()
                         .clip(RoundedCornerShape(16.dp))
                         .background(c.surface2)
                         .clickable { onPowerAllOff() }
                         .padding(vertical = 15.dp),
-                )
+                    horizontalArrangement = Arrangement.Center,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    PowerGlyph(color = c.ink, modifier = Modifier.size(20.dp))
+                    Spacer(Modifier.width(10.dp))
+                    Text("Spegni tutte", style = QuadType.name.copy(fontWeight = FontWeight.SemiBold), color = c.ink)
+                }
             }
         }
     }
@@ -195,7 +196,7 @@ private fun PowerToggle(on: Boolean, enabled: Boolean, accent: Color, onClick: (
             .padding(2.dp),
         contentAlignment = Alignment.Center,
     ) {
-        Text("⏻", color = if (enabled) fg else c.offline, style = QuadType.name)
+        PowerGlyph(color = if (enabled) fg else c.offline, modifier = Modifier.size(22.dp))
     }
 }
 
