@@ -5,23 +5,28 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.animation.AnimatedContent
-import androidx.compose.animation.togetherWith
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.viewmodel.compose.viewModel
+import net.klimakontrol.data.AcUnit
 import net.klimakontrol.ui.DetailScreen
 import net.klimakontrol.ui.HomeScreen
 import net.klimakontrol.ui.KlimaViewModel
+import net.klimakontrol.ui.Phase
+import net.klimakontrol.ui.LoginScreen
 import net.klimakontrol.ui.theme.Klima
 import net.klimakontrol.ui.theme.KlimaTheme
 
@@ -29,24 +34,36 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         enableEdgeToEdge()
         super.onCreate(savedInstanceState)
-        setContent {
-            KlimaTheme {
-                AppRoot()
-            }
-        }
+        setContent { KlimaTheme { AppRoot() } }
     }
 }
 
 @Composable
 private fun AppRoot(vm: KlimaViewModel = viewModel()) {
+    val phase by vm.phase.collectAsState()
     val units by vm.units.collectAsState()
+    val c = Klima.colors
+
+    when (val p = phase) {
+        is Phase.Loading -> Box(
+            Modifier.fillMaxSize().background(c.bg), contentAlignment = Alignment.Center,
+        ) { CircularProgressIndicator(color = c.mode(net.klimakontrol.data.Mode.FREDDO).accent) }
+
+        is Phase.Login -> LoginScreen(p, onLogin = { e, pw -> vm.login(e, pw) })
+
+        is Phase.Connected -> Connected(vm, units)
+    }
+}
+
+@Composable
+private fun Connected(vm: KlimaViewModel, units: List<AcUnit>) {
     var selected by rememberSaveable { mutableStateOf<String?>(null) }
-    val bg = Klima.colors.bg
+    val c = Klima.colors
 
     AnimatedContent(
         targetState = selected,
         transitionSpec = { fadeIn() togetherWith fadeOut() },
-        modifier = Modifier.fillMaxSize().background(bg),
+        modifier = Modifier.fillMaxSize().background(c.bg),
         label = "nav",
     ) { sel ->
         val current = units.firstOrNull { it.id == sel }
@@ -56,6 +73,8 @@ private fun AppRoot(vm: KlimaViewModel = viewModel()) {
                 onOpen = { selected = it.id },
                 onTogglePower = { vm.togglePower(it.id) },
                 onPowerAllOff = { vm.powerAllOff() },
+                onRefresh = { vm.refresh() },
+                onSettings = { vm.logout() },
             )
         } else {
             DetailScreen(

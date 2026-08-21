@@ -1,0 +1,97 @@
+package net.klimakontrol.ui
+
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.safeDrawing
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.unit.dp
+import net.klimakontrol.ui.theme.Klima
+import net.klimakontrol.ui.theme.QuadType
+
+@Composable
+fun LoginScreen(state: Phase.Login, onLogin: (String, String) -> Unit) {
+    val c = Klima.colors
+    val accent = c.mode(net.klimakontrol.data.Mode.FREDDO).accent
+    var email by rememberSaveable { mutableStateOf(state.email) }
+    var password by remember { mutableStateOf("") }
+
+    Box(
+        Modifier.fillMaxSize().background(c.bg).windowInsetsPadding(WindowInsets.safeDrawing),
+        contentAlignment = Alignment.Center,
+    ) {
+        Column(
+            Modifier.widthIn(max = 420.dp).fillMaxWidth().padding(28.dp),
+            horizontalAlignment = Alignment.Start,
+            verticalArrangement = Arrangement.spacedBy(14.dp),
+        ) {
+            Text("klimakontrol", style = QuadType.title, color = c.ink)
+            Text("Accedi al tuo account per controllare i climatizzatori.",
+                style = QuadType.body, color = c.ink2)
+            Spacer(Modifier.height(6.dp))
+
+            OutlinedTextField(
+                value = email, onValueChange = { email = it },
+                label = { Text("Email o telefono") }, singleLine = true,
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
+                modifier = Modifier.fillMaxWidth(),
+            )
+            OutlinedTextField(
+                value = password, onValueChange = { password = it },
+                label = { Text("Password") }, singleLine = true,
+                visualTransformation = PasswordVisualTransformation(),
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+                modifier = Modifier.fillMaxWidth(),
+            )
+
+            state.error?.let {
+                Text(it, style = QuadType.micro, color = c.error)
+            }
+
+            Spacer(Modifier.height(4.dp))
+            Button(
+                onClick = { if (!state.busy) onLogin(email, password) },
+                enabled = !state.busy && email.isNotBlank() && password.isNotBlank(),
+                shape = RoundedCornerShape(14.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = accent, contentColor = Color(0xFF10161A),
+                ),
+                modifier = Modifier.fillMaxWidth().height(52.dp),
+            ) {
+                if (state.busy) CircularProgressIndicator(strokeWidth = 2.dp, modifier = Modifier.height(20.dp))
+                else Text("Accedi", style = QuadType.name)
+            }
+
+            Text(
+                "La password non viene salvata: si conserva solo la sessione.",
+                style = QuadType.micro, color = c.ink3,
+            )
+        }
+    }
+}

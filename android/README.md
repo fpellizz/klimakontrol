@@ -7,23 +7,26 @@ App nativa **Kotlin + Jetpack Compose** che implementa il sistema di design **"Q
 > `.github/workflows/android.yml`). Ad ogni push su `android/**` viene prodotto un APK debug,
 > scaricabile dagli *artifact* della run (`klimakontrol-debug-apk`).
 
-## Stato — è uno scheletro
+## Stato — collegato al cloud
 
-Funziona e si vede il layout, ma su **dati d'esempio** (`SampleRepository`): nessun login richiesto.
+L'app fa **login** e controlla i climatizzatori **veri** via cloud.
 
 - ✅ Tema Quadrante (token chiaro/scuro, colore per modalità) — `ui/theme/`
-- ✅ Schermata **Home** (panoramica multi-split, stati acceso/spento/offline) — `ui/HomeScreen.kt`
-- ✅ Schermata **Dettaglio** con il **quadrante** (`Canvas`), modalità/ventola/funzioni, fascia pollice — `ui/DetailScreen.kt`, `ui/Dial.kt`
-- ✅ **Client cloud** portato in Kotlin (login col companyid condiviso, `getallinfo`, `sdkcontrol`
-  con `save_temp`) — `data/cloud/CloudClient.kt`. **Non ancora collegato alla UI.**
+- ✅ **Login** + sessione persistente (senza password, come `session.py`) — `ui/LoginScreen.kt`, `data/cloud/SessionStore.kt`
+- ✅ **Home** (panoramica multi-split, stati acceso/spento/offline) — `ui/HomeScreen.kt`
+- ✅ **Dettaglio** col **quadrante** (`Canvas`), modalità/ventola/funzioni, fascia pollice — `ui/DetailScreen.kt`, `ui/Dial.kt`
+- ✅ **Client cloud** in Kotlin (companyid condiviso, `getallinfo`, `sdkcontrol` con `save_temp`)
+  collegato via `CloudService` + `KlimaViewModel` — `data/cloud/`
+- ✅ **Comandi ottimistici** con roll-back sull'errore (aggiorna subito, invia, torna indietro se fallisce)
+
+Il gestore (⚙ nell'header) per ora fa **logout** (provvisorio).
 
 ## Prossimi passi
 
-1. `CloudRepository` che implementa `KlimaRepository` sopra `CloudClient` (thread IO), con schermata
-   di **login** e memorizzazione sessione (0600, senza password — come `session.py`).
-2. Stato ottimistico + debounce + roll-back sull'errore (il punto in cui battiamo l'app ufficiale).
-3. Font veri: **Space Grotesk** (numeri) e **Inter** (UI) in `res/font/` al posto di `FontFamily.Default`.
-4. Icona app, edge-to-edge rifinito, `WindowSizeClass` per griglia su tablet/foldable.
+1. **Debounce** sul drag/ripetizione (un solo comando al rilascio) e feedback "invio…/✓/errore" per comando.
+2. Font veri: **Space Grotesk** (numeri) e **Inter** (UI) in `res/font/` al posto di `FontFamily.Default`.
+3. Lettura ambiente/temperatura reale (il get ritorna un set fisso senza `envtemp`: valutare `querystate`).
+4. Icona app, schermata impostazioni vera, `WindowSizeClass` per griglia su tablet/foldable.
 
 ## Struttura
 

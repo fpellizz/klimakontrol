@@ -44,6 +44,8 @@ fun HomeScreen(
     onOpen: (AcUnit) -> Unit,
     onTogglePower: (AcUnit) -> Unit,
     onPowerAllOff: () -> Unit,
+    onRefresh: () -> Unit = {},
+    onSettings: () -> Unit = {},
 ) {
     val c = Klima.colors
     val onCount = units.count { it.power }
@@ -64,9 +66,9 @@ fun HomeScreen(
                 Text("${units.size} unità · $onCount ${if (onCount == 1) "accesa" else "accese"}",
                     style = QuadType.body, color = c.ink2)
             }
-            RoundIcon("⟳", c.ink2, c.surface1, c.border)
+            RoundIcon("⟳", c.ink2, c.surface1, onRefresh)
             Spacer(Modifier.width(8.dp))
-            RoundIcon("⚙", c.ink2, c.surface1, c.border)
+            RoundIcon("⚙", c.ink2, c.surface1, onSettings)
         }
 
         LazyColumn(
@@ -190,9 +192,9 @@ private fun PowerToggle(on: Boolean, enabled: Boolean, accent: Color, onClick: (
 }
 
 @Composable
-private fun RoundIcon(glyph: String, fg: Color, bg: Color, border: Color) {
+private fun RoundIcon(glyph: String, fg: Color, bg: Color, onClick: () -> Unit) {
     Box(
-        Modifier.size(38.dp).clip(CircleShape).background(bg),
+        Modifier.size(38.dp).clip(CircleShape).background(bg).clickable { onClick() },
         contentAlignment = Alignment.Center,
     ) { Text(glyph, color = fg, style = QuadType.body) }
 }

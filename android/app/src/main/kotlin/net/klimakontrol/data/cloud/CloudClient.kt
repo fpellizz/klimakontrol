@@ -19,7 +19,7 @@ import javax.crypto.spec.SecretKeySpec
  *  - la risposta di sdkcontrol arriva in event.payload.data come STRINGA JSON (va ri-parsata);
  *  - il setpoint di temperatura su questi moduli è `save_temp`, non `temp`.
  *
- * NB: è la fondazione di rete, non ancora collegata alla UI (che usa SampleRepository).
+ * Collegato alla UI tramite CloudService + KlimaViewModel.
  * Le chiamate di rete vanno eseguite fuori dal main thread (Dispatchers.IO).
  */
 class CloudException(message: String) : Exception(message)
@@ -100,6 +100,11 @@ class CloudClient(val region: Region = REGIONS.getValue("eu")) {
     }
 
     val loggedIn get() = userid != null && loginSession != null
+
+    /** Riusa una sessione salvata (userid + loginsession), senza rifare il login. */
+    fun restoreSession(userid: String, loginSession: String) {
+        this.userid = userid; this.loginSession = loginSession
+    }
 
     // ---------------- /ec4 firmate ----------------
     private fun refreshFamilyKey() {
