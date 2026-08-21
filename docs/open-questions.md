@@ -78,37 +78,45 @@ Terzo passo, se serve la certezza assoluta: hook a runtime con Frida
 **Attenzione al rate limit.** Dopo pochi tentativi ravvicinati il cloud risponde `-1036` e
 blocca i login per qualche minuto. Cambia **una** variabile per tentativo, e non ciclare.
 
-## 2. La scrittura delle pianificazioni sul filo
+## 2. La scrittura delle pianificazioni sul filo — bloccata dal nativo (indagine 2026-08-21)
 
-**Cosa manca.** Come vengono impacchettati `dev_taskadd`, `dev_tasklist`, `dev_taskdata`,
-`dev_taskdel`. Il modello dati e la conversione di fuso sono già in `tasks.py`; manca la
-codifica del comando nel pacchetto.
+**Cosa manca.** La codifica sul filo di `dev_taskadd`, `dev_tasklist`, `dev_taskdata`,
+`dev_taskdel`. Il modello dati e la conversione di fuso sono già in `tasks.py`; il payload del
+task è costruito dal JS della WebView (`app.html`/`main.*.js`) con lo stesso transform
+encode(1)/decode(2) di `to_wire`/`from_wire`. Manca il **byte di azione** e l'esatto
+impacchettamento.
 
-**Perché manca.** Per `dev_ctrl` il livello nativo usa l'azione `1` (get) o `2` (set) nel
-payload interno. Gli altri comandi finiscono in
-`BLControllerDescParam.setCommand("dev_taskadd")` e poi nel nativo, che costruisce il pacchetto
-usando i file `.script` cifrati negli assets dell'APK. Il byte di azione corrispondente non è
-noto.
+**Cosa ho scoperto (perché è dura).**
 
-**Come si chiude** — due strade, la prima è quella buona.
+* La UI usa i task **device-side** via il bridge `devicecontrol(deviceID, subDeviceID, payload,
+  "dev_taskadd", cfg)`: `dev_tasklist` manda payload `{}`, `dev_taskadd` il task codificato.
+* Siccome l'app è **cloud-only** (cattura PCAPdroid: nessun controllo locale, solo discovery),
+  i comandi task NON usano `KeyValueControl` come `dev_ctrl`. Nel dex (`cn.com.broadlink.sdk.b`)
+  i comandi diversi da `dev_ctrl` vanno per la via `dev_passthrough` / `DNA.TransmissionControl`,
+  dove il payload è il **pacchetto grezzo del dispositivo in Base64**, costruito dal nativo.
+* Il pacchetto grezzo lo costruisce `libNetworkAPI.so` eseguendo lo **script Lua del modello**
+  (`…2e4e0000.script`). Ma il `.script` è **cifrato con un cifrario proprietario BroadLink "tfb"**
+  (NON AES): funzioni native `networkapi_scriptfile_read` → `broadlink_tfb_decrypt`,
+  `broadlink_tfb_setkey_dec`, `broadlink_tfb_crypt_cfb128/…`; VM **Lua 5.3** integrata.
 
-1. **Cattura del pacchetto UDP locale.** La chiave AES del dispositivo è nota, quindi il
-   pacchetto si decifra e si legge il payload interno. Con il telefono e il PC sulla stessa rete:
+Quindi il byte di azione + la struttura del task stanno dietro un **cifrario proprietario + Lua**
+nel nativo: non derivabili dal dex né dal JS.
 
-   ```bash
-   # sul PC, con il telefono che crea un timer dall'app ufficiale
-   sudo tcpdump -i any -w timer.pcap 'udp port 80'
-   ```
+**Come si chiuderebbe** — nessuna è banale.
 
-   Poi si decifra con `klimakontrol.local.parse_packet` usando la chiave del dispositivo, e si
-   guarda il byte all'offset `0x08` del payload interno: è l'azione per `dev_taskadd`.
-   Basta *un* pacchetto per comando.
+1. **RE del cifrario `tfb`**: estrarre la chiave da `networkapi_scriptfile_read` e reimplementare
+   `broadlink_tfb_decrypt` (dall'assembly ARM) per decifrare il `.script`, poi leggere il Lua.
+   Bonus: sblocca anche `if_function` e i limiti di temperatura (§4).
+2. **Brute-force del byte di azione** via cloud passthrough (`DNA.TransmissionControl`): costruire
+   un `dev_tasklist` grezzo con byte di azione indovinato (get=1, set=2 → i task 3-8) e vedere
+   quale il modulo accetta. Non serve il `.script`, ma va replicato il formato passthrough e si
+   scrive alla cieca sul modulo.
+3. **Cattura TLS** della richiesta reale (serve APK ripacchettizzato per il cert utente, o Frida),
+   poi Base64-decode + decifra con la chiave del dispositivo.
 
-2. **API cloud `/appfront/v1/timertask/{add,query,modify,delete}`.** Individuata nel dex ma non
-   ancora studiata. Pianifica lato server invece che nel modulo: comodo, ma perde il pregio
-   grosso (il modulo esegue anche a telefono spento e senza internet).
-
-Priorità: la 1 sblocca la funzione più preziosa del progetto.
+Nota: la vecchia idea di catturare un **pacchetto UDP locale** dell'app **non funziona** — l'app
+non manda mai controllo/task in locale (solo discovery). Esiste anche l'API cloud
+`/appfront/v1/timertask/*` (pianificazione lato server), ma perde il pregio dell'offline.
 
 ---
 

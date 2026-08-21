@@ -40,7 +40,7 @@ Quadro legale: interoperabilità con hardware di proprietà, consentita in UE da
 | Lettura stato (`sdkcontrol get`) | **provata su HW**: la risposta arriva in `payload.data` come **stringa JSON** (`json.loads`) |
 | Storico consumi (`dataservice`) | **provato su HW**: l'endpoint `/stats` risponde `ok` ma **vuoto** — queste unità non misurano i consumi (nessun parametro di potenza). `/status` dà `-12401`; l'host `rtasquery` (quello vero dei dataservice) non risolve col template `<lid>` |
 | 79 parametri, enumerati, unità | completi, dal codice sorgente dell'app. Nota: su questi moduli 0x4e2e il setpoint è **`save_temp`**, non `temp` (aliasato in `params.wire_key`) |
-| Pianificazioni | modello e conversione di fuso completi; **scrittura sul filo non ancora nota** |
+| Pianificazioni | modello e fuso completi (`tasks.py`); **scrittura bloccata**: la codifica sul filo la fa il nativo eseguendo lo script Lua del modello, cifrato col cifrario proprietario BroadLink **`tfb`** (non AES) — vedi `docs/open-questions.md` §2 |
 | App Android | non iniziata |
 
 La via cloud è ora **provata su un impianto reale** (impianto Wisnow del proprietario, 3 unità,
@@ -209,15 +209,15 @@ Due cose emerse alla prima prova su hardware reale (unità Wisnow, devtype `0x4e
 Il dettaglio è in `docs/roadmap.md`; la sintesi:
 
 1. ✅ **Login sbloccato** (companyid, §5 trappola 1). Via cloud provati su HW: `login`, `list`,
-   `status`/lettura, `set` (setpoint), `querystate`.
-2. **Completare la prova sul campo via cloud**: `on`/`off` (pwr) ed `energy` (storico consumi),
-   ancora non esercitati; verificare `devicetypeflag`.
-3. **Sbloccare il controllo LOCALE**: `discover` e auth LAN funzionano, ma il controllo `0x6a`
-   dà `-5` (§5 trappola 4). È la parte che rende l'esperienza istantanea: capire l'autorizzazione
-   del controllore (il nativo fa `SDKAuth` con login + `packageName`).
-4. **Chiudere le pianificazioni** (`docs/open-questions.md` §2).
-5. **App Android** sopra questa libreria, compilata in CI (il proprietario ha un account
-   GitHub; su quella macchina non c'è l'SDK Android).
+   lettura stato, `on`/`off` (`pwr`), setpoint (`save_temp`), `querystate`. Tutto il controllo
+   utile funziona da fuori casa.
+2. ✅/❌ **Chiusi con esito negativo ma definitivo**: controllo **locale** (`-5`, l'app è cloud-only,
+   §5 trappola 4) e **storico consumi** (queste unità non lo misurano). Non serve insistere.
+3. **Pianificazioni** — l'unico grosso pezzo ancora aperto, ma **gated dal nativo**: la codifica
+   sul filo la fa lo script **Lua** del modello, cifrato col cifrario proprietario **`tfb`**
+   (`docs/open-questions.md` §2). Richiede RE del cifrario o brute-force del byte di azione.
+4. **App Android** sopra questa libreria, compilata in CI (il proprietario ha un account
+   GitHub; su quella macchina non c'è l'SDK Android). Il controllo cloud è pronto da usare.
 
 ---
 
