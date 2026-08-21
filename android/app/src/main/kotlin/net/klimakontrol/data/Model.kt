@@ -44,14 +44,8 @@ data class AcUnit(
     val health: Boolean = false,    // ac_health: modalità "salute" (ionizzatore)
     val display: Boolean = false,   // bglight: display/retroilluminazione dell'unità
     val errorCode: String? = null,
-    // parametri che il modulo ha davvero riportato in lettura: è la sua lista di capacità.
-    // Vuoto = sconosciuto (offline o lettura fallita): in quel caso non nascondiamo nulla.
-    val caps: Set<String> = emptySet(),
 ) {
     val online: Boolean get() = reachable == Reachability.ONLINE
-
-    /** Il modulo gestisce [wireKey]? Se non sappiamo le capacità (caps vuoto), assumiamo di sì. */
-    fun supports(wireKey: String): Boolean = caps.isEmpty() || wireKey in caps
 
     companion object {
         const val TEMP_MIN = 16f

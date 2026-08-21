@@ -44,7 +44,6 @@ fun cloudUnit(dev: CloudDevice, s: Map<String, Int>, online: Boolean): AcUnit {
         health = (s["ac_health"] ?: 0) == 1,
         display = (s["bglight"] ?: 0) == 1,
         errorCode = err,
-        caps = s.keys.toSet(), // ciò che il modulo riporta = ciò che gestisce davvero
     )
 }
 

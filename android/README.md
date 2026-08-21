@@ -31,10 +31,11 @@ L'app fa **login** e controlla i climatizzatori **veri** via cloud.
   i due tasti SWING del telecomando
 - ✅ **Salute** (`ac_health`, ionizzatore) e **Display** (`bglight`, display dell'unità) — i tasti
   HEALTH e DISPLAY del telecomando
-- ✅ **Rilevamento capacità** — il modulo ignora i parametri richiesti e ritorna il *suo* set:
-  quella è la sua vera lista di funzioni. L'app nasconde i controlli **oscillazione/salute/display**
-  che il modulo non riporta (niente pulsanti morti). I comandi confermati (modalità, ventola, eco,
-  turbo, notte) restano sempre visibili. Vedi `AcUnit.supports()`.
+- ⚠️ **Rilevamento capacità** — *tentato e accantonato*: il set che il modulo ritorna in lettura
+  è un **sottoinsieme fisso**, non la lista di capacità. Prova: `qtmode` è accettato ma non
+  riportato; nascondere in base al set riportato ha fatto sparire anche lo swing verticale che
+  serve. La vera capacità è in `if_function` (maschera di bit, mappatura ancora ignota —
+  `docs/open-questions.md` §4). Finché non è decodificata, si mostrano **tutti** i comandi.
 
 Corrispondenza con il telecomando fisico: MODE→Modalità, FAN→Ventola, ECO→Eco, TURBO→Turbo,
 SLEEP→Notte, MUTE→Silenzioso, SWING↕↔→Oscillazione, HEALTH→Salute, DISPLAY→Display.
@@ -51,13 +52,13 @@ Il gestore (⚙ nell'header) per ora fa **logout** (provvisorio).
   mostra l'ambiente solo se il modello ha il sensore. Quindi in UI l'ambiente si mostra solo se c'è.
 - **Silenzioso** non viene riletto dal modulo (`qtmode` non è nel set fisso): resta stato locale
   fino al prossimo cambio.
-- **Oscillazione/Salute/Display** ora si mostrano solo se il modulo li riporta in lettura
-  (rilevamento capacità). Se non li riporta, spariscono: esattamente il caso "orizzontale non
-  disponibile" su un'unità con la sola aletta verticale.
+- **Oscillazione/Salute/Display** si mostrano sempre (vedi sopra: il set riportato non è la lista
+  di capacità). Se un comando non muove l'unità, o l'unità non ha quell'aletta, il comando parte
+  ma non ha effetto — come lo swing verticale col valore `7`, ancora da confermare sul filo.
 - **Diagnostica**: a ogni caricamento l'app logga in Logcat (tag `klima-caps`) l'intero set che il
-  modulo ritorna, chiavi e valori. Per catturarlo: `adb logcat -s klima-caps`. Serve a confermare
-  quali funzioni l'unità supporta e a ricavare il valore giusto dello swing verticale (il `7`
-  documentato è derivato dal sorgente, non ancora visto sul filo di *questa* unità).
+  modulo ritorna, chiavi e valori. Per catturarlo: `adb logcat -s klima-caps`. Serve a vedere il
+  set fisso reale, il valore di `if_function`, e (se presente) il valore di `tcl_vdir` per ricavare
+  il comando giusto dello swing verticale.
 
 ## Prossimi passi
 
