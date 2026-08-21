@@ -33,20 +33,21 @@ Quadro legale: interoperabilità con hardware di proprietà, consentita in UE da
 | --- | --- |
 | Protocollo locale UDP:80 (AES, pacchetti, checksum) | **implementato e verificato** contro un pacchetto reale documentato |
 | Discovery in LAN | **provato su HW** (2026-08-21): trova le unità in broadcast |
-| Autenticazione BroadLink in LAN | **provata su HW**: la sessione si stabilisce, ma il controllo locale poi dà -5 (vedi §5, trappola 3) |
+| Autenticazione BroadLink in LAN | **provata su HW**: la sessione si stabilisce, ma il controllo locale dà -5 e l'app non lo usa (vedi §5, trappola 4) |
 | Login cloud | **funziona su HW** (2026-08-21). Il vecchio -1008 era il companyid sbagliato: risolto (vedi §5, trappola 1) |
-| Controllo remoto (`sdkcontrol`) | **provato su HW**: cambiato il setpoint di un'unità via cloud e verificato in lettura |
+| Controllo remoto (`sdkcontrol`) | **provato su HW**: `on`/`off` (`pwr`) e setpoint (`save_temp`) cambiati via cloud e verificati in lettura |
 | Stato online batch (`querystate`) | **provato su HW**: tutte le unità online |
 | Lettura stato (`sdkcontrol get`) | **provata su HW**: la risposta arriva in `payload.data` come **stringa JSON** (`json.loads`) |
-| Storico consumi (`dataservice`) | implementato, mai provato |
+| Storico consumi (`dataservice`) | **provato su HW**: l'endpoint `/stats` risponde `ok` ma **vuoto** — queste unità non misurano i consumi (nessun parametro di potenza). `/status` dà `-12401`; l'host `rtasquery` (quello vero dei dataservice) non risolve col template `<lid>` |
 | 79 parametri, enumerati, unità | completi, dal codice sorgente dell'app. Nota: su questi moduli 0x4e2e il setpoint è **`save_temp`**, non `temp` (aliasato in `params.wire_key`) |
 | Pianificazioni | modello e conversione di fuso completi; **scrittura sul filo non ancora nota** |
 | App Android | non iniziata |
 
-Il grosso della via cloud è ora **provato su un impianto reale** (impianto Wisnow del proprietario,
-3 unità, devtype `0x4e2e`). Resta da provare: storico consumi, pianificazioni, e il controllo
-**locale** (il `-5`, vedi §5 trappola 3). Ogni volta che una funzione viene esercitata per la prima
-volta contro l'hardware o il cloud, aggiorna questa tabella.
+La via cloud è ora **provata su un impianto reale** (impianto Wisnow del proprietario, 3 unità,
+devtype `0x4e2e`): login, lista, stato, online, `on`/`off` e setpoint funzionano. Chiuse anche, con
+esito negativo ma definitivo: il controllo **locale** (il `-5`: l'app è cloud-only, §5 trappola 4) e
+lo **storico consumi** (le unità non lo misurano). Resta da provare: le **pianificazioni**. Ogni
+volta che una funzione viene esercitata per la prima volta, aggiorna questa tabella.
 
 ---
 

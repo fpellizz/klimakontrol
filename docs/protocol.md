@@ -305,6 +305,16 @@ Esiste anche `dataservice` / `v1/device/status` (usato dalla pagina "risparmio")
 stato del dispositivo, cioè **la cronologia di temperature e accensioni**. Anche gli orari di
 queste API sono in UTC+8.
 
+**Esito su HW reale (2026-08-21).** L'app punta i dataservice all'host **`rtasquery`**
+(`https://%srtasquery.ibroadlink.com/dataservice/...`), NON `appservice`. Col nostro codice:
+`/stats` su `appservice` risponde `status:0, ok` ma **`table[0]` è vuoto** (`total:0, cnt:0,
+values:null`) per tutte le granularità e tutte le unità; `/status` su `appservice` risponde
+`-12401 服务器忙` ("server occupato"), persistente; l'host `<lid>rtasquery.ibroadlink.com` **non
+risolve** (il prefisso `%s` per rtasquery non è il lid). Inoltre queste unità non espongono alcun
+parametro di potenza/kWh nello stato: **non misurano i consumi**, quindi non c'è storico da leggere.
+Se un giorno serve, va trovato il vero host `rtasquery` (probabilmente un prefisso regionale fisso,
+come `app-service-deu-…`).
+
 ---
 
 ## 6. Controllo remoto — l'ultimo pezzo, trovato
