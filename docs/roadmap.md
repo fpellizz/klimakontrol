@@ -36,22 +36,20 @@ Poi: aggiornare la tabella di stato in `CLAUDE.md`, aggiungere test sulle rispos
 
 ---
 
-## Passo 3 — La via locale
+## Passo 3 — La via locale — ⚠️ solo discovery; controllo non supportato
 
-```bash
-python3 -m klimakontrol discover
-python3 -m klimakontrol --transport local status 1
-```
+Esito della prova su HW reale (2026-08-21):
 
-Due cose da verificare: che il discovery trovi i moduli, e che l'**autenticazione LAN**
-restituisca la chiave AES anche senza account cloud — è quella che rende possibile un
-funzionamento del tutto indipendente da BroadLink.
+* `discover` **funziona**: trova i moduli in broadcast.
+* L'**auth LAN** stabilisce una sessione, ma il **controllo locale (`0x6a`) dà `-5`** — con chiave
+  vera del cloud e id giusto. Cause escluse una per una (chiave, id, porta, password, forma).
+* Una **cattura del traffico dell'app** (PCAPdroid) ha chiuso la questione: l'app **non manda mai**
+  controllo locale a questi moduli; in LAN fa solo discovery, e ogni comando va al **cloud**
+  (`47.254.182.109`). Su questo firmware `0x4e2e` il controllo LAN puro **non è supportato**.
 
-Se il discovery non risponde, provare comunque il controllo diretto verso l'IP noto: sono due
-percorsi separati e il secondo è più semplice.
-
-**Fatto quando** un comando in LAN risponde in meno di 300 ms e `--transport auto` sceglie da
-solo la strada giusta.
+Conclusione: per queste unità il controllo è **cloud** (funziona). Il locale resta utile solo per il
+discovery. Riaprire solo se serve davvero l'offline: andrebbe replicato l'`SDKAuth` nativo (login +
+`packageName` + license), che forse autorizza il controllore — vedi `CLAUDE.md` §5 trappola 4.
 
 ---
 

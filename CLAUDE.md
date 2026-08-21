@@ -192,11 +192,14 @@ Due cose emerse alla prima prova su hardware reale (unità Wisnow, devtype `0x4e
   decimi di grado). Verificato: `set temp=N` non muoveva nulla, `save_temp=N` sì. `params.wire_key`
   traduce `temp`→`save_temp` sul filo, così l'utente usa il nome naturale. Il pacchetto dorato
   locale usa ancora `temp` perché è un modello `0x507C` diverso.
-* **Il controllo locale (UDP `0x6a`) risponde `-5`** anche con la chiave AES vera del cloud e con la
-  sessione da auth LAN. Non è la chiave (la risposta si decifra a struttura DNA valida) né la forma
-  del comando: sembra che questi moduli accettino il controllo solo da un controllore **autorizzato**
-  (il nativo fa un `SDKAuth` con login + `packageName` + license). Aperto — vedi
-  `docs/open-questions.md`. Intanto il **controllo via cloud** funziona ed è sufficiente.
+* **Il controllo locale (UDP `0x6a`) risponde `-5`** anche con la chiave AES vera del cloud e l'id
+  giusto (`terminalid`). Non è la chiave, l'id, la porta sorgente, la password del device né la forma
+  del comando (tutti esclusi). **Perché**: una cattura del traffico dell'app (PCAPdroid, 2026-08-21)
+  mostra che **l'app non manda MAI un controllo locale** a questi moduli — in LAN fa solo *discovery*
+  (broadcast `0x06`); ogni comando va in HTTPS al cloud (`47.254.182.109`). Su questo firmware `0x4e2e`
+  il controllo LAN puro non è supportato: **la via locale serve solo al discovery, il controllo è
+  cloud**. Il `-5` non è un bug da sistemare. (Se un giorno servisse il locale, andrebbe replicato
+  l'`SDKAuth` nativo — login + `packageName` + license — che forse autorizza il controllore.)
 
 ---
 
