@@ -31,6 +31,10 @@ L'app fa **login** e controlla i climatizzatori **veri** via cloud.
   i due tasti SWING del telecomando
 - ✅ **Salute** (`ac_health`, ionizzatore) e **Display** (`bglight`, display dell'unità) — i tasti
   HEALTH e DISPLAY del telecomando
+- ✅ **Rilevamento capacità** — il modulo ignora i parametri richiesti e ritorna il *suo* set:
+  quella è la sua vera lista di funzioni. L'app nasconde i controlli **oscillazione/salute/display**
+  che il modulo non riporta (niente pulsanti morti). I comandi confermati (modalità, ventola, eco,
+  turbo, notte) restano sempre visibili. Vedi `AcUnit.supports()`.
 
 Corrispondenza con il telecomando fisico: MODE→Modalità, FAN→Ventola, ECO→Eco, TURBO→Turbo,
 SLEEP→Notte, MUTE→Silenzioso, SWING↕↔→Oscillazione, HEALTH→Salute, DISPLAY→Display.
@@ -47,10 +51,13 @@ Il gestore (⚙ nell'header) per ora fa **logout** (provvisorio).
   mostra l'ambiente solo se il modello ha il sensore. Quindi in UI l'ambiente si mostra solo se c'è.
 - **Silenzioso** non viene riletto dal modulo (`qtmode` non è nel set fisso): resta stato locale
   fino al prossimo cambio.
-- **Oscillazione/Salute/Display** sono richiesti in lettura (`READ_PARAMS`) ma il modulo ritorna
-  il suo set fisso: se non li include, valgono come `qtmode` (stato locale fino al comando
-  successivo). Il valore `7` dello swing verticale è derivato dal sorgente dell'app, non ancora
-  visto sul filo: da confermare sul campo.
+- **Oscillazione/Salute/Display** ora si mostrano solo se il modulo li riporta in lettura
+  (rilevamento capacità). Se non li riporta, spariscono: esattamente il caso "orizzontale non
+  disponibile" su un'unità con la sola aletta verticale.
+- **Diagnostica**: a ogni caricamento l'app logga in Logcat (tag `klima-caps`) l'intero set che il
+  modulo ritorna, chiavi e valori. Per catturarlo: `adb logcat -s klima-caps`. Serve a confermare
+  quali funzioni l'unità supporta e a ricavare il valore giusto dello swing verticale (il `7`
+  documentato è derivato dal sorgente, non ancora visto sul filo di *questa* unità).
 
 ## Prossimi passi
 

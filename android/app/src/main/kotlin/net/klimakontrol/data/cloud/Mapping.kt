@@ -44,14 +44,15 @@ fun cloudUnit(dev: CloudDevice, s: Map<String, Int>, online: Boolean): AcUnit {
         health = (s["ac_health"] ?: 0) == 1,
         display = (s["bglight"] ?: 0) == 1,
         errorCode = err,
+        caps = s.keys.toSet(), // ciò che il modulo riporta = ciò che gestisce davvero
     )
 }
 
 /** I parametri da chiedere in lettura (il modulo comunque ritorna il suo set fisso). */
 val READ_PARAMS = listOf(
     "pwr", "tcl_mode", "save_temp", "envtemp", "tcl_mark",
-    "ecomode", "pwfmode", "tcl_slp", "tcl_vdir", "tcl_hdir",
-    "ac_health", "bglight", "ac_errcode",
+    "ecomode", "pwfmode", "tcl_slp", "qtmode", "tcl_vdir", "tcl_hdir",
+    "ac_health", "bglight", "if_function", "ac_errcode",
 )
 
 /** Comandi -> parametri sul filo. */

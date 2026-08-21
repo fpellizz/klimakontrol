@@ -1,6 +1,7 @@
 package net.klimakontrol.data.cloud
 
 import android.content.Context
+import android.util.Log
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import net.klimakontrol.data.AcUnit
@@ -70,7 +71,11 @@ class CloudService(context: Context) {
         devices = client.devices()
         devices.map { d ->
             try {
-                cloudUnit(d, client.getState(d, READ_PARAMS), online = true)
+                val raw = client.getState(d, READ_PARAMS)
+                // il modulo ignora i params richiesti e ritorna il SUO set: è la lista di capacità.
+                // Logga (chiavi + valori) per verificare quali funzioni l'unità supporta davvero.
+                Log.i("klima-caps", "${d.name.ifBlank { d.mac }} riporta ${raw.size}: $raw")
+                cloudUnit(d, raw, online = true)
             } catch (e: Exception) {
                 cloudUnit(d, emptyMap(), online = false)
             }

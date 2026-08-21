@@ -193,10 +193,15 @@ fun DetailScreen(
                 }
             }
 
-            Section("Oscillazione") {
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    SwingTile("Verticale", "↕", unit.swingV, mode.accent, Modifier.weight(1f), onToggleSwingV)
-                    SwingTile("Orizzontale", "↔", unit.swingH, mode.accent, Modifier.weight(1f), onToggleSwingH)
+            // oscillazione: mostra solo gli assi che il modulo dichiara di gestire
+            val swingV = unit.supports("tcl_vdir")
+            val swingH = unit.supports("tcl_hdir")
+            if (swingV || swingH) {
+                Section("Oscillazione") {
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        if (swingV) SwingTile("Verticale", "↕", unit.swingV, mode.accent, Modifier.weight(1f), onToggleSwingV)
+                        if (swingH) SwingTile("Orizzontale", "↔", unit.swingH, mode.accent, Modifier.weight(1f), onToggleSwingH)
+                    }
                 }
             }
 
@@ -207,9 +212,13 @@ fun DetailScreen(
                         FeatureTile("Turbo", unit.turbo, c.turbo, Modifier.weight(1f), onToggleTurbo)
                         FeatureTile("Notte", unit.night, c.night, Modifier.weight(1f), onToggleNight)
                     }
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        FeatureTile("Salute", unit.health, c.eco, Modifier.weight(1f), onToggleHealth)
-                        FeatureTile("Display", unit.display, c.mode(unit.mode).accent, Modifier.weight(1f), onToggleDisplay)
+                    val health = unit.supports("ac_health")
+                    val display = unit.supports("bglight")
+                    if (health || display) {
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            if (health) FeatureTile("Salute", unit.health, c.eco, Modifier.weight(1f), onToggleHealth)
+                            if (display) FeatureTile("Display", unit.display, mode.accent, Modifier.weight(1f), onToggleDisplay)
+                        }
                     }
                 }
             }
