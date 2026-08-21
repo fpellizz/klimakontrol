@@ -42,7 +42,15 @@ class TestEncode(unittest.TestCase):
 
     def test_encode_changes_mixed(self):
         out = P.encode_changes({"pwr": "on", "temp": 21.0, "tcl_mode": "caldo"})
-        self.assertEqual(out, {"pwr": 1, "temp": 210, "tcl_mode": 1})
+        # `temp` viene tradotto su `save_temp` (setpoint reale di questi moduli)
+        self.assertEqual(out, {"pwr": 1, "save_temp": 210, "tcl_mode": 1})
+
+    def test_temp_is_aliased_to_save_temp_on_the_wire(self):
+        """Su questi moduli il setpoint e' save_temp; temp e' ignorato (HW 2026-08-21)."""
+        self.assertEqual(P.wire_key("temp"), "save_temp")
+        self.assertEqual(P.wire_key("pwr"), "pwr")
+        # la codifica usa la scala di temp (0.1) ma emette la chiave save_temp
+        self.assertEqual(P.encode_changes({"temp": 24.0}), {"save_temp": 240})
 
 
 class TestDictionary(unittest.TestCase):

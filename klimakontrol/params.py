@@ -181,17 +181,31 @@ def decode_status(raw: Dict[str, Any]) -> Dict[str, Any]:
     return out
 
 
+#: Alias di parametro sul filo. Su questi moduli (devtype 0x4e2e) il setpoint di
+#: temperatura e' `save_temp`; `temp` viene ignorato dal firmware. Verificato su
+#: hardware reale il 2026-08-21: `set temp=N` via cloud non muoveva nulla, mentre
+#: `save_temp=N` cambiava il setpoint (letto in eco). L'utente usa il nome naturale
+#: `temp`, che qui traduciamo su `save_temp`. Il pacchetto dorato usa ancora `temp`
+#: perche' era un modello 0x507C diverso: se un giorno serve, va reso per-modello.
+WIRE_KEY_ALIASES = {"temp": "save_temp"}
+
+
+def wire_key(name: str) -> str:
+    """Il nome del parametro come lo vuole il modulo (applica gli alias sul filo)."""
+    return WIRE_KEY_ALIASES.get(name, name)
+
+
 def encode_changes(changes: Dict[str, Any]) -> Dict[str, Any]:
     """Traduce valori leggibili (es. tcl_mode="freddo", temp=23.5) in valori sul filo."""
     out = {}
     for k, v in changes.items():
         p = PARAMS.get(k)
         if p is None:
-            out[k] = v
+            out[wire_key(k)] = v
             continue
         if not p.writable:
             raise ValueError("il parametro %s e' di sola lettura" % k)
-        out[k] = p.encode(v)
+        out[wire_key(k)] = p.encode(v)
     return out
 
 

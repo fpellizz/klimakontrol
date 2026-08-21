@@ -28,7 +28,7 @@ from . import session
 from .cloud import (AuthError, CloudClient, CloudDevice, CloudError, RateLimitError,
                     REGION_TRY_ORDER, REGIONS, login_any_region)
 from .local import Device, LocalClient, LocalError, discover
-from .params import BASIC_SET, PARAMS, decode_status, describe, encode_changes
+from .params import BASIC_SET, PARAMS, decode_status, describe, encode_changes, wire_key
 
 
 def _pick(devices: List[CloudDevice], token: str) -> CloudDevice:
@@ -154,7 +154,7 @@ def cmd_set(args) -> None:
         p = PARAMS.get(k)
         if p is None:
             sys.exit("Parametro sconosciuto: %s" % k)
-        changes[k] = p.encode(v if p.kind == "enum" else float(v))
+        changes[wire_key(k)] = p.encode(v if p.kind == "enum" else float(v))
     result = _write_state(cli, dev, args.transport, changes)
     print("Inviato a %s: %s" % (dev.name or dev.did[:8], changes))
     if result:
