@@ -18,15 +18,16 @@ L'app fa **login** e controlla i climatizzatori **veri** via cloud.
 - ✅ **Client cloud** in Kotlin (companyid condiviso, `getallinfo`, `sdkcontrol` con `save_temp`)
   collegato via `CloudService` + `KlimaViewModel` — `data/cloud/`
 - ✅ **Comandi ottimistici** con roll-back sull'errore (aggiorna subito, invia, torna indietro se fallisce)
+- ✅ **Feedback per-comando** (`invio… / ✓ confermato / comando non riuscito`) + **debounce** sulla
+  temperatura (un solo comando dopo 400 ms di quiete: niente comandi persi, cloud non intasato)
 
 Il gestore (⚙ nell'header) per ora fa **logout** (provvisorio).
 
 ## Prossimi passi
 
-1. **Debounce** sul drag/ripetizione (un solo comando al rilascio) e feedback "invio…/✓/errore" per comando.
-2. Font veri: **Space Grotesk** (numeri) e **Inter** (UI) in `res/font/` al posto di `FontFamily.Default`.
-3. Lettura ambiente/temperatura reale (il get ritorna un set fisso senza `envtemp`: valutare `querystate`).
-4. Icona app, schermata impostazioni vera, `WindowSizeClass` per griglia su tablet/foldable.
+1. Font veri: **Space Grotesk** (numeri) e **Inter** (UI) in `res/font/` al posto di `FontFamily.Default`.
+2. Lettura ambiente/temperatura reale (il get ritorna un set fisso senza `envtemp`: valutare `querystate`).
+3. Icona app, schermata impostazioni vera, `WindowSizeClass` per griglia su tablet/foldable.
 
 ## Struttura
 
