@@ -1,7 +1,7 @@
 # klimakontrol — istruzioni per Claude Code
 
 Leggi questo file **prima** di toccare qualsiasi cosa. Contiene lo stato reale del progetto,
-le convenzioni, e le tre trappole in cui si cade se si tira a indovinare.
+le convenzioni, e le trappole (§5) in cui si cade se si tira a indovinare.
 
 Rispondi e scrivi commenti/documentazione **in italiano**. Gli identificatori nel codice
 restano in inglese.
@@ -32,17 +32,21 @@ Quadro legale: interoperabilità con hardware di proprietà, consentita in UE da
 | Pezzo | Stato |
 | --- | --- |
 | Protocollo locale UDP:80 (AES, pacchetti, checksum) | **implementato e verificato** contro un pacchetto reale documentato |
-| Discovery e autenticazione BroadLink in LAN | implementati, **mai provati su hardware** |
-| Login cloud | implementato, **fallisce con -1008** per causa ancora ignota (vedi §5, trappola 2) |
-| Controllo remoto (`sdkcontrol`) | implementato secondo il dex, **mai provato** (serve il login) |
-| Stato online batch (`querystate`) | implementato, mai provato |
+| Discovery in LAN | **provato su HW** (2026-08-21): trova le unità in broadcast |
+| Autenticazione BroadLink in LAN | **provata su HW**: la sessione si stabilisce, ma il controllo locale poi dà -5 (vedi §5, trappola 3) |
+| Login cloud | **funziona su HW** (2026-08-21). Il vecchio -1008 era il companyid sbagliato: risolto (vedi §5, trappola 1) |
+| Controllo remoto (`sdkcontrol`) | **provato su HW**: cambiato il setpoint di un'unità via cloud e verificato in lettura |
+| Stato online batch (`querystate`) | **provato su HW**: tutte le unità online |
+| Lettura stato (`sdkcontrol get`) | **provata su HW**: la risposta arriva in `payload.data` come **stringa JSON** (`json.loads`) |
 | Storico consumi (`dataservice`) | implementato, mai provato |
-| 79 parametri, enumerati, unità | completi, dal codice sorgente dell'app |
+| 79 parametri, enumerati, unità | completi, dal codice sorgente dell'app. Nota: su questi moduli 0x4e2e il setpoint è **`save_temp`**, non `temp` (aliasato in `params.wire_key`) |
 | Pianificazioni | modello e conversione di fuso completi; **scrittura sul filo non ancora nota** |
 | App Android | non iniziata |
 
-**Nulla è stato ancora provato su un impianto reale.** Ogni volta che una funzione viene
-esercitata per la prima volta contro l'hardware o il cloud, aggiorna questa tabella.
+Il grosso della via cloud è ora **provato su un impianto reale** (impianto Wisnow del proprietario,
+3 unità, devtype `0x4e2e`). Resta da provare: storico consumi, pianificazioni, e il controllo
+**locale** (il `-5`, vedi §5 trappola 3). Ogni volta che una funzione viene esercitata per la prima
+volta contro l'hardware o il cloud, aggiorna questa tabella.
 
 ---
 
@@ -106,33 +110,39 @@ per-dispositivo** (`aeskey`). Con quella chiave si parla al modulo in due modi:
 
 Quindi: **un solo modello di dominio, due trasporti**. Il JSON di comando è sempre
 `{"act": "get"|"set", "params": [...], "vals": [[{"val": N, "idx": 1}]]}` (i moduli TCL
-accettano in LAN anche la forma breve `{"temp": 230}`).
+accettano in LAN anche la forma breve `{"save_temp": 230}`). Attenzione: su questi moduli il
+setpoint è `save_temp`, non `temp` (vedi §5, trappola 4).
 
-La chiave AES si ottiene dal cloud (`getallinfo`) **oppure** dall'autenticazione BroadLink in
-LAN, che sui moduli già associati funziona senza account: è la strada per un funzionamento
-completamente offline.
+La chiave AES si ottiene dal cloud (`getallinfo`) **oppure** dall'autenticazione BroadLink in LAN.
+Nota da HW reale: l'auth LAN stabilisce la sessione senza account, ma il **controllo** locale poi
+risponde `-5` (§5, trappola 4) — il funzionamento del tutto offline non è ancora sbloccato; per ora
+si controlla via cloud.
 
 ---
 
 ## 5. Le tre trappole (leggile, sono costate ore)
 
-### Trappola 1 — il `companyid` che gira online è sbagliato
+### Trappola 1 — il `companyid` è la costante condivisa (non `blob[16:32]`)
 
-Il login manda `companyid` e `lid`. I progetti open source usano
-`8503b08fa57729df9faa45e4c978852c` come companyid della regione internazionale. **Non lo è**:
-quel valore compare identico in tutte e quattro le licenze BroadLink dell'app, è una costante
-globale. Il companyid vero della regione internazionale è `a8452a8f48ae707edc12e9c52e21f00f`.
+Il login manda `companyid` e `lid`. Il companyid vero è **`8503b08fa57729df9faa45e4c978852c`**:
+la **costante condivisa** da tutte e quattro le licenze BroadLink dell'app, ai byte `[120:136]`
+del blob. Il `lid` invece è **per-regione** (i primi 16 byte del blob).
 
-Con la coppia sbagliata il cloud risponde `-1008`, che significa "credenziali errate" —
-mandando a cercare il problema nel posto sbagliato.
+⚠️ Questa nota diceva **l'opposto** e ha bloccato il login per giorni: sosteneva che `8503b08f…`
+(il valore usato dai progetti community) fosse sbagliato e che il companyid vero fosse
+`blob[16:32]` (per-regione, es. eu `57c9e5ad…`). Era il contrario. Il 2026-08-21 un login
+riuscito su region eu ha restituito, **echeggiato dal server**, `companyid: 8503b08f…`; con
+`blob[16:32]` il cloud rispondeva sempre `-1008` ("credenziali errate"), mandando a cercare il
+problema nel posto sbagliato. L'app "Intelligent AC" è **una sola company OEM** declinata su più
+regioni: un companyid condiviso, un lid diverso per regione.
 
 Per questo `cloud.py` **non contiene identificativi ricopiati**: tiene i blob di licenza
-estratti dall'APK (`LICENSE_BLOBS`) e ne ricava `licenseId` (primi 16 byte) e `companyid`
-(successivi 16) a ogni avvio. Se aggiungi una regione, aggiungi il blob, non i due hash.
+(`LICENSE_BLOBS`) e ne ricava `licenseId = blob[0:16]` e `companyid = blob[120:136]` a ogni
+avvio. Se aggiungi una regione, aggiungi il blob, non i due hash.
 
-### Trappola 2 — il login viene rifiutato e la forma è giusta
+### Trappola 2 — il login: la forma è giusta, la colpa era il companyid
 
-Il login usa tre costanti, tutte e tre **verificate** estraendole da
+Il login usa tre costanti (i "sali"), tutte e tre **verificate** estraendole da
 `libBLAccountEncryptAPI.so` con `tools/extract_salts.py`:
 
 ```
@@ -147,16 +157,14 @@ Verificato dal dex anche tutto il resto: host `https://<lid>appservice.ibroadlin
 `AES/CBC/ZeroBytePadding` con IV `eaaaaa3abb5862a21918b5771d1615aa`, e la password passata
 grezza dall'interfaccia a `BLAccount.login` senza pre-elaborazioni.
 
-**Eppure il cloud risponde `-1008` su tutte e quattro le regioni, con credenziali che
-funzionano nell'app.** La forma della richiesta non è più il sospetto principale.
+**Il `-1008` NON era la forma della richiesta né i sali** (tutto byte-corretto): era il
+**companyid** sbagliato — vedi trappola 1. Risolto il 2026-08-21: login, elenco unità,
+`querystate` e controllo via cloud provati e funzionanti. Se un giorno il login tornasse a
+fallire, il primo passo resta leggere il **messaggio** del server (`KLIMAKONTROL_DEBUG=1` stampa
+richiesta e risposta grezze): `-1008` copre "utente inesistente in questo scope", "password
+errata" e "account bloccato", casi diversi.
 
-Le ipotesi rimaste, in ordine, e come distinguerle sono in `docs/open-questions.md` §1. La
-prima cosa da fare è leggere il **messaggio** del server, non solo il codice: `-1008` copre
-"utente inesistente in questo scope", "password errata" e "account bloccato", e sono casi
-diversi. Ora l'errore riporta il messaggio, e con `KLIMAKONTROL_DEBUG=1` si vedono richiesta e
-risposta grezze.
-
-Sostituibili senza toccare il codice, se un giorno cambiassero:
+I sali sono sostituibili senza toccare il codice, se un giorno cambiassero:
 
 ```bash
 export KLIMAKONTROL_SALT_PASSWORD='...'
@@ -176,20 +184,33 @@ commenti di debug ancora dentro. È quasi certamente il motivo per cui i timer d
 ufficiale scattano quando gli pare. Qui la conversione sta in un posto solo:
 `tasks.to_device_time` / `from_device_time`, e in `cloud._fmt_device_time`.
 
+### Trappola 4 — su questi moduli il setpoint è `save_temp`, e il controllo locale dà -5
+
+Due cose emerse alla prima prova su hardware reale (unità Wisnow, devtype `0x4e2e`):
+
+* **`temp` viene ignorato**: il setpoint di temperatura effettivo è **`save_temp`** (stessa scala,
+  decimi di grado). Verificato: `set temp=N` non muoveva nulla, `save_temp=N` sì. `params.wire_key`
+  traduce `temp`→`save_temp` sul filo, così l'utente usa il nome naturale. Il pacchetto dorato
+  locale usa ancora `temp` perché è un modello `0x507C` diverso.
+* **Il controllo locale (UDP `0x6a`) risponde `-5`** anche con la chiave AES vera del cloud e con la
+  sessione da auth LAN. Non è la chiave (la risposta si decifra a struttura DNA valida) né la forma
+  del comando: sembra che questi moduli accettino il controllo solo da un controllore **autorizzato**
+  (il nativo fa un `SDKAuth` con login + `packageName` + license). Aperto — vedi
+  `docs/open-questions.md`. Intanto il **controllo via cloud** funziona ed è sufficiente.
+
 ---
 
 ## 6. Cosa fare adesso, in ordine
 
 Il dettaglio è in `docs/roadmap.md`; la sintesi:
 
-1. **Sbloccare il login**: estrarre i sali da `libBLAccountEncryptAPI.so`
-   (`docs/recipes-adb.md` §1), provarli, aggiornare i default in `cloud.py` documentando la
-   provenienza.
-2. **Prima prova sul campo**: `login`, `list`, `status`, `on`/`off`, `set`, `energy`. Correggere
-   quello che emerge — in particolare `devicetypeflag` e la forma esatta delle risposte, oggi
-   dedotte e non viste.
-3. **Prova locale**: `discover`, poi `--transport local`. È la parte che rende l'esperienza
-   istantanea; verificare anche l'autenticazione LAN senza account.
+1. ✅ **Login sbloccato** (companyid, §5 trappola 1). Via cloud provati su HW: `login`, `list`,
+   `status`/lettura, `set` (setpoint), `querystate`.
+2. **Completare la prova sul campo via cloud**: `on`/`off` (pwr) ed `energy` (storico consumi),
+   ancora non esercitati; verificare `devicetypeflag`.
+3. **Sbloccare il controllo LOCALE**: `discover` e auth LAN funzionano, ma il controllo `0x6a`
+   dà `-5` (§5 trappola 4). È la parte che rende l'esperienza istantanea: capire l'autorizzazione
+   del controllore (il nativo fa `SDKAuth` con login + `packageName`).
 4. **Chiudere le pianificazioni** (`docs/open-questions.md` §2).
 5. **App Android** sopra questa libreria, compilata in CI (il proprietario ha un account
    GitHub; su quella macchina non c'è l'SDK Android).

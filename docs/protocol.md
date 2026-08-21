@@ -242,11 +242,16 @@ morte come fa l'app attuale.
 
 Base URL per regione: `https://<licenseId>appservice.ibroadlink.com`
 
-| Regione | licenseId | companyId |
+Il `companyId` è **unico e condiviso** da tutte le regioni (`8503b08fa57729df9faa45e4c978852c`,
+byte `[120:136]` del blob di licenza); solo il `licenseId`/`lid` (byte `[0:16]`) cambia per
+regione. Confermato da un login riuscito il 2026-08-21 (vedi `CLAUDE.md` §5 trappola 1).
+
+| Regione | licenseId (lid) | companyId |
 | --- | --- | --- |
-| Europa | `aae72184369e2fc3e6ded53a90612586` | `57c9e5adbc9e118372539cd8f26e1239` |
+| Europa | `aae72184369e2fc3e6ded53a90612586` | `8503b08fa57729df9faa45e4c978852c` |
 | USA/altro | `f6e9e21566e109a28797aba5a1d8ed7e` | `8503b08fa57729df9faa45e4c978852c` |
-| Cina | `bffd4d702ec53938c31eb10cc0194b4a` | `b8671d5c011bababdb6b0689c70ab656` |
+| Cina | `bffd4d702ec53938c31eb10cc0194b4a` | `8503b08fa57729df9faa45e4c978852c` |
+| Russia | `e60de87565166c447a90cee96da955f7` | `8503b08fa57729df9faa45e4c978852c` |
 
 ### Account e dispositivi
 
@@ -265,7 +270,10 @@ Firme e cifratura:
   chiave AES = `md5(timestamp + "kdixkdqp54545^#*")`
 - `/ec4/...`: `token = md5(body + "xgx3d*fe3478$ukx" + timestamp + userid)`, chiave AES da
   `/ec4/v1/common/api`
-- errori: `-1008` credenziali errate, `-1036` rate limit
+- errori: `-1008` credenziali errate (spesso in realtà **companyid sbagliato**, vedi sopra),
+  `-1036` rate limit
+- la risposta di `sdkcontrol` porta i dati in `event.payload.data` come **stringa JSON**
+  (`params`/`vals`); va fatto `json.loads`. Setpoint temperatura di questi moduli: **`save_temp`**
 
 ### Storico consumi — `dataservice`
 

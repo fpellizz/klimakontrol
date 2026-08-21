@@ -6,10 +6,20 @@ spostala in `docs/reverse-engineering.md` con la risposta e aggiorna la tabella 
 
 ---
 
-## 1. Il login viene rifiutato con -1008 — BLOCCANTE
+## 1. Il login viene rifiutato con -1008 — ✅ RISOLTO (2026-08-21)
 
-**Sintomo.** `login` restituisce `-1008` su tutte e quattro le regioni, con credenziali che
-nell'app ufficiale funzionano.
+**Causa.** Il `companyid` era derivato da `blob[16:32]` (per-regione); quello vero è la
+**costante condivisa** `8503b08fa57729df9faa45e4c978852c` (`blob[120:136]`), uguale per tutte le
+regioni. Il `lid` per-regione era invece corretto. Fix in `cloud.py::_region_from_license`. Un
+login su region eu ha restituito, echeggiato dal server, `companyid: 8503b08f…`. Dettagli in
+`CLAUDE.md` §5 trappola 1. Login, elenco unità, `querystate`, lettura e controllo via cloud
+provati su HW reale.
+
+Quanto segue è la vecchia analisi, tenuta come cronaca (portava su una pista sbagliata: la forma
+della richiesta era giusta, mancava solo il companyid corretto).
+
+**Sintomo (storico).** `login` restituiva `-1008` su tutte e quattro le regioni, con credenziali
+che nell'app ufficiale funzionano.
 
 **Cosa è già stato escluso** (tutto letto dal dex, non dedotto):
 
@@ -135,11 +145,14 @@ del modello. Sono cifrati, ma la chiave è probabilmente derivabile: se si apron
 
 ---
 
-## 5. La forma esatta delle risposte del cloud
+## 5. La forma esatta delle risposte del cloud — ✅ in parte RISOLTA (2026-08-21)
 
-`sdk_control` legge `event.payload.data` e da lì `params`/`vals`. È dedotto dal codice
-dell'SDK, mai visto in una risposta reale. Al primo comando riuscito, salvare una risposta
-grezza (mascherata) in `docs/samples/` e adeguare il parsing se necessario.
+`sdk_control` legge `event.payload.data`. **Visto su risposta reale**: `data` arriva come
+**stringa JSON** (non oggetto), del tipo
+`'{"params":["pwr","tcl_mode","save_temp",...],"vals":[[{"val":1,"idx":1}],...]}'`. `get_state`
+e `set_state` ora ne fanno `json.loads`. Nota: il `get` ignora i `params` richiesti e ritorna
+sempre un set fisso di parametri deciso dal modulo. `querystate` ritorna
+`event.payload.data` come lista `[{"did":..., "state":0|1}]`.
 
 Lo stesso vale per `dataservice`: il pannello dell'app legge `table[0].values`, ma la forma
 delle singole righe (nomi dei campi per kWh, ore di funzionamento, buchi di rete) va vista.

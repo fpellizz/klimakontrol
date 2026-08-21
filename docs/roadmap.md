@@ -5,14 +5,11 @@ funzioni sopra un fondamento non verificato.
 
 ---
 
-## Passo 1 — Sbloccare il login (bloccante)
+## Passo 1 — Sbloccare il login — ✅ FATTO (2026-08-21)
 
-Estrarre i due sali nativi e provarli: `docs/open-questions.md` §1.
-
-**Fatto quando** `python3 -m klimakontrol login` restituisce una sessione e l'elenco delle unità.
-
-Poi: aggiornare `DEFAULT_SALTS` in `cloud.py` con i valori veri, scrivendo nel commento da dove
-vengono; togliere il "da verificare"; aggiornare la trappola 2 in `CLAUDE.md`.
+Non erano i sali (già corretti): era il **companyid**, derivato da `blob[16:32]` invece che dalla
+costante condivisa `blob[120:136]` (`8503b08f…`). Fix in `cloud.py`; `docs/open-questions.md` §1 e
+`CLAUDE.md` §5 trappola 1 aggiornati. `login` restituisce sessione ed elenco unità.
 
 ---
 
