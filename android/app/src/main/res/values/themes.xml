@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Tema dell'Activity: Compose disegna tutto, qui serve solo un guscio senza action bar,
+         con fondo scuro "Quadrante" per evitare flash bianco all'avvio. -->
+    <style name="Theme.Klimakontrol" parent="@android:style/Theme.Material.NoActionBar">
+        <item name="android:windowBackground">@android:color/black</item>
+        <item name="android:navigationBarColor">@android:color/transparent</item>
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:windowLightStatusBar">false</item>
+    </style>
+</resources>
