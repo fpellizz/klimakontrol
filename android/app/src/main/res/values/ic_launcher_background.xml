@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- sfondo dell'icona adattiva: il blu della cornice, campionato dall'immagine sorgente -->
+    <color name="ic_launcher_background">#091044</color>
+</resources>
