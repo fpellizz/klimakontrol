@@ -41,7 +41,7 @@ Quadro legale: interoperabilità con hardware di proprietà, consentita in UE da
 | Storico consumi (`dataservice`) | **provato su HW**: l'endpoint `/stats` risponde `ok` ma **vuoto** — queste unità non misurano i consumi (nessun parametro di potenza). `/status` dà `-12401`; l'host `rtasquery` (quello vero dei dataservice) non risolve col template `<lid>` |
 | 79 parametri, enumerati, unità | completi, dal codice sorgente dell'app. Nota: su questi moduli 0x4e2e il setpoint è **`save_temp`**, non `temp` (aliasato in `params.wire_key`) |
 | Pianificazioni | modello e fuso completi (`tasks.py`); **scrittura bloccata**: la codifica sul filo la fa il nativo eseguendo lo script Lua del modello, cifrato col cifrario proprietario BroadLink **`tfb`** (non AES) — vedi `docs/open-questions.md` §2 |
-| App Android | non iniziata |
+| App Android | **scheletro avviato**: Kotlin + Jetpack Compose col sistema di design "Quadrante", compila in **CI** (`.github/workflows/android.yml`) e produce un APK debug. Home + Dettaglio su dati d'esempio; client cloud portato in Kotlin ma **non ancora collegato alla UI**. Vedi `android/README.md` |
 
 La via cloud è ora **provata su un impianto reale** (impianto Wisnow del proprietario, 3 unità,
 devtype `0x4e2e`): login, lista, stato, online, `on`/`off` e setpoint funzionano. Chiuse anche, con
@@ -216,8 +216,10 @@ Il dettaglio è in `docs/roadmap.md`; la sintesi:
 3. **Pianificazioni** — l'unico grosso pezzo ancora aperto, ma **gated dal nativo**: la codifica
    sul filo la fa lo script **Lua** del modello, cifrato col cifrario proprietario **`tfb`**
    (`docs/open-questions.md` §2). Richiede RE del cifrario o brute-force del byte di azione.
-4. **App Android** sopra questa libreria, compilata in CI (il proprietario ha un account
-   GitHub; su quella macchina non c'è l'SDK Android). Il controllo cloud è pronto da usare.
+4. **App Android** — ✅ scheletro avviato (Kotlin+Compose, sistema "Quadrante", compila in CI e
+   produce l'APK; layout del team su dati d'esempio). Prossimo: **schermata login + `CloudRepository`**
+   che collega `data/cloud/CloudClient` alla UI (stesso trasporto della libreria Python), stato
+   ottimistico/debounce, e i font veri (Space Grotesk/Inter). Dettagli in `android/README.md`.
 
 ---
 
