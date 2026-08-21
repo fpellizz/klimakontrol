@@ -50,7 +50,7 @@ private fun AppRoot(vm: KlimaViewModel = viewModel()) {
             Modifier.fillMaxSize().background(c.bg), contentAlignment = Alignment.Center,
         ) { CircularProgressIndicator(color = c.mode(net.klimakontrol.data.Mode.FREDDO).accent) }
 
-        is Phase.Login -> LoginScreen(p, onLogin = { e, pw -> vm.login(e, pw) })
+        is Phase.Login -> LoginScreen(p, onLogin = { e, pw, rem -> vm.login(e, pw, rem) })
 
         is Phase.Connected -> Connected(vm, units)
     }

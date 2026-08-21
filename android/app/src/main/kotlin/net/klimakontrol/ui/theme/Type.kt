@@ -3,16 +3,37 @@ package net.klimakontrol.ui.theme
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.googlefonts.Font
+import androidx.compose.ui.text.googlefonts.GoogleFont
 import androidx.compose.ui.unit.sp
+import net.klimakontrol.R
 
 /**
- * Scala tipografica del sistema "Quadrante".
- * TODO: aggiungere i font veri (Space Grotesk per i numeri/display, Inter per la UI) come
- * risorse in res/font e sostituire FontFamily.Default. Per ora si usano i font di sistema,
- * mantenendo pesi, dimensioni e cifre tabulari della specifica.
+ * Font del sistema "Quadrante", scaricati a runtime da Google Fonts (Downloadable Fonts):
+ * Space Grotesk per numeri/display (cifre tabulari, carattere strumentale), Inter per la UI.
+ * Nessun file binario nel repo; il provider è Google Play Services (certificati in font_certs.xml).
+ * Se il download non è disponibile, Compose ripiega sul font di sistema.
  */
-private val Display = FontFamily.Default // -> Space Grotesk
-private val Body = FontFamily.Default     // -> Inter
+private val provider = GoogleFont.Provider(
+    providerAuthority = "com.google.android.gms.fonts",
+    providerPackage = "com.google.android.gms",
+    certificates = R.array.com_google_android_gms_fonts_certs,
+)
+
+private val spaceGrotesk = GoogleFont("Space Grotesk")
+private val inter = GoogleFont("Inter")
+
+private val Display = FontFamily(
+    Font(spaceGrotesk, provider, FontWeight.Light),
+    Font(spaceGrotesk, provider, FontWeight.Normal),
+    Font(spaceGrotesk, provider, FontWeight.Medium),
+    Font(spaceGrotesk, provider, FontWeight.Bold),
+)
+private val Body = FontFamily(
+    Font(inter, provider, FontWeight.Normal),
+    Font(inter, provider, FontWeight.Medium),
+    Font(inter, provider, FontWeight.SemiBold),
+)
 
 private const val TNUM = "tnum"
 

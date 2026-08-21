@@ -52,22 +52,23 @@ class KlimaViewModel(app: Application) : AndroidViewModel(app) {
     fun unit(id: String): AcUnit? = _units.value.firstOrNull { it.id == id }
 
     init {
-        viewModelScope.launch {
-            if (service.hasSession() && service.restore()) {
-                loadInto(onFail = Phase.Login(service.savedEmail(), "Sessione scaduta, rientra"))
-            } else {
-                _phase.value = Phase.Login(email = service.savedEmail())
-            }
-        }
+        viewModelScope.launch { bootstrap() }
     }
 
-    fun login(email: String, password: String) {
+    /** All'avvio: prima la sessione salvata, poi (se scaduta) le credenziali salvate, infine login. */
+    private suspend fun bootstrap() {
+        if (service.hasSession() && service.restore() && tryLoad()) return
+        if (service.hasCreds() && runCatching { service.autoLogin() }.getOrDefault(false) && tryLoad()) return
+        _phase.value = Phase.Login(email = service.savedEmail())
+    }
+
+    fun login(email: String, password: String, remember: Boolean) {
         _phase.value = Phase.Login(email = email, busy = true)
         viewModelScope.launch {
             try {
-                service.login(email, password)
+                service.login(email, password, remember)
                 _phase.value = Phase.Loading
-                loadInto(onFail = Phase.Login(email, "Connesso ma nessuna unità"))
+                if (!tryLoad()) _phase.value = Phase.Login(email, "Connesso, ma nessuna unità trovata")
             } catch (e: Exception) {
                 _phase.value = Phase.Login(email = email, error = readable(e))
             }
@@ -82,12 +83,10 @@ class KlimaViewModel(app: Application) : AndroidViewModel(app) {
 
     fun refresh() = viewModelScope.launch { runCatching { _units.value = service.loadUnits() } }
 
-    private suspend fun loadInto(onFail: Phase) {
-        try {
-            _units.value = service.loadUnits(); _phase.value = Phase.Connected
-        } catch (e: Exception) {
-            _phase.value = onFail
-        }
+    private suspend fun tryLoad(): Boolean = try {
+        _units.value = service.loadUnits(); _phase.value = Phase.Connected; true
+    } catch (e: Exception) {
+        false
     }
 
     // ---- stato d'invio ----

@@ -1,30 +1,65 @@
 package net.klimakontrol.data.cloud
 
 import android.content.Context
+import android.content.SharedPreferences
+import androidx.security.crypto.EncryptedSharedPreferences
+import androidx.security.crypto.MasterKey
 
 /**
- * Persistenza della sessione cloud. Come `session.py`: salva userid/loginsession (segreti di
- * sessione, non la password) e l'email/regione per il ripristino. File privato dell'app.
+ * Persistenza cifrata (Android Keystore via EncryptedSharedPreferences) di:
+ *  - sessione: userid + loginsession (per l'auto-accesso quando la sessione è ancora valida);
+ *  - credenziali: email + password + regione, salvate SOLO se l'utente sceglie "ricorda"
+ *    (per rifare il login automaticamente quando la sessione scade).
+ * La password è cifrata a riposo; non compare mai in chiaro né nei log.
  */
 class SessionStore(context: Context) {
-    private val sp = context.getSharedPreferences("klima_session", Context.MODE_PRIVATE)
 
-    data class Saved(val userid: String, val loginSession: String, val email: String, val region: String)
+    private val sp: SharedPreferences = run {
+        val ctx = context.applicationContext
+        val masterKey = MasterKey.Builder(ctx)
+            .setKeyScheme(MasterKey.KeyScheme.AES256_GCM)
+            .build()
+        EncryptedSharedPreferences.create(
+            ctx,
+            "klima_secure",
+            masterKey,
+            EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
+            EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM,
+        )
+    }
 
-    fun load(): Saved? {
+    data class Session(val userid: String, val loginSession: String)
+    data class Creds(val email: String, val password: String, val region: String)
+
+    // ---- sessione ----
+    fun saveSession(userid: String, loginSession: String) =
+        sp.edit().putString("userid", userid).putString("loginsession", loginSession).apply()
+
+    fun session(): Session? {
         val uid = sp.getString("userid", null) ?: return null
         val ls = sp.getString("loginsession", null) ?: return null
-        return Saved(uid, ls, sp.getString("email", "") ?: "", sp.getString("region", "eu") ?: "eu")
+        return Session(uid, ls)
     }
 
-    fun save(userid: String, loginSession: String, email: String, region: String) {
-        sp.edit()
-            .putString("userid", userid)
-            .putString("loginsession", loginSession)
-            .putString("email", email)
-            .putString("region", region)
-            .apply()
+    // ---- meta (per il prefill), sempre salvate ----
+    fun saveMeta(email: String, region: String) =
+        sp.edit().putString("email", email).putString("region", region).apply()
+
+    fun email(): String = sp.getString("email", "") ?: ""
+    fun region(): String = sp.getString("region", "eu") ?: "eu"
+
+    // ---- credenziali (solo se "ricorda") ----
+    fun saveCreds(email: String, password: String, region: String) = sp.edit()
+        .putString("email", email).putString("password", password)
+        .putString("region", region).putBoolean("remember", true).apply()
+
+    fun creds(): Creds? {
+        if (!sp.getBoolean("remember", false)) return null
+        val pw = sp.getString("password", null) ?: return null
+        return Creds(email(), pw, region())
     }
 
-    fun clear() = sp.edit().clear().apply()
+    fun clearCreds() = sp.edit().remove("password").putBoolean("remember", false).apply()
+
+    fun clearAll() = sp.edit().clear().apply()
 }

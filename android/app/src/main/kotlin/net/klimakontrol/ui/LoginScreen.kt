@@ -1,9 +1,11 @@
 package net.klimakontrol.ui
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
@@ -11,12 +13,15 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Checkbox
+import androidx.compose.material3.CheckboxDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
@@ -36,11 +41,12 @@ import net.klimakontrol.ui.theme.Klima
 import net.klimakontrol.ui.theme.QuadType
 
 @Composable
-fun LoginScreen(state: Phase.Login, onLogin: (String, String) -> Unit) {
+fun LoginScreen(state: Phase.Login, onLogin: (String, String, Boolean) -> Unit) {
     val c = Klima.colors
     val accent = c.mode(net.klimakontrol.data.Mode.FREDDO).accent
     var email by rememberSaveable { mutableStateOf(state.email) }
     var password by remember { mutableStateOf("") }
+    var rememberCreds by rememberSaveable { mutableStateOf(true) }
 
     Box(
         Modifier.fillMaxSize().background(c.bg).windowInsetsPadding(WindowInsets.safeDrawing),
@@ -70,13 +76,25 @@ fun LoginScreen(state: Phase.Login, onLogin: (String, String) -> Unit) {
                 modifier = Modifier.fillMaxWidth(),
             )
 
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.clickable { rememberCreds = !rememberCreds }.padding(vertical = 2.dp),
+            ) {
+                Checkbox(
+                    checked = rememberCreds, onCheckedChange = { rememberCreds = it },
+                    colors = CheckboxDefaults.colors(checkedColor = accent),
+                )
+                Spacer(Modifier.width(4.dp))
+                Text("Ricorda le credenziali", style = QuadType.body, color = c.ink2)
+            }
+
             state.error?.let {
                 Text(it, style = QuadType.micro, color = c.error)
             }
 
             Spacer(Modifier.height(4.dp))
             Button(
-                onClick = { if (!state.busy) onLogin(email, password) },
+                onClick = { if (!state.busy) onLogin(email, password, rememberCreds) },
                 enabled = !state.busy && email.isNotBlank() && password.isNotBlank(),
                 shape = RoundedCornerShape(14.dp),
                 colors = ButtonDefaults.buttonColors(
@@ -89,7 +107,8 @@ fun LoginScreen(state: Phase.Login, onLogin: (String, String) -> Unit) {
             }
 
             Text(
-                "La password non viene salvata: si conserva solo la sessione.",
+                if (rememberCreds) "Credenziali salvate cifrate sul dispositivo (Keystore); rientri da solo."
+                else "Si conserva solo la sessione; la password non viene salvata.",
                 style = QuadType.micro, color = c.ink3,
             )
         }

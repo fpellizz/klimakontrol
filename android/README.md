@@ -20,14 +20,17 @@ L'app fa **login** e controlla i climatizzatori **veri** via cloud.
 - ✅ **Comandi ottimistici** con roll-back sull'errore (aggiorna subito, invia, torna indietro se fallisce)
 - ✅ **Feedback per-comando** (`invio… / ✓ confermato / comando non riuscito`) + **debounce** sulla
   temperatura (un solo comando dopo 400 ms di quiete: niente comandi persi, cloud non intasato)
+- ✅ **Font veri** — Space Grotesk (numeri/display) e Inter (UI) via *Downloadable Fonts* di Google
+  (nessun binario nel repo; provider Play Services, certificati in `res/values/font_certs.xml`)
+- ✅ **"Ricorda le credenziali"** — email+password cifrate nel Keystore (`EncryptedSharedPreferences`),
+  auto-login quando la sessione scade; se disattivato, si salva solo la sessione (mai la password)
 
 Il gestore (⚙ nell'header) per ora fa **logout** (provvisorio).
 
 ## Prossimi passi
 
-1. Font veri: **Space Grotesk** (numeri) e **Inter** (UI) in `res/font/` al posto di `FontFamily.Default`.
-2. Lettura ambiente/temperatura reale (il get ritorna un set fisso senza `envtemp`: valutare `querystate`).
-3. Icona app, schermata impostazioni vera, `WindowSizeClass` per griglia su tablet/foldable.
+1. Lettura ambiente/temperatura reale (il get ritorna un set fisso senza `envtemp`: valutare `querystate`).
+2. Icona app, schermata impostazioni vera, `WindowSizeClass` per griglia su tablet/foldable.
 
 ## Struttura
 

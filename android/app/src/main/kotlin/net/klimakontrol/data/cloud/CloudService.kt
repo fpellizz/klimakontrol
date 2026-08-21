@@ -6,8 +6,8 @@ import kotlinx.coroutines.withContext
 import net.klimakontrol.data.AcUnit
 
 /**
- * Facciata cloud usata dalla UI: login, ripristino sessione, caricamento unità e invio comandi.
- * Tutte le chiamate di rete girano su Dispatchers.IO. La logica sta in [CloudClient].
+ * Facciata cloud usata dalla UI: login, ripristino sessione, auto-login con credenziali salvate,
+ * caricamento unità e invio comandi. Rete su Dispatchers.IO; logica in [CloudClient].
  */
 class CloudService(context: Context) {
 
@@ -16,29 +16,42 @@ class CloudService(context: Context) {
     private var client = CloudClient(region)
     private var devices: List<CloudDevice> = emptyList()
 
-    fun hasSession(): Boolean = store.load() != null
-    fun savedEmail(): String = store.load()?.email ?: ""
+    fun hasSession(): Boolean = store.session() != null
+    fun hasCreds(): Boolean = store.creds() != null
+    fun savedEmail(): String = store.email()
 
-    /** Login con credenziali; salva la sessione. Lancia CloudException in caso di errore. */
-    suspend fun login(email: String, password: String, regionCode: String = "eu") =
+    /** Login con credenziali; salva la sessione e (se richiesto) le credenziali cifrate. */
+    suspend fun login(email: String, password: String, remember: Boolean, regionCode: String = "eu") =
         withContext(Dispatchers.IO) {
             region = REGIONS.getValue(regionCode)
             client = CloudClient(region)
             client.login(email.trim(), password)
-            store.save(client.userid!!, client.loginSession!!, email.trim(), regionCode)
+            store.saveSession(client.userid!!, client.loginSession!!)
+            store.saveMeta(email.trim(), regionCode)
+            if (remember) store.saveCreds(email.trim(), password, regionCode) else store.clearCreds()
         }
 
-    /** Riusa la sessione salvata, se c'è. Restituisce true se pronta. */
+    /** Riusa la sessione salvata, se c'è. */
     suspend fun restore(): Boolean = withContext(Dispatchers.IO) {
-        val s = store.load() ?: return@withContext false
-        region = REGIONS[s.region] ?: REGIONS.getValue("eu")
+        val s = store.session() ?: return@withContext false
+        region = REGIONS[store.region()] ?: REGIONS.getValue("eu")
         client = CloudClient(region)
         client.restoreSession(s.userid, s.loginSession)
         true
     }
 
+    /** Rifà il login con le credenziali salvate (quando la sessione è scaduta). */
+    suspend fun autoLogin(): Boolean = withContext(Dispatchers.IO) {
+        val c = store.creds() ?: return@withContext false
+        region = REGIONS[c.region] ?: REGIONS.getValue("eu")
+        client = CloudClient(region)
+        client.login(c.email, c.password)
+        store.saveSession(client.userid!!, client.loginSession!!)
+        true
+    }
+
     fun logout() {
-        store.clear()
+        store.clearAll()
         devices = emptyList()
         client = CloudClient(region)
     }
