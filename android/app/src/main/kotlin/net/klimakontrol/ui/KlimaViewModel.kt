@@ -75,10 +75,18 @@ class KlimaViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
+    /** Esci mantenendo le credenziali salvate (rientro automatico al prossimo avvio). */
     fun logout() {
         service.logout()
         _units.value = emptyList(); _send.value = emptyMap()
         _phase.value = Phase.Login(email = service.savedEmail())
+    }
+
+    /** Dimentica tutto (sessione + credenziali). */
+    fun forget() {
+        service.forget()
+        _units.value = emptyList(); _send.value = emptyMap()
+        _phase.value = Phase.Login(email = "")
     }
 
     fun refresh() = viewModelScope.launch { runCatching { _units.value = service.loadUnits() } }

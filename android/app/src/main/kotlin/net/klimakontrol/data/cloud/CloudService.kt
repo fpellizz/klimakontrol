@@ -50,7 +50,16 @@ class CloudService(context: Context) {
         true
     }
 
+    /** Esci: chiude la sessione ma MANTIENE le credenziali salvate (se "ricorda" era attivo),
+     *  così al prossimo avvio l'app rientra da sola. Per dimenticarle del tutto usa [forget]. */
     fun logout() {
+        store.clearSession()
+        devices = emptyList()
+        client = CloudClient(region)
+    }
+
+    /** Dimentica tutto: sessione e credenziali salvate. */
+    fun forget() {
         store.clearAll()
         devices = emptyList()
         client = CloudClient(region)
