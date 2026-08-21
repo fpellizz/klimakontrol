@@ -17,6 +17,7 @@ import net.klimakontrol.data.cloud.fanChangeWire
 import net.klimakontrol.data.cloud.modeChangeWire
 import net.klimakontrol.data.cloud.nightWire
 import net.klimakontrol.data.cloud.powerWire
+import net.klimakontrol.data.cloud.quietWire
 import net.klimakontrol.data.cloud.targetWire
 import net.klimakontrol.data.cloud.turboWire
 
@@ -145,7 +146,9 @@ class KlimaViewModel(app: Application) : AndroidViewModel(app) {
 
     fun togglePower(id: String) = immediate(id, { it.copy(power = !it.power) }, { powerWire(it.power) })
     fun setMode(id: String, m: Mode) = immediate(id, { it.copy(mode = m) }, { modeChangeWire(it.mode) })
-    fun setFan(id: String, f: FanSpeed) = immediate(id, { it.copy(fan = f) }, { fanChangeWire(it.fan) })
+    fun setFan(id: String, f: FanSpeed) =
+        immediate(id, { it.copy(fan = f, quiet = false) }, { fanChangeWire(it.fan) + quietWire(false) })
+    fun toggleQuiet(id: String) = immediate(id, { it.copy(quiet = !it.quiet) }, { quietWire(it.quiet) })
     fun toggleEco(id: String) = immediate(id, { it.copy(eco = !it.eco, turbo = false, night = false) }, { ecoWire(it.eco) })
     fun toggleTurbo(id: String) = immediate(id, { it.copy(turbo = !it.turbo, eco = false, night = false) }, { turboWire(it.turbo) })
     fun toggleNight(id: String) = immediate(id, { it.copy(night = !it.night, eco = false, turbo = false) }, { nightWire(it.night) })

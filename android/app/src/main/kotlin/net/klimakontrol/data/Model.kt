@@ -38,6 +38,7 @@ data class AcUnit(
     val eco: Boolean = false,
     val turbo: Boolean = false,
     val night: Boolean = false,
+    val quiet: Boolean = false, // qtmode: livello silenzioso/bassissimo
     val errorCode: String? = null,
 ) {
     val online: Boolean get() = reachable == Reachability.ONLINE

@@ -40,7 +40,10 @@ private fun modeGlyph(m: Mode) = when (m) {
     Mode.CALDO -> "☀"; Mode.FREDDO -> "❄"; Mode.DEUMIDIFICA -> "💧"; Mode.VENTOLA -> "≋"; Mode.AUTO -> "Ⓐ"
 }
 
-private val fanSteps = listOf(FanSpeed.BASSA, FanSpeed.MEDIA, FanSpeed.MEDIO_ALTA, FanSpeed.ALTA)
+// livelli ventola in ordine di portata (i valori sul filo non sono numericamente ordinati)
+private val fanSteps = listOf(
+    FanSpeed.BASSA, FanSpeed.MEDIO_BASSA, FanSpeed.MEDIA, FanSpeed.MEDIO_ALTA, FanSpeed.ALTA,
+)
 
 @Composable
 fun DetailScreen(
@@ -54,6 +57,7 @@ fun DetailScreen(
     onToggleEco: () -> Unit,
     onToggleTurbo: () -> Unit,
     onToggleNight: () -> Unit,
+    onToggleQuiet: () -> Unit,
     send: SendState = SendState.Idle,
 ) {
     val c = Klima.colors
@@ -82,8 +86,7 @@ fun DetailScreen(
             Spacer(Modifier.height(2.dp))
             Text(
                 buildString {
-                    append(unit.ambientTemp?.let { "Ambiente ${fmt(it)}°" } ?: "Ambiente —")
-                    append("  ·  ")
+                    unit.ambientTemp?.let { append("Ambiente ${fmt(it)}°  ·  ") }
                     append(unit.errorCode?.let { "errore $it" } ?: "nessun errore")
                 },
                 style = QuadType.micro, color = mode.on.copy(alpha = 0.78f),
@@ -153,21 +156,36 @@ fun DetailScreen(
             }
 
             Section("Ventola") {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    val curIdx = fanSteps.indexOf(unit.fan)
-                    Row(verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(5.dp)) {
-                        fanSteps.forEachIndexed { i, fs ->
-                            val on = curIdx >= 0 && i <= curIdx
-                            Box(
-                                Modifier.width(10.dp).height((10 + i * 6).dp)
-                                    .clip(RoundedCornerShape(3.dp))
-                                    .background(if (on) mode.accent else c.border)
-                                    .clickable { onSetFan(fs) },
-                            )
+                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        val autoSel = unit.fan == FanSpeed.AUTO && !unit.quiet
+                        Box(
+                            Modifier.clip(RoundedCornerShape(12.dp))
+                                .background(if (autoSel) mode.container else c.surface1)
+                                .clickable { onSetFan(FanSpeed.AUTO) }
+                                .padding(horizontal = 14.dp, vertical = 9.dp),
+                        ) { Text("Auto", style = QuadType.body, color = if (autoSel) mode.on else c.ink2) }
+                        Spacer(Modifier.width(12.dp))
+                        Row(verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                            val curIdx = fanSteps.indexOf(unit.fan)
+                            fanSteps.forEachIndexed { i, fs ->
+                                val on = !unit.quiet && curIdx >= 0 && i <= curIdx
+                                Box(
+                                    Modifier.width(12.dp).height((12 + i * 6).dp)
+                                        .clip(RoundedCornerShape(3.dp))
+                                        .background(if (on) mode.accent else c.border)
+                                        .clickable { onSetFan(fs) },
+                                )
+                            }
                         }
+                        Spacer(Modifier.weight(1f))
+                        Text(
+                            if (unit.quiet) "silenzioso" else unit.fan.label,
+                            style = QuadType.body, color = c.ink2,
+                        )
                     }
-                    Spacer(Modifier.weight(1f))
-                    Text(unit.fan.label, style = QuadType.body, color = c.ink2)
+                    FeatureTile("Silenzioso · molto basso", unit.quiet, c.night,
+                        Modifier.fillMaxWidth(), onToggleQuiet)
                 }
             }
 

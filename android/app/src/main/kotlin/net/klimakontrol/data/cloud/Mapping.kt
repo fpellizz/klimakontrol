@@ -38,6 +38,7 @@ fun cloudUnit(dev: CloudDevice, s: Map<String, Int>, online: Boolean): AcUnit {
         eco = (s["ecomode"] ?: 0) == 1,
         turbo = (s["pwfmode"] ?: 0) == 1,
         night = (s["tcl_slp"] ?: 0) == 1,
+        quiet = (s["qtmode"] ?: 0) == 1, // nota: il modulo non lo rilegge, resta stato locale
         errorCode = err,
     )
 }
@@ -56,3 +57,4 @@ fun fanChangeWire(f: FanSpeed) = mapOf("tcl_mark" to Wire.fanWire(f))
 fun ecoWire(on: Boolean) = mapOf("ecomode" to if (on) 1 else 0)
 fun turboWire(on: Boolean) = mapOf("pwfmode" to if (on) 1 else 0)
 fun nightWire(on: Boolean) = mapOf("tcl_slp" to if (on) 1 else 0)
+fun quietWire(on: Boolean) = mapOf("qtmode" to if (on) 1 else 0)
