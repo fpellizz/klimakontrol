@@ -41,7 +41,7 @@ Quadro legale: interoperabilità con hardware di proprietà, consentita in UE da
 | Storico consumi (`dataservice`) | **provato su HW**: l'endpoint `/stats` risponde `ok` ma **vuoto** — queste unità non misurano i consumi (nessun parametro di potenza). `/status` dà `-12401`; l'host `rtasquery` (quello vero dei dataservice) non risolve col template `<lid>` |
 | 79 parametri, enumerati, unità | completi, dal codice sorgente dell'app. Nota: su questi moduli 0x4e2e il setpoint è **`save_temp`**, non `temp` (aliasato in `params.wire_key`) |
 | Pianificazioni | modello e fuso completi (`tasks.py`); **scrittura bloccata**: la codifica sul filo la fa il nativo eseguendo lo script Lua del modello, cifrato col cifrario proprietario BroadLink **`tfb`** (non AES) — vedi `docs/open-questions.md` §2 |
-| App Android | **funzionante**: Kotlin + Jetpack Compose (sistema "Quadrante"), compila in **CI** (`.github/workflows/android.yml`). Fa **login** e **controlla i climatizzatori veri** via cloud (accensione, temperatura, modalità, ventola, eco/turbo/notte), con comandi ottimistici e roll-back; sessione persistente senza password. Provato su HW il 2026-08-21. Vedi `android/README.md` |
+| App Android | **funzionante**: Kotlin + Jetpack Compose (sistema "Quadrante"), compila in **CI** (`.github/workflows/android.yml`). Fa **login** e **controlla i climatizzatori veri** via cloud (accensione, temperatura, modalità, ventola, eco/turbo/notte, **oscillazione** `ac_vdir`/`ac_hdir`), con comandi ottimistici e roll-back; sessione persistente senza password; **icona app** adattiva. Espone solo i 10 del set fisso reale (§5, trappola 4): tolti mute/salute/display perché non gestiti. Provato su HW il 2026-08-21/22. Vedi `android/README.md` |
 
 La via cloud è ora **provata su un impianto reale** (impianto Wisnow del proprietario, 3 unità,
 devtype `0x4e2e`): login, lista, stato, online, `on`/`off` e setpoint funzionano. Chiuse anche, con
@@ -193,6 +193,14 @@ Due cose emerse alla prima prova su hardware reale (unità Wisnow, devtype `0x4e
   decimi di grado). Verificato: `set temp=N` non muoveva nulla, `save_temp=N` sì. `params.wire_key`
   traduce `temp`→`save_temp` sul filo, così l'utente usa il nome naturale. Il pacchetto dorato
   locale usa ancora `temp` perché è un modello `0x507C` diverso.
+
+  **Stessa storia per lo swing** (visto sul filo il 2026-08-22): il modulo usa **`ac_vdir`/`ac_hdir`**,
+  non `tcl_vdir`/`tcl_hdir` come nell'estrazione APK — scrivere `tcl_vdir` non muoveva l'aletta.
+  Aggiunti a `WIRE_KEY_ALIASES`. Corollario importante: il `get` ritorna **sempre lo stesso set
+  fisso di 10** (identico su tutte le unità), che *è* la lista di capacità del modello:
+  `pwr, tcl_mode, save_temp, tcl_mark, ecomode, pwfmode, tcl_slp, ac_vdir, ac_hdir, ac_errcode`.
+  Ciò che non c'è (`qtmode`/mute, `ac_health`, `bglight`, `envtemp`, `if_function`) **non è gestito
+  via cloud** — sono funzioni solo-telecomando IR. Non aggiungerle in UI: sono pulsanti morti.
 * **Il controllo locale (UDP `0x6a`) risponde `-5`** anche con la chiave AES vera del cloud e l'id
   giusto (`terminalid`). Non è la chiave, l'id, la porta sorgente, la password del device né la forma
   del comando (tutti esclusi). **Perché**: una cattura del traffico dell'app (PCAPdroid, 2026-08-21)

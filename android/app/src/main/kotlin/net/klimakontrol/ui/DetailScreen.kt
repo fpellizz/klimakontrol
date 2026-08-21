@@ -57,11 +57,8 @@ fun DetailScreen(
     onToggleEco: () -> Unit,
     onToggleTurbo: () -> Unit,
     onToggleNight: () -> Unit,
-    onToggleQuiet: () -> Unit,
     onToggleSwingV: () -> Unit,
     onToggleSwingH: () -> Unit,
-    onToggleHealth: () -> Unit,
-    onToggleDisplay: () -> Unit,
     send: SendState = SendState.Idle,
 ) {
     val c = Klima.colors
@@ -160,43 +157,35 @@ fun DetailScreen(
             }
 
             Section("Ventola") {
-                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        val autoSel = unit.fan == FanSpeed.AUTO && !unit.quiet
-                        Box(
-                            Modifier.clip(RoundedCornerShape(12.dp))
-                                .background(if (autoSel) mode.container else c.surface1)
-                                .clickable { onSetFan(FanSpeed.AUTO) }
-                                .padding(horizontal = 14.dp, vertical = 9.dp),
-                        ) { Text("Auto", style = QuadType.body, color = if (autoSel) mode.on else c.ink2) }
-                        Spacer(Modifier.width(12.dp))
-                        Row(verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                            val curIdx = fanSteps.indexOf(unit.fan)
-                            fanSteps.forEachIndexed { i, fs ->
-                                val on = !unit.quiet && curIdx >= 0 && i <= curIdx
-                                Box(
-                                    Modifier.width(12.dp).height((12 + i * 6).dp)
-                                        .clip(RoundedCornerShape(3.dp))
-                                        .background(if (on) mode.accent else c.border)
-                                        .clickable { onSetFan(fs) },
-                                )
-                            }
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    val autoSel = unit.fan == FanSpeed.AUTO
+                    Box(
+                        Modifier.clip(RoundedCornerShape(12.dp))
+                            .background(if (autoSel) mode.container else c.surface1)
+                            .clickable { onSetFan(FanSpeed.AUTO) }
+                            .padding(horizontal = 14.dp, vertical = 9.dp),
+                    ) { Text("Auto", style = QuadType.body, color = if (autoSel) mode.on else c.ink2) }
+                    Spacer(Modifier.width(12.dp))
+                    Row(verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        val curIdx = fanSteps.indexOf(unit.fan)
+                        fanSteps.forEachIndexed { i, fs ->
+                            val on = curIdx >= 0 && i <= curIdx
+                            Box(
+                                Modifier.width(12.dp).height((12 + i * 6).dp)
+                                    .clip(RoundedCornerShape(3.dp))
+                                    .background(if (on) mode.accent else c.border)
+                                    .clickable { onSetFan(fs) },
+                            )
                         }
-                        Spacer(Modifier.weight(1f))
-                        Text(
-                            if (unit.quiet) "silenzioso" else unit.fan.label,
-                            style = QuadType.body, color = c.ink2,
-                        )
                     }
-                    FeatureTile("Silenzioso · molto basso", unit.quiet, c.night,
-                        Modifier.fillMaxWidth(), onToggleQuiet)
+                    Spacer(Modifier.weight(1f))
+                    Text(unit.fan.label, style = QuadType.body, color = c.ink2)
                 }
             }
 
-            // Nota: NON si nasconde in base al set riportato dal modulo — quel set è un
-            // sottoinsieme fisso, non la lista di capacità (es. qtmode è accettato ma non
-            // riportato). La vera capacità è in `if_function`: finché la mappa dei bit non è
-            // nota, si mostrano tutti i comandi. Vedi docs/open-questions.md §4.
+            // Oscillazione: il modulo la gestisce (ac_vdir/ac_hdir, visti nel set fisso).
+            // I controlli non gestiti (silenzioso, salute, display) sono stati tolti perché
+            // non compaiono nel set che l'unità ritorna. Vedi docs/open-questions.md §4.
             Section("Oscillazione") {
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     SwingTile("Verticale", "↕", unit.swingV, mode.accent, Modifier.weight(1f), onToggleSwingV)
@@ -205,16 +194,10 @@ fun DetailScreen(
             }
 
             Section("Funzioni") {
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        FeatureTile("Eco", unit.eco, c.eco, Modifier.weight(1f), onToggleEco)
-                        FeatureTile("Turbo", unit.turbo, c.turbo, Modifier.weight(1f), onToggleTurbo)
-                        FeatureTile("Notte", unit.night, c.night, Modifier.weight(1f), onToggleNight)
-                    }
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        FeatureTile("Salute", unit.health, c.eco, Modifier.weight(1f), onToggleHealth)
-                        FeatureTile("Display", unit.display, mode.accent, Modifier.weight(1f), onToggleDisplay)
-                    }
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    FeatureTile("Eco", unit.eco, c.eco, Modifier.weight(1f), onToggleEco)
+                    FeatureTile("Turbo", unit.turbo, c.turbo, Modifier.weight(1f), onToggleTurbo)
+                    FeatureTile("Notte", unit.night, c.night, Modifier.weight(1f), onToggleNight)
                 }
             }
         }

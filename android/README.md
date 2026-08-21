@@ -26,44 +26,37 @@ L'app fa **login** e controlla i climatizzatori **veri** via cloud.
   auto-login quando la sessione scade; se disattivato, si salva solo la sessione (mai la password)
 
 - ✅ **Ventola completa**: Auto + 5 livelli (bassa → alta) con selettore chiaro
-- ✅ **Silenzioso** (`qtmode`) — il livello molto basso/silenzioso, verificato accettato dal modulo
-- ✅ **Oscillazione** — swing **verticale** (`tcl_vdir`, on=7) e **orizzontale** (`tcl_hdir`, on=1),
-  i due tasti SWING del telecomando
-- ✅ **Salute** (`ac_health`, ionizzatore) e **Display** (`bglight`, display dell'unità) — i tasti
-  HEALTH e DISPLAY del telecomando
-- ⚠️ **Rilevamento capacità** — *tentato e accantonato*: il set che il modulo ritorna in lettura
-  è un **sottoinsieme fisso**, non la lista di capacità. Prova: `qtmode` è accettato ma non
-  riportato; nascondere in base al set riportato ha fatto sparire anche lo swing verticale che
-  serve. La vera capacità è in `if_function` (maschera di bit, mappatura ancora ignota —
-  `docs/open-questions.md` §4). Finché non è decodificata, si mostrano **tutti** i comandi.
+- ✅ **Oscillazione** — swing **verticale** (`ac_vdir`) e **orizzontale** (`ac_hdir`), i due tasti
+  SWING del telecomando. Il modulo riporta lo swing con questi nomi `ac_*` (NON `tcl_vdir`/`tcl_hdir`
+  come nell'estrazione APK): visto sul filo il 2026-08-22
+- ✅ **Icona app** (`res/mipmap-*`, adattiva: sfondo blu + motivo caldo/freddo nella safe zone)
+
+**Set fisso reale del modulo (0x4e2e), identico su tutte le unità** — è la sua lista di funzioni:
+`pwr · tcl_mode · save_temp · tcl_mark · ecomode · pwfmode · tcl_slp · ac_vdir · ac_hdir · ac_errcode`.
+L'app espone esattamente questi. **Silenzioso** (`qtmode`), **Salute** (`ac_health`) e **Display**
+(`bglight`) sono stati **tolti**: non compaiono nel set → il modulo non li gestisce (sono funzioni
+solo-telecomando IR).
 
 Corrispondenza con il telecomando fisico: MODE→Modalità, FAN→Ventola, ECO→Eco, TURBO→Turbo,
-SLEEP→Notte, MUTE→Silenzioso, SWING↕↔→Oscillazione, HEALTH→Salute, DISPLAY→Display.
-Restano fuori: **TIMER** (le pianificazioni, feature a parte) e **I FEEL** (funzione del solo
-telecomando, che invia la propria lettura di temperatura: nessun parametro cloud).
+SLEEP→Notte, SWING↕↔→Oscillazione. Non pilotabili via cloud (assenti dal set): **MUTE**, **HEALTH**,
+**DISPLAY**, **I FEEL**, e **TIMER** (le pianificazioni, feature a parte).
 
 Il gestore (⚙ nell'header) per ora fa **logout** (provvisorio).
 
 ## Note
 
-- **Temperatura ambiente**: indagata — questi moduli **non la espongono**. Il `get` ritorna sempre
-  lo stesso set fisso (`pwr, tcl_mode, save_temp, tcl_mark, ecomode, pwfmode, tcl_slp, ac_errcode`)
-  senza `envtemp`, anche chiedendola; `querystate` dà solo lo stato online; e la stessa app ufficiale
-  mostra l'ambiente solo se il modello ha il sensore. Quindi in UI l'ambiente si mostra solo se c'è.
-- **Silenzioso** non viene riletto dal modulo (`qtmode` non è nel set fisso): resta stato locale
-  fino al prossimo cambio.
-- **Oscillazione/Salute/Display** si mostrano sempre (vedi sopra: il set riportato non è la lista
-  di capacità). Se un comando non muove l'unità, o l'unità non ha quell'aletta, il comando parte
-  ma non ha effetto — come lo swing verticale col valore `7`, ancora da confermare sul filo.
+- **Temperatura ambiente**: questi moduli **non la espongono** (`envtemp` non è nel set fisso). In
+  UI si mostra solo se disponibile.
+- **Valore "on" dello swing**: verticale=7, orizzontale=1 (derivati dal sorgente dell'app). Il nome
+  del parametro (`ac_vdir`/`ac_hdir`) è confermato dal filo; il valore no. Se un asse non oscilla,
+  il log dice il valore giusto.
 - **Diagnostica**: a ogni caricamento l'app logga in Logcat (tag `klima-caps`) l'intero set che il
-  modulo ritorna, chiavi e valori. Per catturarlo: `adb logcat -s klima-caps`. Serve a vedere il
-  set fisso reale, il valore di `if_function`, e (se presente) il valore di `tcl_vdir` per ricavare
-  il comando giusto dello swing verticale.
+  modulo ritorna, chiavi e valori: `adb logcat -s klima-caps`.
 
 ## Prossimi passi
 
 1. **Pianificazioni** (il tasto TIMER): manca la scrittura sul filo — vedi `docs/open-questions.md` §2.
-2. Icona app, schermata impostazioni vera, `WindowSizeClass` per griglia su tablet/foldable.
+2. Schermata impostazioni vera (ora ⚙ = logout), `WindowSizeClass` per griglia su tablet/foldable.
 
 ## Struttura
 

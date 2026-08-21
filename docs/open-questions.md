@@ -142,6 +142,13 @@ percorso remoto), quindi il campo conta almeno in qualche caso.
 `if_function` dice quali funzioni il singolo modello supporta davvero. Il valore si legge; la
 corrispondenza bit → funzione no.
 
+**Aggiornamento (2026-08-22):** su questi moduli `0x4e2e` `if_function` **non viene nemmeno
+riportato** nel set fisso del `get`. In compenso quel set fisso (10 parametri, §5) *è* di fatto la
+lista di capacità: include entrambi gli swing e omette mute/salute/display. Provato a nascondere i
+controlli in base al set riportato: funziona, ma solo con le chiavi giuste (`ac_vdir`/`ac_hdir`,
+non `tcl_*`) — con quelle sbagliate spariva anche lo swing reale. Per ora l'app espone esattamente
+i 10 del set, senza euristiche.
+
 **Come si chiude.** Leggere `if_function` sull'impianto, poi confrontare con i pulsanti che
 l'app ufficiale mostra per quel modello. Da lì si ricava a quale bit corrisponde ogni funzione.
 Serve per costruire un'interfaccia che mostra solo il vero, invece di riempire lo schermo di
@@ -161,6 +168,11 @@ del modello. Sono cifrati, ma la chiave è probabilmente derivabile: se si apron
 e `set_state` ora ne fanno `json.loads`. Nota: il `get` ignora i `params` richiesti e ritorna
 sempre un set fisso di parametri deciso dal modulo. `querystate` ritorna
 `event.payload.data` come lista `[{"did":..., "state":0|1}]`.
+
+**Set fisso visto sul filo (2026-08-22, devtype `0x4e2e`, identico su tutte le unità):**
+`pwr, tcl_mode, save_temp, tcl_mark, ecomode, pwfmode, tcl_slp, ac_vdir, ac_hdir, ac_errcode`.
+Due sorprese: lo swing è `ac_vdir`/`ac_hdir` (non `tcl_vdir`/`tcl_hdir`); e `qtmode`, `ac_health`,
+`bglight`, `envtemp`, `if_function` **non** vi compaiono — su questo modello non sono gestiti.
 
 Lo stesso vale per `dataservice`: il pannello dell'app legge `table[0].values`, ma la forma
 delle singole righe (nomi dei campi per kWh, ore di funzionamento, buchi di rete) va vista.

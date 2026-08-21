@@ -38,20 +38,19 @@ fun cloudUnit(dev: CloudDevice, s: Map<String, Int>, online: Boolean): AcUnit {
         eco = (s["ecomode"] ?: 0) == 1,
         turbo = (s["pwfmode"] ?: 0) == 1,
         night = (s["tcl_slp"] ?: 0) == 1,
-        quiet = (s["qtmode"] ?: 0) == 1, // nota: il modulo non lo rilegge, resta stato locale
-        swingV = (s["tcl_vdir"] ?: 0) != 0, // 7 = oscillante, 0 = fermo
-        swingH = (s["tcl_hdir"] ?: 0) != 0, // 1 = oscillante, 0 = fermo
-        health = (s["ac_health"] ?: 0) == 1,
-        display = (s["bglight"] ?: 0) == 1,
+        // il modulo riporta lo swing come ac_vdir/ac_hdir (NON tcl_*): visto sul filo il 2026-08-22
+        swingV = (s["ac_vdir"] ?: 0) != 0,
+        swingH = (s["ac_hdir"] ?: 0) != 0,
         errorCode = err,
     )
 }
 
-/** I parametri da chiedere in lettura (il modulo comunque ritorna il suo set fisso). */
+/** I parametri da chiedere in lettura. Il modulo ignora la richiesta e ritorna comunque il suo
+ *  set fisso di 10 (visto sul filo il 2026-08-22, identico su tutte le unità di questo modello):
+ *  pwr, tcl_mode, save_temp, tcl_mark, ecomode, pwfmode, tcl_slp, ac_vdir, ac_hdir, ac_errcode. */
 val READ_PARAMS = listOf(
-    "pwr", "tcl_mode", "save_temp", "envtemp", "tcl_mark",
-    "ecomode", "pwfmode", "tcl_slp", "qtmode", "tcl_vdir", "tcl_hdir",
-    "ac_health", "bglight", "if_function", "ac_errcode",
+    "pwr", "tcl_mode", "save_temp", "tcl_mark",
+    "ecomode", "pwfmode", "tcl_slp", "ac_vdir", "ac_hdir", "ac_errcode",
 )
 
 /** Comandi -> parametri sul filo. */
@@ -62,9 +61,7 @@ fun fanChangeWire(f: FanSpeed) = mapOf("tcl_mark" to Wire.fanWire(f))
 fun ecoWire(on: Boolean) = mapOf("ecomode" to if (on) 1 else 0)
 fun turboWire(on: Boolean) = mapOf("pwfmode" to if (on) 1 else 0)
 fun nightWire(on: Boolean) = mapOf("tcl_slp" to if (on) 1 else 0)
-fun quietWire(on: Boolean) = mapOf("qtmode" to if (on) 1 else 0)
-// oscillazione: verticale ha "on" = 7 (non 1), orizzontale = 1 — derivati dal sorgente dell'app
-fun swingVWire(on: Boolean) = mapOf("tcl_vdir" to if (on) 7 else 0)
-fun swingHWire(on: Boolean) = mapOf("tcl_hdir" to if (on) 1 else 0)
-fun healthWire(on: Boolean) = mapOf("ac_health" to if (on) 1 else 0)
-fun displayWire(on: Boolean) = mapOf("bglight" to if (on) 1 else 0)
+// oscillazione: il modulo usa ac_vdir/ac_hdir. Valore "on" derivato dal sorgente dell'app
+// (verticale=7, orizzontale=1): da confermare sul filo di questa unità.
+fun swingVWire(on: Boolean) = mapOf("ac_vdir" to if (on) 7 else 0)
+fun swingHWire(on: Boolean) = mapOf("ac_hdir" to if (on) 1 else 0)

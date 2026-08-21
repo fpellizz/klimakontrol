@@ -165,9 +165,20 @@ lo stato completo** da applicare, non solo on/off. Si possono programmare scenar
 | `temp` | num | temperatura impostata | decimi di °C (`230` = 23.0) |
 | `tcl_mode` | enum | modalità | `1` caldo, `2` deumidifica, `3` freddo, `4` ventola, `5` auto |
 | `tcl_mark` | enum | velocità ventola | `0` auto, `1` bassa, `4` medio-bassa, `2` media, `5` medio-alta, `3` alta |
-| `tcl_vdir` | enum | oscillazione verticale | `7` on, `0` off |
-| `tcl_hdir` | enum | oscillazione orizzontale | `1` on, `0` off |
+| `ac_vdir` | enum | oscillazione verticale | `7` on, `0` off |
+| `ac_hdir` | enum | oscillazione orizzontale | `1` on, `0` off |
 | `tempunit` | enum | unità di temperatura | °C / °F |
+
+> **Nome sul filo dello swing** (HW reale, 2026-08-22): il modulo riporta lo swing come
+> `ac_vdir`/`ac_hdir`, **non** `tcl_vdir`/`tcl_hdir` come nell'estrazione dall'APK. Scrivere
+> `tcl_vdir` non muove nulla. La libreria traduce `tcl_vdir`→`ac_vdir` in `WIRE_KEY_ALIASES`
+> (come `temp`→`save_temp`). Il valore "on" (7 / 1) è ancora quello del sorgente, da confermare.
+
+**Set fisso ritornato in lettura da questi moduli (devtype `0x4e2e`)** — identico su tutte le
+unità, è di fatto la loro lista di capacità:
+`pwr, tcl_mode, save_temp, tcl_mark, ecomode, pwfmode, tcl_slp, ac_vdir, ac_hdir, ac_errcode`.
+Non compaiono (quindi non gestiti via cloud): `qtmode` (mute), `ac_health`, `bglight`, `envtemp`,
+`if_function`.
 
 ### Letture ambientali
 

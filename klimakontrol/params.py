@@ -187,7 +187,12 @@ def decode_status(raw: Dict[str, Any]) -> Dict[str, Any]:
 #: `save_temp=N` cambiava il setpoint (letto in eco). L'utente usa il nome naturale
 #: `temp`, che qui traduciamo su `save_temp`. Il pacchetto dorato usa ancora `temp`
 #: perche' era un modello 0x507C diverso: se un giorno serve, va reso per-modello.
-WIRE_KEY_ALIASES = {"temp": "save_temp"}
+#:
+#: Stessa storia per lo swing: l'estrazione dall'APK aveva solo i nomi `tcl_vdir`/
+#: `tcl_hdir`, ma il modulo reale, in lettura, riporta lo swing come `ac_vdir`/
+#: `ac_hdir` (visto sul filo il 2026-08-22, set fisso identico su tutte le unita').
+#: Scrivere `tcl_vdir` non muoveva nulla; il nome giusto sul filo e' `ac_vdir`.
+WIRE_KEY_ALIASES = {"temp": "save_temp", "tcl_vdir": "ac_vdir", "tcl_hdir": "ac_hdir"}
 
 
 def wire_key(name: str) -> str:
