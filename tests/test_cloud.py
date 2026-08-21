@@ -207,17 +207,23 @@ class TestRegionsFromLicense(unittest.TestCase):
     def test_europe_pair(self):
         r = REGIONS["eu"]
         self.assertEqual(r.license_id, "aae72184369e2fc3e6ded53a90612586")
-        self.assertEqual(r.company_id, "57c9e5adbc9e118372539cd8f26e1239")
+        # companyid = costante OEM condivisa, confermata da un login riuscito (2026-08-21)
+        self.assertEqual(r.company_id, "8503b08fa57729df9faa45e4c978852c")
 
-    def test_international_company_id_is_not_the_shared_constant(self):
-        """8503b08f... compare in tutte e quattro le licenze: non e' un companyid.
+    def test_company_id_is_the_shared_oem_constant(self):
+        """Il companyid e' la costante 8503b08f..., uguale in tutte le regioni.
 
-        Copiarlo come company id della regione internazionale e' l'errore che
-        faceva rispondere "credenziali errate" a credenziali corrette.
+        Correzione della vecchia "trappola 1": si credeva che questo valore
+        condiviso fosse sbagliato e che il companyid vero fosse blob[16:32]
+        (per-regione). Un login riuscito (region eu, 2026-08-21) ha invece
+        restituito, echeggiato dal server, companyid = 8503b08f...; blob[16:32]
+        (es. eu 57c9e5ad...) dava sempre -1008. L'app e' una sola company OEM.
         """
-        r = REGIONS["ab"]
-        self.assertEqual(r.company_id, "a8452a8f48ae707edc12e9c52e21f00f")
-        self.assertNotEqual(r.company_id, "8503b08fa57729df9faa45e4c978852c")
+        for r in REGIONS.values():
+            self.assertEqual(r.company_id, "8503b08fa57729df9faa45e4c978852c")
+        # a8452a8f... (blob[16:32] della licenza "ab") NON e' il companyid
+        self.assertNotEqual(REGIONS["ab"].company_id,
+                            "a8452a8f48ae707edc12e9c52e21f00f")
 
     def test_every_region_has_distinct_pair(self):
         pairs = {(r.license_id, r.company_id) for r in REGIONS.values()}

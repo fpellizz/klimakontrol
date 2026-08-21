@@ -67,11 +67,17 @@ DEBUG = os.environ.get("KLIMAKONTROL_DEBUG", "") not in ("", "0", "no")
 
 
 #: Licenze BroadLink estratte da `com.tcl.smartdevice.AirApplication.initData`.
-#: Il blob e' in chiaro: i primi 16 byte sono il licenseId, i 16 successivi il
-#: companyid. Derivarli da qui invece di ricopiarli a mano evita l'errore che ci
-#: e' costato un pomeriggio: il valore che gira nei progetti della community come
-#: company id della regione internazionale (8503b08f...) e' in realta' una
-#: costante presente in tutte e quattro le licenze, non il companyid di nessuna.
+#: Il blob e' in chiaro: i primi 16 byte sono il licenseId (lid), per-regione.
+#: Il companyid e' invece la COSTANTE condivisa da tutte e quattro le licenze,
+#: ai byte [120:136] del blob: 8503b08fa57729df9faa45e4c978852c.
+#:
+#: ATTENZIONE, correzione della vecchia "trappola 1": si era creduto il contrario,
+#: cioe' che quel valore condiviso (usato dai progetti community) fosse sbagliato e
+#: che il companyid vero fosse blob[16:32] (per-regione). E' l'opposto. Il 2026-08-21
+#: un login riuscito su region eu ha restituito, echeggiato dal server,
+#: `companyid: 8503b08fa57729df9faa45e4c978852c`; blob[16:32] dava sempre -1008.
+#: L'app e' UNA sola company OEM ("Intelligent AC") declinata su piu' regioni:
+#: un unico companyid condiviso, un lid diverso per regione.
 LICENSE_BLOBS = {
     "ab": ("Internazionale / altro",
            "9uniFWbhCaKHl6ulodjtfqhFKo9IrnB+3BLpxS4h8A8fL+VJIdyF+2ILFTC0PblZKVhhWwAAAABO"
@@ -113,11 +119,11 @@ class Region:
 
 def _region_from_license(code: str, label: str, blob_b64: str) -> Region:
     raw = base64.b64decode(blob_b64)
-    if len(raw) < 32:
+    if len(raw) < 136:
         raise ValueError("licenza troppo corta per la regione %s" % code)
     return Region(code=code, label=label,
                   license_id=raw[0:16].hex(),
-                  company_id=raw[16:32].hex(),
+                  company_id=raw[120:136].hex(),
                   license_blob=blob_b64)
 
 
@@ -459,6 +465,8 @@ class CloudClient:
         payload = {"act": "get", "params": list(names or READ_SET), "vals": []}
         out = self.sdk_control(dev, payload)
         data = out.get("data", out)
+        if isinstance(data, str):           # il cloud incapsula params/vals come stringa JSON
+            data = json.loads(data or "{}")
         return flatten_params_vals(data) if isinstance(data, dict) else {}
 
     def set_state(self, dev: CloudDevice, changes: Dict[str, Any]) -> Dict[str, Any]:
@@ -466,6 +474,8 @@ class CloudClient:
         payload = dict(act="set", **build_params_vals(changes))
         out = self.sdk_control(dev, payload)
         data = out.get("data", out)
+        if isinstance(data, str):           # il cloud incapsula params/vals come stringa JSON
+            data = json.loads(data or "{}")
         return flatten_params_vals(data) if isinstance(data, dict) else {}
 
     def query_state(self, devices: List[CloudDevice],
