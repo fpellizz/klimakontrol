@@ -61,5 +61,8 @@ class SessionStore(context: Context) {
 
     fun clearCreds() = sp.edit().remove("password").putBoolean("remember", false).apply()
 
+    /** Rimuove solo la sessione (userid/loginsession); email e credenziali salvate restano. */
+    fun clearSession() = sp.edit().remove("userid").remove("loginsession").apply()
+
     fun clearAll() = sp.edit().clear().apply()
 }
