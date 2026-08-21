@@ -38,7 +38,11 @@ data class AcUnit(
     val eco: Boolean = false,
     val turbo: Boolean = false,
     val night: Boolean = false,
-    val quiet: Boolean = false, // qtmode: livello silenzioso/bassissimo
+    val quiet: Boolean = false,     // qtmode: livello silenzioso/bassissimo
+    val swingV: Boolean = false,    // tcl_vdir: oscillazione verticale (su/giù)
+    val swingH: Boolean = false,    // tcl_hdir: oscillazione orizzontale (sinistra/destra)
+    val health: Boolean = false,    // ac_health: modalità "salute" (ionizzatore)
+    val display: Boolean = false,   // bglight: display/retroilluminazione dell'unità
     val errorCode: String? = null,
 ) {
     val online: Boolean get() = reachable == Reachability.ONLINE

@@ -58,6 +58,10 @@ fun DetailScreen(
     onToggleTurbo: () -> Unit,
     onToggleNight: () -> Unit,
     onToggleQuiet: () -> Unit,
+    onToggleSwingV: () -> Unit,
+    onToggleSwingH: () -> Unit,
+    onToggleHealth: () -> Unit,
+    onToggleDisplay: () -> Unit,
     send: SendState = SendState.Idle,
 ) {
     val c = Klima.colors
@@ -189,11 +193,24 @@ fun DetailScreen(
                 }
             }
 
-            Section("Funzioni") {
+            Section("Oscillazione") {
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    FeatureTile("Eco", unit.eco, c.eco, Modifier.weight(1f), onToggleEco)
-                    FeatureTile("Turbo", unit.turbo, c.turbo, Modifier.weight(1f), onToggleTurbo)
-                    FeatureTile("Notte", unit.night, c.night, Modifier.weight(1f), onToggleNight)
+                    SwingTile("Verticale", "↕", unit.swingV, mode.accent, Modifier.weight(1f), onToggleSwingV)
+                    SwingTile("Orizzontale", "↔", unit.swingH, mode.accent, Modifier.weight(1f), onToggleSwingH)
+                }
+            }
+
+            Section("Funzioni") {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        FeatureTile("Eco", unit.eco, c.eco, Modifier.weight(1f), onToggleEco)
+                        FeatureTile("Turbo", unit.turbo, c.turbo, Modifier.weight(1f), onToggleTurbo)
+                        FeatureTile("Notte", unit.night, c.night, Modifier.weight(1f), onToggleNight)
+                    }
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        FeatureTile("Salute", unit.health, c.eco, Modifier.weight(1f), onToggleHealth)
+                        FeatureTile("Display", unit.display, c.mode(unit.mode).accent, Modifier.weight(1f), onToggleDisplay)
+                    }
                 }
             }
         }
@@ -231,6 +248,21 @@ private fun FeatureTile(label: String, on: Boolean, feat: Color, modifier: Modif
     ) {
         Box(Modifier.size(8.dp).clip(CircleShape).background(if (on) feat else c.ink3))
         Spacer(Modifier.width(6.dp))
+        Text(label, style = QuadType.body, color = if (on) c.ink else c.ink2)
+    }
+}
+
+// tasto oscillazione: freccia direzionale + etichetta, con stato acceso/spento
+@Composable
+private fun SwingTile(label: String, glyph: String, on: Boolean, accent: Color, modifier: Modifier, onClick: () -> Unit) {
+    val c = Klima.colors
+    Row(
+        modifier.clip(RoundedCornerShape(14.dp)).background(if (on) c.surface2 else c.surface1)
+            .clickable { onClick() }.padding(vertical = 11.dp),
+        horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(glyph, style = QuadType.name, color = if (on) accent else c.ink3)
+        Spacer(Modifier.width(8.dp))
         Text(label, style = QuadType.body, color = if (on) c.ink else c.ink2)
     }
 }

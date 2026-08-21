@@ -12,12 +12,16 @@ import net.klimakontrol.data.AcUnit
 import net.klimakontrol.data.FanSpeed
 import net.klimakontrol.data.Mode
 import net.klimakontrol.data.cloud.CloudService
+import net.klimakontrol.data.cloud.displayWire
 import net.klimakontrol.data.cloud.ecoWire
 import net.klimakontrol.data.cloud.fanChangeWire
+import net.klimakontrol.data.cloud.healthWire
 import net.klimakontrol.data.cloud.modeChangeWire
 import net.klimakontrol.data.cloud.nightWire
 import net.klimakontrol.data.cloud.powerWire
 import net.klimakontrol.data.cloud.quietWire
+import net.klimakontrol.data.cloud.swingHWire
+import net.klimakontrol.data.cloud.swingVWire
 import net.klimakontrol.data.cloud.targetWire
 import net.klimakontrol.data.cloud.turboWire
 
@@ -149,6 +153,10 @@ class KlimaViewModel(app: Application) : AndroidViewModel(app) {
     fun setFan(id: String, f: FanSpeed) =
         immediate(id, { it.copy(fan = f, quiet = false) }, { fanChangeWire(it.fan) + quietWire(false) })
     fun toggleQuiet(id: String) = immediate(id, { it.copy(quiet = !it.quiet) }, { quietWire(it.quiet) })
+    fun toggleSwingV(id: String) = immediate(id, { it.copy(swingV = !it.swingV) }, { swingVWire(it.swingV) })
+    fun toggleSwingH(id: String) = immediate(id, { it.copy(swingH = !it.swingH) }, { swingHWire(it.swingH) })
+    fun toggleHealth(id: String) = immediate(id, { it.copy(health = !it.health) }, { healthWire(it.health) })
+    fun toggleDisplay(id: String) = immediate(id, { it.copy(display = !it.display) }, { displayWire(it.display) })
     fun toggleEco(id: String) = immediate(id, { it.copy(eco = !it.eco, turbo = false, night = false) }, { ecoWire(it.eco) })
     fun toggleTurbo(id: String) = immediate(id, { it.copy(turbo = !it.turbo, eco = false, night = false) }, { turboWire(it.turbo) })
     fun toggleNight(id: String) = immediate(id, { it.copy(night = !it.night, eco = false, turbo = false) }, { nightWire(it.night) })

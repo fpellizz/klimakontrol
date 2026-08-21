@@ -92,6 +92,10 @@ private fun Connected(vm: KlimaViewModel, units: List<AcUnit>) {
                 onToggleTurbo = { vm.toggleTurbo(current.id) },
                 onToggleNight = { vm.toggleNight(current.id) },
                 onToggleQuiet = { vm.toggleQuiet(current.id) },
+                onToggleSwingV = { vm.toggleSwingV(current.id) },
+                onToggleSwingH = { vm.toggleSwingH(current.id) },
+                onToggleHealth = { vm.toggleHealth(current.id) },
+                onToggleDisplay = { vm.toggleDisplay(current.id) },
                 send = send[current.id] ?: SendState.Idle,
             )
         }

@@ -27,6 +27,15 @@ L'app fa **login** e controlla i climatizzatori **veri** via cloud.
 
 - ✅ **Ventola completa**: Auto + 5 livelli (bassa → alta) con selettore chiaro
 - ✅ **Silenzioso** (`qtmode`) — il livello molto basso/silenzioso, verificato accettato dal modulo
+- ✅ **Oscillazione** — swing **verticale** (`tcl_vdir`, on=7) e **orizzontale** (`tcl_hdir`, on=1),
+  i due tasti SWING del telecomando
+- ✅ **Salute** (`ac_health`, ionizzatore) e **Display** (`bglight`, display dell'unità) — i tasti
+  HEALTH e DISPLAY del telecomando
+
+Corrispondenza con il telecomando fisico: MODE→Modalità, FAN→Ventola, ECO→Eco, TURBO→Turbo,
+SLEEP→Notte, MUTE→Silenzioso, SWING↕↔→Oscillazione, HEALTH→Salute, DISPLAY→Display.
+Restano fuori: **TIMER** (le pianificazioni, feature a parte) e **I FEEL** (funzione del solo
+telecomando, che invia la propria lettura di temperatura: nessun parametro cloud).
 
 Il gestore (⚙ nell'header) per ora fa **logout** (provvisorio).
 
@@ -38,10 +47,15 @@ Il gestore (⚙ nell'header) per ora fa **logout** (provvisorio).
   mostra l'ambiente solo se il modello ha il sensore. Quindi in UI l'ambiente si mostra solo se c'è.
 - **Silenzioso** non viene riletto dal modulo (`qtmode` non è nel set fisso): resta stato locale
   fino al prossimo cambio.
+- **Oscillazione/Salute/Display** sono richiesti in lettura (`READ_PARAMS`) ma il modulo ritorna
+  il suo set fisso: se non li include, valgono come `qtmode` (stato locale fino al comando
+  successivo). Il valore `7` dello swing verticale è derivato dal sorgente dell'app, non ancora
+  visto sul filo: da confermare sul campo.
 
 ## Prossimi passi
 
-1. Icona app, schermata impostazioni vera, `WindowSizeClass` per griglia su tablet/foldable.
+1. **Pianificazioni** (il tasto TIMER): manca la scrittura sul filo — vedi `docs/open-questions.md` §2.
+2. Icona app, schermata impostazioni vera, `WindowSizeClass` per griglia su tablet/foldable.
 
 ## Struttura
 
