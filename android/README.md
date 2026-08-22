@@ -12,7 +12,8 @@ App nativa **Kotlin + Jetpack Compose** che implementa il sistema di design **"Q
 L'app fa **login** e controlla i climatizzatori **veri** via cloud.
 
 - ✅ Tema Quadrante (token chiaro/scuro, colore per modalità) — `ui/theme/`
-- ✅ **Login** + sessione persistente (senza password, come `session.py`) — `ui/LoginScreen.kt`, `data/cloud/SessionStore.kt`
+- ✅ **Login** + **selettore regione/vendor** (eu/ab/cn/ru, da `REGIONS`) + sessione persistente
+  (senza password, come `session.py`) — `ui/LoginScreen.kt`, `data/cloud/SessionStore.kt`
 - ✅ **Home** (panoramica multi-split, stati acceso/spento/offline) — `ui/HomeScreen.kt`
 - ✅ **Dettaglio** col **quadrante** (`Canvas`), modalità/ventola/funzioni, fascia pollice — `ui/DetailScreen.kt`, `ui/Dial.kt`
 - ✅ **Client cloud** in Kotlin (companyid condiviso, `getallinfo`, `sdkcontrol` con `save_temp`)

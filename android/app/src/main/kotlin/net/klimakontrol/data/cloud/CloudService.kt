@@ -20,6 +20,7 @@ class CloudService(context: Context) {
     fun hasSession(): Boolean = store.session() != null
     fun hasCreds(): Boolean = store.creds() != null
     fun savedEmail(): String = store.email()
+    fun savedRegion(): String = store.region().takeIf { it in REGIONS } ?: "eu"
 
     /** Login con credenziali; salva la sessione e (se richiesto) le credenziali cifrate. */
     suspend fun login(email: String, password: String, remember: Boolean, regionCode: String = "eu") =

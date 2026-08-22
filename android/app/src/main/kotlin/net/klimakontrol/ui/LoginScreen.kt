@@ -36,17 +36,25 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import net.klimakontrol.data.cloud.REGIONS
 import net.klimakontrol.ui.theme.Klima
 import net.klimakontrol.ui.theme.QuadType
 
+// etichette brevi per il selettore regione/vendor (i codici sono le chiavi di REGIONS)
+private val REGION_ORDER = listOf("eu", "ab", "cn", "ru")
+private val REGION_SHORT = mapOf("eu" to "Europa", "ab" to "Altro", "cn" to "Cina", "ru" to "Russia")
+
 @Composable
-fun LoginScreen(state: Phase.Login, onLogin: (String, String, Boolean) -> Unit) {
+fun LoginScreen(state: Phase.Login, onLogin: (String, String, Boolean, String) -> Unit) {
     val c = Klima.colors
     val accent = c.mode(net.klimakontrol.data.Mode.FREDDO).accent
     var email by rememberSaveable { mutableStateOf(state.email) }
     var password by remember { mutableStateOf("") }
     var rememberCreds by rememberSaveable { mutableStateOf(true) }
+    var region by rememberSaveable { mutableStateOf(state.region) }
 
     Box(
         Modifier.fillMaxSize().background(c.bg).windowInsetsPadding(WindowInsets.safeDrawing),
@@ -76,6 +84,30 @@ fun LoginScreen(state: Phase.Login, onLogin: (String, String, Boolean) -> Unit) 
                 modifier = Modifier.fillMaxWidth(),
             )
 
+            // ---- regione / vendor (determina il lid dell'account) ----
+            Text("REGIONE", style = QuadType.overline, color = c.ink3)
+            Row(horizontalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.fillMaxWidth()) {
+                REGION_ORDER.filter { it in REGIONS }.forEach { code ->
+                    val sel = code == region
+                    Box(
+                        Modifier.weight(1f).clip(RoundedCornerShape(12.dp))
+                            .background(if (sel) c.mode(net.klimakontrol.data.Mode.FREDDO).container else c.surface1)
+                            .clickable { region = code }.padding(vertical = 10.dp),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Text(
+                            REGION_SHORT[code] ?: code.uppercase(),
+                            style = QuadType.body, textAlign = TextAlign.Center,
+                            color = if (sel) c.mode(net.klimakontrol.data.Mode.FREDDO).on else c.ink2,
+                        )
+                    }
+                }
+            }
+            Text(
+                "Dove vive l'account (di solito Europa). Cambiala solo se l'hai creato in un'altra area.",
+                style = QuadType.micro, color = c.ink3,
+            )
+
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier.clickable { rememberCreds = !rememberCreds }.padding(vertical = 2.dp),
@@ -94,7 +126,7 @@ fun LoginScreen(state: Phase.Login, onLogin: (String, String, Boolean) -> Unit) 
 
             Spacer(Modifier.height(4.dp))
             Button(
-                onClick = { if (!state.busy) onLogin(email, password, rememberCreds) },
+                onClick = { if (!state.busy) onLogin(email, password, rememberCreds, region) },
                 enabled = !state.busy && email.isNotBlank() && password.isNotBlank(),
                 shape = RoundedCornerShape(14.dp),
                 colors = ButtonDefaults.buttonColors(

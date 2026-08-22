@@ -24,7 +24,12 @@ import net.klimakontrol.data.cloud.turboWire
 
 sealed interface Phase {
     data object Loading : Phase
-    data class Login(val email: String = "", val error: String? = null, val busy: Boolean = false) : Phase
+    data class Login(
+        val email: String = "",
+        val region: String = "eu",   // regione/vendor scelto (determina il lid)
+        val error: String? = null,
+        val busy: Boolean = false,
+    ) : Phase
     data object Connected : Phase
 }
 
@@ -61,18 +66,19 @@ class KlimaViewModel(app: Application) : AndroidViewModel(app) {
     private suspend fun bootstrap() {
         if (service.hasSession() && service.restore() && tryLoad()) return
         if (service.hasCreds() && runCatching { service.autoLogin() }.getOrDefault(false) && tryLoad()) return
-        _phase.value = Phase.Login(email = service.savedEmail())
+        _phase.value = Phase.Login(email = service.savedEmail(), region = service.savedRegion())
     }
 
-    fun login(email: String, password: String, remember: Boolean) {
-        _phase.value = Phase.Login(email = email, busy = true)
+    fun login(email: String, password: String, remember: Boolean, region: String) {
+        _phase.value = Phase.Login(email = email, region = region, busy = true)
         viewModelScope.launch {
             try {
-                service.login(email, password, remember)
+                service.login(email, password, remember, region)
                 _phase.value = Phase.Loading
-                if (!tryLoad()) _phase.value = Phase.Login(email, "Connesso, ma nessuna unità trovata")
+                if (!tryLoad()) _phase.value =
+                    Phase.Login(email = email, region = region, error = "Connesso, ma nessuna unità trovata")
             } catch (e: Exception) {
-                _phase.value = Phase.Login(email = email, error = readable(e))
+                _phase.value = Phase.Login(email = email, region = region, error = readable(e))
             }
         }
     }
@@ -81,7 +87,7 @@ class KlimaViewModel(app: Application) : AndroidViewModel(app) {
     fun logout() {
         service.logout()
         _units.value = emptyList(); _send.value = emptyMap()
-        _phase.value = Phase.Login(email = service.savedEmail())
+        _phase.value = Phase.Login(email = service.savedEmail(), region = service.savedRegion())
     }
 
     /** Dimentica tutto (sessione + credenziali). */
