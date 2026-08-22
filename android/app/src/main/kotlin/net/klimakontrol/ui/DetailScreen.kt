@@ -2,6 +2,9 @@ package net.klimakontrol.ui
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.gestures.drag
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -25,10 +28,16 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
+import kotlin.math.atan2
+import kotlin.math.min
+import kotlin.math.roundToInt
 import androidx.compose.material3.Text
 import net.klimakontrol.data.AcUnit
 import net.klimakontrol.data.FanSpeed
@@ -44,6 +53,25 @@ private fun modeGlyph(m: Mode) = when (m) {
 private val fanSteps = listOf(
     FanSpeed.BASSA, FanSpeed.MEDIO_BASSA, FanSpeed.MEDIA, FanSpeed.MEDIO_ALTA, FanSpeed.ALTA,
 )
+
+/**
+ * Converte un punto toccato dentro il quadrante nella temperatura corrispondente.
+ * L'arco è quello di [DialRing]: parte a 135° e copre 270° in senso orario (apertura in basso).
+ * Nel settore vuoto in basso, aggancia all'estremo più vicino. Snap a passi di 0.5°.
+ */
+private fun tempAt(pos: Offset, size: IntSize): Float {
+    val cx = size.width / 2f
+    val cy = size.height / 2f
+    val raw = Math.toDegrees(atan2((pos.y - cy).toDouble(), (pos.x - cx).toDouble())).toFloat()
+    val delta = (((raw - 135f) % 360f) + 360f) % 360f   // gradi dall'inizio dell'arco, 0..360
+    val f = when {
+        delta <= 270f -> delta / 270f    // dentro l'arco
+        delta < 315f -> 1f               // gap in basso, lato caldo (estremo max)
+        else -> 0f                       // gap in basso, lato freddo (estremo min)
+    }
+    val steps = ((AcUnit.TEMP_MIN + f * (AcUnit.TEMP_MAX - AcUnit.TEMP_MIN)) / AcUnit.TEMP_STEP).roundToInt()
+    return (steps * AcUnit.TEMP_STEP).coerceIn(AcUnit.TEMP_MIN, AcUnit.TEMP_MAX)
+}
 
 @Composable
 fun DetailScreen(
@@ -94,9 +122,27 @@ fun DetailScreen(
             )
         }
 
-        // ---- quadrante hero ----
+        // ---- quadrante hero (trascinabile come slider circolare) ----
         Box(Modifier.fillMaxWidth().padding(top = 12.dp), contentAlignment = Alignment.Center) {
-            Box(Modifier.size(250.dp), contentAlignment = Alignment.Center) {
+            Box(
+                Modifier.size(250.dp).pointerInput(unit.id) {
+                    // tocco/trascinamento sull'anello -> temperatura (stesso arco 135°+270°).
+                    // Il centro (dove sta il numero) è ignorato per non cambiare valore leggendo.
+                    awaitEachGesture {
+                        val down = awaitFirstDown(requireUnconsumed = false)
+                        val center = Offset(size.width / 2f, size.height / 2f)
+                        val minR = min(size.width, size.height) * 0.30f
+                        if ((down.position - center).getDistance() < minR) return@awaitEachGesture
+                        onSetTarget(tempAt(down.position, size))
+                        down.consume()
+                        drag(down.id) { change ->
+                            onSetTarget(tempAt(change.position, size))
+                            change.consume()
+                        }
+                    }
+                },
+                contentAlignment = Alignment.Center,
+            ) {
                 DialRing(
                     frac = f, accent = mode.accent, track = c.border, stroke = 14.dp,
                     modifier = Modifier.fillMaxSize(),
