@@ -28,6 +28,7 @@ import net.klimakontrol.ui.KlimaViewModel
 import net.klimakontrol.ui.Phase
 import net.klimakontrol.ui.SendState
 import net.klimakontrol.ui.LoginScreen
+import net.klimakontrol.ui.RegisterScreen
 import net.klimakontrol.ui.theme.Klima
 import net.klimakontrol.ui.theme.KlimaTheme
 
@@ -50,7 +51,17 @@ private fun AppRoot(vm: KlimaViewModel = viewModel()) {
             Modifier.fillMaxSize().background(c.bg), contentAlignment = Alignment.Center,
         ) { CircularProgressIndicator(color = c.mode(net.klimakontrol.data.Mode.FREDDO).accent) }
 
-        is Phase.Login -> LoginScreen(p, onLogin = { e, pw, rem, reg -> vm.login(e, pw, rem, reg) })
+        is Phase.Login -> LoginScreen(
+            p, onLogin = { e, pw, rem, reg -> vm.login(e, pw, rem, reg) },
+            onCreateAccount = { vm.startRegister() },
+        )
+
+        is Phase.Register -> RegisterScreen(
+            p,
+            onSendCode = { e, reg -> vm.sendCode(e, reg) },
+            onRegister = { e, pw, code, reg, nick -> vm.doRegister(e, pw, code, reg, nick) },
+            onBack = { vm.cancelRegister() },
+        )
 
         is Phase.Connected -> Connected(vm, units)
     }

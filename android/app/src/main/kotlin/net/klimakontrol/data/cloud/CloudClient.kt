@@ -99,6 +99,62 @@ class CloudClient(val region: Region = REGIONS.getValue("eu")) {
         if (userid == null || loginSession == null) throw CloudException("login senza sessione")
     }
 
+    // ---------------- registrazione ----------------
+    /** Header firmati + chiave AES per una chiamata all'API account (come login). */
+    private fun accountSigned(bj: String, ident: String, account: String, countrycode: String):
+            Pair<MutableMap<String, String>, ByteArray> {
+        val ts = (System.currentTimeMillis() / 1000).toString()
+        val key = md5Hex(ts + Salts.TOKEN).hexToBytes()
+        val headers = mutableMapOf(
+            "timestamp" to ts,
+            "token" to md5Hex(bj + Salts.BODY),
+            "lid" to region.licenseId,
+            "licenseId" to region.licenseId,
+            ident to account,
+        )
+        if (countrycode.isNotEmpty()) headers["countrycode"] = countrycode
+        return headers to key
+    }
+
+    /** Passo 1: chiede al cloud di inviare il codice di verifica (email o SMS). */
+    fun sendRegisterCode(account: String, countrycode: String = "") {
+        val ident = if (account.all { it.isDigit() }) "phone" else "email"
+        val body = JSONObject().put(ident, account)
+        if (ident == "phone") body.put("countrycode", countrycode)
+        body.put("companyid", region.companyId).put("lid", region.licenseId)
+        val bj = body.toString()
+        val (headers, key) = accountSigned(bj, ident, account, if (ident == "phone") countrycode else "")
+        val resp = request("${region.baseUrl}/account/newregcode", headers, aesEncrypt(bj.toByteArray(), key))
+        ensureOk(resp, "invio codice")
+    }
+
+    /** Passo 2: registra e stabilisce la sessione. `code` è quello ricevuto al passo 1.
+     *  A differenza del login, /account/register viaggia in multipart (campo "text"). */
+    fun register(account: String, password: String, code: String,
+                 nickname: String = "", countrycode: String = "", sex: String = "male") {
+        val ident = if (account.all { it.isDigit() }) "phone" else "email"
+        val body = JSONObject()
+            .put(ident, account)
+            .put("type", ident)
+            .put("password", sha1Hex(password + Salts.PASSWORD))
+            .put("nickname", nickname.ifEmpty { account })
+            .put("sex", sex)
+            .put("preferlanguage", "it")
+            .put("code", code)
+            .put("companyid", region.companyId)
+            .put("lid", region.licenseId)
+        if (ident == "phone") body.put("countrycode", countrycode)
+        val bj = body.toString()
+        val (headers, key) = accountSigned(bj, ident, account, if (ident == "phone") countrycode else "")
+        headers["Content-type"] = "multipart/form-data; boundary=$MULTIPART_BOUNDARY"
+        val resp = request("${region.baseUrl}/account/register", headers,
+            multipartText(aesEncrypt(bj.toByteArray(), key)))
+        ensureOk(resp, "registrazione")
+        userid = resp.optString("userid").ifEmpty { null }
+        loginSession = resp.optString("loginsession").ifEmpty { null }
+        if (userid == null || loginSession == null) throw CloudException("registrazione senza sessione")
+    }
+
     val loggedIn get() = userid != null && loginSession != null
 
     /** Riusa una sessione salvata (userid + loginsession), senza rifare il login. */
@@ -268,6 +324,19 @@ class CloudClient(val region: Region = REGIONS.getValue("eu")) {
         if (err != 0) throw CloudException("$where: errore $err ${resp.optString("msg")}")
         return resp
     }
+}
+
+// multipart di /account/register: il corpo cifrato va nel campo form "text". Il payload è
+// binario AES, quindi un boundary ASCII non ci collide mai. Stesso schema di cloud.py.
+private const val MULTIPART_BOUNDARY = "----klimakontrolFormBoundary8a2f31c0"
+
+private fun multipartText(encrypted: ByteArray): ByteArray {
+    val head = ("--$MULTIPART_BOUNDARY\r\n" +
+        "Content-Disposition: form-data; name=\"text\"; filename=\"UTF-8\"\r\n" +
+        "Content-Type: application/octet-stream\r\n" +
+        "Content-Transfer-Encoding: binary\r\n\r\n").toByteArray(Charsets.UTF_8)
+    val tail = "\r\n--$MULTIPART_BOUNDARY--\r\n\r\n".toByteArray(Charsets.UTF_8)
+    return head + encrypted + tail
 }
 
 // ---------------- crypto helper ----------------

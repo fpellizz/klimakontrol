@@ -14,6 +14,9 @@ L'app fa **login** e controlla i climatizzatori **veri** via cloud.
 - ✅ Tema Quadrante (token chiaro/scuro, colore per modalità) — `ui/theme/`
 - ✅ **Login** + **selettore regione/vendor** (eu/ab/cn/ru, da `REGIONS`) + sessione persistente
   (senza password, come `session.py`) — `ui/LoginScreen.kt`, `data/cloud/SessionStore.kt`
+- ✅ **Registrazione nuovo account** (due passi: invio codice email/SMS → codice+password) —
+  `ui/RegisterScreen.kt`, `CloudClient.sendRegisterCode()/register()` (multipart). La `register` è
+  anche login: al successo la sessione è già pronta. Ricostruita dal dex, come la libreria Python
 - ✅ **Home** (panoramica multi-split, stati acceso/spento/offline) — `ui/HomeScreen.kt`
 - ✅ **Dettaglio** col **quadrante** (`Canvas`), modalità/ventola/funzioni, fascia pollice — `ui/DetailScreen.kt`, `ui/Dial.kt`
 - ✅ **Client cloud** in Kotlin (companyid condiviso, `getallinfo`, `sdkcontrol` con `save_temp`)

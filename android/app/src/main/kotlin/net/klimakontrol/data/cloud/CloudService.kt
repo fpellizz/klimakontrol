@@ -33,6 +33,23 @@ class CloudService(context: Context) {
             if (remember) store.saveCreds(email.trim(), password, regionCode) else store.clearCreds()
         }
 
+    /** Registrazione passo 1: fa inviare il codice di verifica al nuovo account. */
+    suspend fun sendRegisterCode(account: String, regionCode: String) = withContext(Dispatchers.IO) {
+        region = REGIONS.getValue(regionCode)
+        client = CloudClient(region)
+        client.sendRegisterCode(account.trim())
+    }
+
+    /** Registrazione passo 2: crea l'account e salva la sessione (la register è anche login). */
+    suspend fun register(account: String, password: String, code: String,
+                         regionCode: String, nickname: String) = withContext(Dispatchers.IO) {
+        region = REGIONS.getValue(regionCode)
+        client = CloudClient(region)
+        client.register(account.trim(), password, code, nickname = nickname.trim())
+        store.saveSession(client.userid!!, client.loginSession!!)
+        store.saveMeta(account.trim(), regionCode)
+    }
+
     /** Riusa la sessione salvata, se c'è. */
     suspend fun restore(): Boolean = withContext(Dispatchers.IO) {
         val s = store.session() ?: return@withContext false

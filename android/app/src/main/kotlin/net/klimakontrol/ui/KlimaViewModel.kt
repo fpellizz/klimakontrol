@@ -30,6 +30,13 @@ sealed interface Phase {
         val error: String? = null,
         val busy: Boolean = false,
     ) : Phase
+    data class Register(
+        val email: String = "",
+        val region: String = "eu",
+        val codeSent: Boolean = false,   // passo 1 fatto: mostra il campo codice
+        val error: String? = null,
+        val busy: Boolean = false,
+    ) : Phase
     data object Connected : Phase
 }
 
@@ -79,6 +86,44 @@ class KlimaViewModel(app: Application) : AndroidViewModel(app) {
                     Phase.Login(email = email, region = region, error = "Connesso, ma nessuna unità trovata")
             } catch (e: Exception) {
                 _phase.value = Phase.Login(email = email, region = region, error = readable(e))
+            }
+        }
+    }
+
+    // ---- registrazione nuovo account ----
+    fun startRegister() {
+        _phase.value = Phase.Register(email = service.savedEmail(), region = service.savedRegion())
+    }
+
+    fun cancelRegister() {
+        _phase.value = Phase.Login(email = service.savedEmail(), region = service.savedRegion())
+    }
+
+    /** Passo 1: invia il codice di verifica al nuovo account. */
+    fun sendCode(email: String, region: String) {
+        _phase.value = Phase.Register(email = email, region = region, busy = true)
+        viewModelScope.launch {
+            try {
+                service.sendRegisterCode(email, region)
+                _phase.value = Phase.Register(email = email, region = region, codeSent = true)
+            } catch (e: Exception) {
+                _phase.value = Phase.Register(email = email, region = region, error = readable(e))
+            }
+        }
+    }
+
+    /** Passo 2: crea l'account. Al successo la sessione è già stabilita (register = login). */
+    fun doRegister(email: String, password: String, code: String, region: String, nickname: String) {
+        _phase.value = Phase.Register(email = email, region = region, codeSent = true, busy = true)
+        viewModelScope.launch {
+            try {
+                service.register(email, password, code, region, nickname)
+                _phase.value = Phase.Loading
+                // account nuovo: le unità di solito sono zero → Connected con lista vuota
+                runCatching { _units.value = service.loadUnits() }
+                _phase.value = Phase.Connected
+            } catch (e: Exception) {
+                _phase.value = Phase.Register(email = email, region = region, codeSent = true, error = readable(e))
             }
         }
     }
@@ -164,10 +209,12 @@ class KlimaViewModel(app: Application) : AndroidViewModel(app) {
     private fun clampT(t: Float) = t.coerceIn(AcUnit.TEMP_MIN, AcUnit.TEMP_MAX)
 
     private fun readable(e: Exception): String {
-        val m = e.message ?: return "Login fallito"
+        val m = e.message ?: return "Operazione fallita"
         return when {
             "-1008" in m -> "Credenziali non riconosciute"
             "-1036" in m -> "Troppi tentativi, riprova tra qualche minuto"
+            "has_been_registered" in m -> "Questo account è già registrato: accedi invece di crearlo"
+            "vcode" in m || "-3002" in m -> "Codice di verifica mancante o errato"
             else -> m
         }
     }

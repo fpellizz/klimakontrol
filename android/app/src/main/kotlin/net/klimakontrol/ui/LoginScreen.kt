@@ -47,8 +47,38 @@ import net.klimakontrol.ui.theme.QuadType
 private val REGION_ORDER = listOf("eu", "ab", "cn", "ru")
 private val REGION_SHORT = mapOf("eu" to "Europa", "ab" to "Altro", "cn" to "Cina", "ru" to "Russia")
 
+/** Selettore regione/vendor a chip, condiviso da login e registrazione. */
 @Composable
-fun LoginScreen(state: Phase.Login, onLogin: (String, String, Boolean, String) -> Unit) {
+internal fun RegionChips(selected: String, onSelect: (String) -> Unit) {
+    val c = Klima.colors
+    val accentMode = c.mode(net.klimakontrol.data.Mode.FREDDO)
+    Text("REGIONE", style = QuadType.overline, color = c.ink3)
+    Spacer(Modifier.height(6.dp))
+    Row(horizontalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.fillMaxWidth()) {
+        REGION_ORDER.filter { it in REGIONS }.forEach { code ->
+            val sel = code == selected
+            Box(
+                Modifier.weight(1f).clip(RoundedCornerShape(12.dp))
+                    .background(if (sel) accentMode.container else c.surface1)
+                    .clickable { onSelect(code) }.padding(vertical = 10.dp),
+                contentAlignment = Alignment.Center,
+            ) {
+                Text(
+                    REGION_SHORT[code] ?: code.uppercase(),
+                    style = QuadType.body, textAlign = TextAlign.Center,
+                    color = if (sel) accentMode.on else c.ink2,
+                )
+            }
+        }
+    }
+}
+
+@Composable
+fun LoginScreen(
+    state: Phase.Login,
+    onLogin: (String, String, Boolean, String) -> Unit,
+    onCreateAccount: () -> Unit = {},
+) {
     val c = Klima.colors
     val accent = c.mode(net.klimakontrol.data.Mode.FREDDO).accent
     var email by rememberSaveable { mutableStateOf(state.email) }
@@ -85,24 +115,7 @@ fun LoginScreen(state: Phase.Login, onLogin: (String, String, Boolean, String) -
             )
 
             // ---- regione / vendor (determina il lid dell'account) ----
-            Text("REGIONE", style = QuadType.overline, color = c.ink3)
-            Row(horizontalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.fillMaxWidth()) {
-                REGION_ORDER.filter { it in REGIONS }.forEach { code ->
-                    val sel = code == region
-                    Box(
-                        Modifier.weight(1f).clip(RoundedCornerShape(12.dp))
-                            .background(if (sel) c.mode(net.klimakontrol.data.Mode.FREDDO).container else c.surface1)
-                            .clickable { region = code }.padding(vertical = 10.dp),
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        Text(
-                            REGION_SHORT[code] ?: code.uppercase(),
-                            style = QuadType.body, textAlign = TextAlign.Center,
-                            color = if (sel) c.mode(net.klimakontrol.data.Mode.FREDDO).on else c.ink2,
-                        )
-                    }
-                }
-            }
+            RegionChips(region) { region = it }
             Text(
                 "Dove vive l'account (di solito Europa). Cambiala solo se l'hai creato in un'altra area.",
                 style = QuadType.micro, color = c.ink3,
@@ -143,6 +156,17 @@ fun LoginScreen(state: Phase.Login, onLogin: (String, String, Boolean, String) -
                 else "Si conserva solo la sessione; la password non viene salvata.",
                 style = QuadType.micro, color = c.ink3,
             )
+
+            Spacer(Modifier.height(2.dp))
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text("Non hai un account?", style = QuadType.body, color = c.ink2)
+                Spacer(Modifier.width(6.dp))
+                Text(
+                    "Crea account",
+                    style = QuadType.name, color = accent,
+                    modifier = Modifier.clickable { onCreateAccount() }.padding(vertical = 4.dp),
+                )
+            }
         }
     }
 }

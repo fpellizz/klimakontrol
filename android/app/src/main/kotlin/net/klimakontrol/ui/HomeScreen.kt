@@ -77,6 +77,16 @@ fun HomeScreen(
             contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 16.dp, vertical = 2.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
+            if (units.isEmpty()) {
+                item {
+                    Box(Modifier.fillMaxWidth().padding(top = 40.dp), contentAlignment = Alignment.Center) {
+                        Text(
+                            "Nessuna unità.\nAbbina i climatizzatori con l'app ufficiale, poi torna qui.",
+                            style = QuadType.body, color = c.ink3, textAlign = TextAlign.Center,
+                        )
+                    }
+                }
+            }
             items(units, key = { it.id }) { u ->
                 UnitCard(u, send[u.id] ?: SendState.Idle, onOpen, onTogglePower)
             }
