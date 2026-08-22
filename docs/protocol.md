@@ -269,9 +269,16 @@ regione. Confermato da un login riuscito il 2026-08-21 (vedi `CLAUDE.md` §5 tra
 | Endpoint | Uso |
 | --- | --- |
 | `POST /account/login` | login → `userid`, `loginsession` |
+| `POST /account/newregcode` | passo 1 registrazione: invia il codice di verifica (email/SMS). Corpo `{email\|phone, [countrycode], companyid, lid}`, POST grezzo |
+| `POST /account/register` | passo 2 registrazione: crea l'account → ritorna già `userid`+`loginsession`. **multipart/form-data**: campo `text` = JSON cifrato `{email\|phone, type, password, nickname, sex, code, preferlanguage, companyid, lid, [countrycode]}` |
 | `GET /ec4/v1/common/api` | `key` + `timestamp` per firmare le chiamate seguenti |
 | `POST /ec4/v1/user/getfamilyid` | elenco case |
 | `POST /ec4/v1/family/getallinfo` | dispositivi: `mac`, `lanaddr`, **`aeskey`**, `did`, `pid`, nomi |
+
+> **Registrazione** (ricostruita dal dex, 2026-08-22): stessi host/IV/sali del login. Il `password`
+> è `SHA1(pw + sale_password)` come nel login. Il **codice di verifica è obbligatorio** (passo umano
+> tra i due endpoint). `register` = anche login: al successo la sessione è già stabilita. In
+> klimakontrol: `CloudClient.send_register_code()` / `.register()`, CLI `register-code` / `register`.
 
 Firme e cifratura:
 

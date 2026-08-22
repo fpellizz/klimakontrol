@@ -35,6 +35,7 @@ Quadro legale: interoperabilità con hardware di proprietà, consentita in UE da
 | Discovery in LAN | **provato su HW** (2026-08-21): trova le unità in broadcast |
 | Autenticazione BroadLink in LAN | **provata su HW**: la sessione si stabilisce, ma il controllo locale dà -5 e l'app non lo usa (vedi §5, trappola 4) |
 | Login cloud | **funziona su HW** (2026-08-21). Il vecchio -1008 era il companyid sbagliato: risolto (vedi §5, trappola 1) |
+| Registrazione account | **implementata** in lib+CLI (`register-code` + `register`), ricostruita dal dex e coperta da test offline; **non ancora provata su HW**. Due passi: `POST /account/newregcode` (invia il codice email/SMS) e `POST /account/register` (multipart, campo `text` cifrato) che ritorna già `userid`+`loginsession`. Stessi host/IV/sali del login; codice di verifica obbligatorio (passo umano) |
 | Controllo remoto (`sdkcontrol`) | **provato su HW**: `on`/`off` (`pwr`) e setpoint (`save_temp`) cambiati via cloud e verificati in lettura |
 | Stato online batch (`querystate`) | **provato su HW**: tutte le unità online |
 | Lettura stato (`sdkcontrol get`) | **provata su HW**: la risposta arriva in `payload.data` come **stringa JSON** (`json.loads`) |

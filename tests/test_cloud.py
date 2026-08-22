@@ -4,7 +4,9 @@ import time
 import unittest
 
 from klimakontrol.cloud import (CloudClient, CloudDevice, ENERGY_REPORTS, REGIONS,
-                                CloudError, DEVICE_TZ_OFFSET)
+                                CloudError, DEVICE_TZ_OFFSET, REQUEST_IV,
+                                _MULTIPART_BOUNDARY, _md5, _sha1, salt)
+from klimakontrol.aes import decrypt_cbc
 
 
 def _client():
@@ -382,3 +384,89 @@ class TestErrorReporting(unittest.TestCase):
         client = CloudClient("eu")
         resp = {"error": 0, "userid": "u"}
         self.assertIs(client._ensure_ok(resp, "login"), resp)
+
+
+class TestRegister(unittest.TestCase):
+    """Registrazione nuovo account: forma della richiesta, senza toccare la rete."""
+
+    @staticmethod
+    def _capture(resp):
+        cap = {}
+
+        def fake_request(url, headers, body=None):
+            cap["url"] = url
+            cap["headers"] = headers
+            cap["body"] = body
+            return resp
+        return cap, fake_request
+
+    @staticmethod
+    def _decrypt_json(headers, encrypted):
+        # la chiave si ricava dal timestamp dell'header, come fa il cloud
+        key = bytes.fromhex(_md5(headers["timestamp"] + salt("token")))
+        clear = decrypt_cbc(encrypted, key, REQUEST_IV).rstrip(b"\x00")
+        return json.loads(clear.decode("utf-8"))
+
+    def test_send_code_email_shape(self):
+        c = CloudClient("eu")
+        cap, c._request = self._capture({"error": 0})
+        c.send_register_code("mario@rossi.it")
+        self.assertTrue(cap["url"].endswith("/account/newregcode"))
+        body = self._decrypt_json(cap["headers"], cap["body"])
+        self.assertEqual(body["email"], "mario@rossi.it")
+        self.assertEqual(body["companyid"], REGIONS["eu"].company_id)
+        self.assertEqual(body["lid"], REGIONS["eu"].license_id)
+        self.assertNotIn("password", body)          # il codice non richiede password
+        self.assertEqual(cap["headers"]["email"], "mario@rossi.it")
+        self.assertIn("token", cap["headers"])
+
+    def test_send_code_phone_has_countrycode(self):
+        c = CloudClient("eu")
+        cap, c._request = self._capture({"error": 0})
+        c.send_register_code("3331234567", countrycode="39")
+        body = self._decrypt_json(cap["headers"], cap["body"])
+        self.assertEqual(body["phone"], "3331234567")
+        self.assertEqual(body["countrycode"], "39")
+        self.assertEqual(cap["headers"]["countrycode"], "39")
+
+    def test_register_is_multipart_and_signs_password(self):
+        c = CloudClient("eu")
+        cap, c._request = self._capture(
+            {"error": 0, "userid": "U-9", "loginsession": "S-9"})
+        c.register("mario@rossi.it", "segreta1", code="123456", nickname="Mario")
+        self.assertTrue(cap["url"].endswith("/account/register"))
+        # multipart: content-type col boundary, e il corpo contiene il campo "text"
+        self.assertIn("multipart/form-data", cap["headers"]["Content-type"])
+        self.assertIn(_MULTIPART_BOUNDARY, cap["headers"]["Content-type"])
+        self.assertIn(b'name="text"', cap["body"])
+        self.assertIn(_MULTIPART_BOUNDARY.encode(), cap["body"])
+        # estrai i byte cifrati fra head e tail del multipart, poi decifra
+        head = cap["body"].split(b"\r\n\r\n", 1)[1]
+        enc = head.rsplit(b"\r\n--" + _MULTIPART_BOUNDARY.encode(), 1)[0]
+        body = self._decrypt_json(cap["headers"], enc)
+        self.assertEqual(body["email"], "mario@rossi.it")
+        self.assertEqual(body["type"], "email")
+        self.assertEqual(body["password"], _sha1("segreta1" + salt("password")))
+        self.assertEqual(body["code"], "123456")
+        self.assertEqual(body["nickname"], "Mario")
+        self.assertEqual(body["sex"], "male")
+        self.assertEqual(body["companyid"], REGIONS["eu"].company_id)
+        # register = login automatico: la sessione viene stabilita
+        self.assertEqual(c.userid, "U-9")
+        self.assertEqual(c.loginsession, "S-9")
+
+    def test_register_defaults_nickname_to_account(self):
+        c = CloudClient("eu")
+        cap, c._request = self._capture(
+            {"error": 0, "userid": "U", "loginsession": "S"})
+        c.register("anna@x.it", "pw", code="000000")
+        head = cap["body"].split(b"\r\n\r\n", 1)[1]
+        enc = head.rsplit(b"\r\n--" + _MULTIPART_BOUNDARY.encode(), 1)[0]
+        body = self._decrypt_json(cap["headers"], enc)
+        self.assertEqual(body["nickname"], "anna@x.it")
+
+    def test_register_without_session_raises(self):
+        c = CloudClient("eu")
+        c._request = lambda *a, **k: {"error": 0}   # nessun userid/loginsession
+        with self.assertRaises(CloudError):
+            c.register("z@z.it", "pw", code="1")

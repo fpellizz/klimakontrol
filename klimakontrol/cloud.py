@@ -208,6 +208,24 @@ def _jd(obj: Any) -> str:
     return json.dumps(obj, separators=(",", ":"), ensure_ascii=False)
 
 
+#: Boundary del multipart di `/account/register`. Il corpo cifrato viaggia nel campo form
+#: "text" (l'app fa cosi'): il payload e' binario AES, un boundary ASCII non ci collide mai.
+_MULTIPART_BOUNDARY = "----klimakontrolFormBoundary8a2f31c0"
+
+
+def _multipart_text(encrypted: bytes) -> bytes:
+    """Impacchetta i byte cifrati nel campo form `text`, come fa l'app per `/account/register`."""
+    b = _MULTIPART_BOUNDARY
+    head = (
+        "--%s\r\n" % b
+        + 'Content-Disposition: form-data; name="text"; filename="UTF-8"\r\n'
+        + "Content-Type: application/octet-stream\r\n"
+        + "Content-Transfer-Encoding: binary\r\n\r\n"
+    ).encode("utf-8")
+    tail = ("\r\n--%s--\r\n\r\n" % b).encode("utf-8")
+    return head + encrypted + tail
+
+
 class CloudClient:
     """Client sincrono del cloud BroadLink."""
 
@@ -320,6 +338,78 @@ class CloudClient:
         self.loginsession = resp.get("loginsession")
         if not (self.userid and self.loginsession):
             raise CloudError("il login non ha restituito una sessione utilizzabile")
+
+    def _account_signed(self, bj: str, ident: str, account: str,
+                        countrycode: str = "") -> "tuple":
+        """Header firmati + chiave AES per una chiamata all'API account (come `login`)."""
+        ts = str(int(time.time()))
+        key = bytes.fromhex(_md5(ts + salt("token")))
+        headers = {
+            "timestamp": ts,
+            "token": _md5(bj + salt("body")),
+            "lid": self.region.license_id,
+            "licenseId": self.region.license_id,
+            ident: account,
+        }
+        if countrycode:
+            headers["countrycode"] = countrycode
+        return headers, key
+
+    def send_register_code(self, account: str, countrycode: str = "") -> None:
+        """Passo 1 della registrazione: chiede al cloud di inviare il codice di verifica.
+
+        `account` e' un'email oppure un numero (solo cifre); per il numero serve `countrycode`
+        (il prefisso internazionale, es. "39"). Non manda la password. POST grezzo come il login.
+        """
+        account = account.strip()
+        ident = "phone" if account.isdigit() else "email"
+        body = {ident: account}
+        if ident == "phone":
+            body["countrycode"] = countrycode
+        body["companyid"] = self.region.company_id
+        body["lid"] = self.region.license_id
+        bj = _jd(body)
+        headers, key = self._account_signed(bj, ident, account,
+                                            countrycode if ident == "phone" else "")
+        self._ensure_ok(
+            self._request("/account/newregcode", headers,
+                          encrypt_cbc(bj.encode(), key, REQUEST_IV)),
+            "invio codice di verifica")
+
+    def register(self, account: str, password: str, code: str, nickname: str = "",
+                 countrycode: str = "", sex: str = "male") -> None:
+        """Passo 2 della registrazione: crea l'account e stabilisce la sessione.
+
+        `code` e' il codice ricevuto via email/SMS al passo 1. Al successo il cloud risponde
+        gia' con `userid`+`loginsession` (la register e' anche login): non serve un login dopo.
+        A differenza del login, `/account/register` viaggia in multipart (campo `text`).
+        """
+        account = account.strip()
+        ident = "phone" if account.isdigit() else "email"
+        body = {
+            ident: account,
+            "type": ident,
+            "password": _sha1(password + salt("password")),
+            "nickname": nickname or account,
+            "sex": sex,
+            "preferlanguage": "it",
+            "code": code,
+            "companyid": self.region.company_id,
+            "lid": self.region.license_id,
+        }
+        if ident == "phone":
+            body["countrycode"] = countrycode
+        bj = _jd(body)
+        headers, key = self._account_signed(bj, ident, account,
+                                            countrycode if ident == "phone" else "")
+        headers["Content-type"] = "multipart/form-data; boundary=%s" % _MULTIPART_BOUNDARY
+        payload = _multipart_text(encrypt_cbc(bj.encode(), key, REQUEST_IV))
+        resp = self._ensure_ok(
+            self._request("/account/register", headers, payload), "registrazione")
+        self.userid = resp.get("userid")
+        self.loginsession = resp.get("loginsession")
+        if not (self.userid and self.loginsession):
+            raise CloudError("la registrazione non ha restituito una sessione utilizzabile")
 
     def restore_session(self, userid: str, loginsession: str) -> None:
         """Riusa una sessione salvata: il cloud limita i login ravvicinati."""

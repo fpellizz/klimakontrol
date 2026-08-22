@@ -112,6 +112,33 @@ def cmd_login(args) -> None:
     print("Sessione salvata in %s" % path)
 
 
+def cmd_register_code(args) -> None:
+    account = args.user or input("Email o telefono del nuovo account: ").strip()
+    cc = args.countrycode or ("39" if account.isdigit() else "")
+    cli = CloudClient(args.region)
+    cli.send_register_code(account, countrycode=cc)
+    print("Codice di verifica inviato a %s (regione %s)." % (account, cli.region.code))
+    print("Controlla email/SMS, poi:  klimakontrol register --region %s --user %s"
+          % (args.region, account))
+
+
+def cmd_register(args) -> None:
+    account = args.user or input("Email o telefono del nuovo account: ").strip()
+    code = args.code or input("Codice di verifica ricevuto: ").strip()
+    pwd = getpass.getpass("Password del nuovo account: ")
+    cc = args.countrycode or ("39" if account.isdigit() else "")
+    cli = CloudClient(args.region)
+    cli.register(account, pwd, code, nickname=args.nickname or "", countrycode=cc)
+    print("Registrazione riuscita. Regione: %s (%s)" % (cli.region.label, cli.region.code))
+    devices = cli.devices()
+    path = session.save(cli, devices)
+    if devices:
+        print("Sessione salvata in %s. %d unita' gia' associate." % (path, len(devices)))
+    else:
+        print("Sessione salvata in %s. Nessuna unita' ancora: vanno abbinate con l'app "
+              "ufficiale (l'abbinamento non e' ancora implementato qui)." % path)
+
+
 def cmd_list(args) -> None:
     _, devices = session.load()
     if not devices:
@@ -206,6 +233,20 @@ def build_parser() -> argparse.ArgumentParser:
     sp.add_argument("--region", help="ab | eu | ru | cn (se omessa, le prova tutte)")
     sp.add_argument("--user")
     sp.set_defaults(func=cmd_login)
+
+    sp = sub.add_parser("register-code", help="invia il codice di verifica per un nuovo account")
+    sp.add_argument("--region", required=True, help="ab | eu | ru | cn (obbligatoria)")
+    sp.add_argument("--user", help="email o telefono del nuovo account")
+    sp.add_argument("--countrycode", help="prefisso internazionale se telefono (es. 39)")
+    sp.set_defaults(func=cmd_register_code)
+
+    sp = sub.add_parser("register", help="crea un nuovo account (dopo register-code)")
+    sp.add_argument("--region", required=True, help="ab | eu | ru | cn (obbligatoria)")
+    sp.add_argument("--user", help="email o telefono")
+    sp.add_argument("--code", help="codice di verifica ricevuto al passo register-code")
+    sp.add_argument("--nickname", help="soprannome (default: l'account stesso)")
+    sp.add_argument("--countrycode", help="prefisso internazionale se telefono (es. 39)")
+    sp.set_defaults(func=cmd_register)
 
     sub.add_parser("list", help="elenco unita'").set_defaults(func=cmd_list)
 
