@@ -206,6 +206,17 @@ class KlimaViewModel(app: Application) : AndroidViewModel(app) {
     fun toggleNight(id: String) = immediate(id, { it.copy(night = !it.night, eco = false, turbo = false) }, { nightWire(it.night) })
     fun powerAllOff() = _units.value.filter { it.power }.forEach { togglePower(it.id) }
 
+    /** Rinfresca casa: accende tutte le unità online in freddo, 16°, ventola al massimo. */
+    fun refreshHouse() = _units.value.filter { it.online }.forEach { u ->
+        immediate(
+            u.id,
+            { it.copy(power = true, mode = Mode.FREDDO, targetTemp = AcUnit.TEMP_MIN,
+                      fan = FanSpeed.ALTA, eco = false, turbo = false, night = false) },
+            { powerWire(true) + modeChangeWire(Mode.FREDDO) + targetWire(AcUnit.TEMP_MIN) +
+                fanChangeWire(FanSpeed.ALTA) },
+        )
+    }
+
     private fun clampT(t: Float) = t.coerceIn(AcUnit.TEMP_MIN, AcUnit.TEMP_MAX)
 
     private fun readable(e: Exception): String {

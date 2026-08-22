@@ -31,6 +31,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.material3.Text
 import net.klimakontrol.data.AcUnit
+import net.klimakontrol.data.Mode
 import net.klimakontrol.ui.theme.Klima
 import net.klimakontrol.ui.theme.ModeColors
 import net.klimakontrol.ui.theme.QuadType
@@ -44,6 +45,7 @@ fun HomeScreen(
     onOpen: (AcUnit) -> Unit,
     onTogglePower: (AcUnit) -> Unit,
     onPowerAllOff: () -> Unit,
+    onRefreshHouse: () -> Unit = {},
     onRefresh: () -> Unit = {},
     onSettings: () -> Unit = {},
     send: Map<String, SendState> = emptyMap(),
@@ -92,20 +94,36 @@ fun HomeScreen(
             }
         }
 
-        if (units.size >= 2 && onCount > 0) {
-            Box(Modifier.fillMaxWidth().padding(20.dp)) {
+        // barra azioni rapide: sempre presente quando ci sono unità
+        if (units.isNotEmpty()) {
+            val cool = c.mode(Mode.FREDDO)
+            val canPowerOff = onCount > 0
+            Row(
+                Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 16.dp),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                // Rinfresca casa (primario): tutte accese, 16°, ventola al massimo
                 Row(
-                    Modifier.fillMaxWidth()
-                        .clip(RoundedCornerShape(16.dp))
-                        .background(c.surface2)
-                        .clickable { onPowerAllOff() }
-                        .padding(vertical = 15.dp),
-                    horizontalArrangement = Arrangement.Center,
-                    verticalAlignment = Alignment.CenterVertically,
+                    Modifier.weight(1f).clip(RoundedCornerShape(16.dp)).background(cool.accent)
+                        .clickable { onRefreshHouse() }.padding(vertical = 15.dp),
+                    horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    PowerGlyph(color = c.ink, modifier = Modifier.size(20.dp))
-                    Spacer(Modifier.width(10.dp))
-                    Text("Spegni tutte", style = QuadType.name.copy(fontWeight = FontWeight.SemiBold), color = c.ink)
+                    Text("❄", color = Color(0xFF10161A), style = QuadType.body)
+                    Spacer(Modifier.width(8.dp))
+                    Text("Rinfresca casa", style = QuadType.name.copy(fontWeight = FontWeight.SemiBold),
+                        color = Color(0xFF10161A))
+                }
+                // Spegni tutte (secondario): attivo solo se qualcosa è acceso
+                Row(
+                    Modifier.weight(1f).clip(RoundedCornerShape(16.dp)).background(c.surface2)
+                        .then(if (canPowerOff) Modifier.clickable { onPowerAllOff() } else Modifier)
+                        .padding(vertical = 15.dp),
+                    horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    PowerGlyph(color = if (canPowerOff) c.ink else c.ink3, modifier = Modifier.size(20.dp))
+                    Spacer(Modifier.width(8.dp))
+                    Text("Spegni tutte", style = QuadType.name.copy(fontWeight = FontWeight.SemiBold),
+                        color = if (canPowerOff) c.ink else c.ink3)
                 }
             }
         }

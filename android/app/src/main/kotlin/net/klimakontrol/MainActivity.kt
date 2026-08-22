@@ -86,6 +86,7 @@ private fun Connected(vm: KlimaViewModel, units: List<AcUnit>) {
                 onOpen = { selected = it.id },
                 onTogglePower = { vm.togglePower(it.id) },
                 onPowerAllOff = { vm.powerAllOff() },
+                onRefreshHouse = { vm.refreshHouse() },
                 onRefresh = { vm.refresh() },
                 onSettings = { vm.logout() },
                 send = send,
