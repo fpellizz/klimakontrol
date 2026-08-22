@@ -130,7 +130,12 @@ def cmd_register(args) -> None:
     cli = CloudClient(args.region)
     cli.register(account, pwd, code, nickname=args.nickname or "", countrycode=cc)
     print("Registrazione riuscita. Regione: %s (%s)" % (cli.region.label, cli.region.code))
-    devices = cli.devices()
+    # un account nuovo non ha ancora unita': non far fallire il salvataggio se l'elenco e' vuoto
+    try:
+        devices = cli.devices()
+    except Exception as exc:      # noqa: BLE001 — meglio salvare la sessione che perderla
+        print("(nessuna unita' leggibile: %s)" % exc)
+        devices = []
     path = session.save(cli, devices)
     if devices:
         print("Sessione salvata in %s. %d unita' gia' associate." % (path, len(devices)))
