@@ -20,3 +20,8 @@ apk/
 ricostruito/
 docs/samples/*.json
 androguard.db
+# firma app e artefatti di release (MAI nel repo)
+*.jks
+*.keystore
+keystore.properties
+*.aab
