@@ -29,8 +29,12 @@ import net.klimakontrol.ui.Phase
 import net.klimakontrol.ui.SendState
 import net.klimakontrol.ui.LoginScreen
 import net.klimakontrol.ui.RegisterScreen
+import net.klimakontrol.ui.SettingsScreen
 import net.klimakontrol.ui.theme.Klima
 import net.klimakontrol.ui.theme.KlimaTheme
+
+/** Valore speciale di `selected` per aprire le Impostazioni (non è un id di unità). */
+private const val SETTINGS = "__settings__"
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -71,6 +75,9 @@ private fun AppRoot(vm: KlimaViewModel = viewModel()) {
 private fun Connected(vm: KlimaViewModel, units: List<AcUnit>) {
     var selected by rememberSaveable { mutableStateOf<String?>(null) }
     val send by vm.send.collectAsState()
+    val update by vm.update.collectAsState()
+    val settingsMsg by vm.settingsMsg.collectAsState()
+    val settingsBusy by vm.settingsBusy.collectAsState()
     val c = Klima.colors
 
     AnimatedContent(
@@ -80,7 +87,21 @@ private fun Connected(vm: KlimaViewModel, units: List<AcUnit>) {
         label = "nav",
     ) { sel ->
         val current = units.firstOrNull { it.id == sel }
-        if (sel == null || current == null) {
+        if (sel == SETTINGS) {
+            SettingsScreen(
+                email = vm.accountEmail(),
+                version = vm.appVersion,
+                update = update,
+                busy = settingsBusy,
+                message = settingsMsg,
+                onCheckUpdate = { vm.checkForUpdate() },
+                onChangeNickname = { vm.changeNickname(it) },
+                onChangePassword = { o, n -> vm.changePassword(o, n) },
+                onLogout = { vm.logout() },
+                onForget = { vm.forget() },
+                onBack = { vm.clearSettingsMsg(); selected = null },
+            )
+        } else if (sel == null || current == null) {
             HomeScreen(
                 units = units,
                 onOpen = { selected = it.id },
@@ -88,7 +109,8 @@ private fun Connected(vm: KlimaViewModel, units: List<AcUnit>) {
                 onPowerAllOff = { vm.powerAllOff() },
                 onRefreshHouse = { vm.refreshHouse() },
                 onRefresh = { vm.refresh() },
-                onSettings = { vm.logout() },
+                onSettings = { vm.clearSettingsMsg(); selected = SETTINGS },
+                update = update,
                 send = send,
             )
         } else {

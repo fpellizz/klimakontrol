@@ -3,12 +3,16 @@ package net.klimakontrol.ui
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import net.klimakontrol.BuildConfig
 import net.klimakontrol.data.AcUnit
+import net.klimakontrol.data.update.UpdateChecker
+import net.klimakontrol.data.update.UpdateStatus
 import net.klimakontrol.data.FanSpeed
 import net.klimakontrol.data.Mode
 import net.klimakontrol.data.cloud.CloudService
@@ -60,6 +64,37 @@ class KlimaViewModel(app: Application) : AndroidViewModel(app) {
     private val _send = MutableStateFlow<Map<String, SendState>>(emptyMap())
     val send = _send.asStateFlow()
 
+    private val _update = MutableStateFlow<UpdateStatus>(UpdateStatus.Unknown)
+    val update = _update.asStateFlow()
+
+    val appVersion: String = BuildConfig.VERSION_NAME
+
+    // ---- impostazioni: feedback delle operazioni account ----
+    private val _settingsMsg = MutableStateFlow<String?>(null)
+    val settingsMsg = _settingsMsg.asStateFlow()
+    private val _settingsBusy = MutableStateFlow(false)
+    val settingsBusy = _settingsBusy.asStateFlow()
+
+    fun accountEmail(): String = service.savedEmail()
+    fun clearSettingsMsg() { _settingsMsg.value = null }
+
+    private fun settingsOp(okMsg: String, block: suspend () -> Unit) = viewModelScope.launch {
+        _settingsBusy.value = true; _settingsMsg.value = null
+        try {
+            block(); _settingsMsg.value = okMsg
+        } catch (e: Exception) {
+            _settingsMsg.value = readable(e)
+        } finally {
+            _settingsBusy.value = false
+        }
+    }
+
+    fun changePassword(old: String, new: String) =
+        settingsOp("Password aggiornata ✓") { service.changePassword(old, new) }
+
+    fun changeNickname(nick: String) =
+        settingsOp("Nome aggiornato ✓") { service.changeNickname(nick) }
+
     private val tempJobs = mutableMapOf<String, Job>()      // debounce per unità
     private val burstBefore = mutableMapOf<String, AcUnit>() // snapshot per il roll-back del burst
 
@@ -67,6 +102,12 @@ class KlimaViewModel(app: Application) : AndroidViewModel(app) {
 
     init {
         viewModelScope.launch { bootstrap() }
+        checkForUpdate()
+    }
+
+    /** Controlla se su GitHub c'è una release più recente. Silenzioso: non disturba se fallisce. */
+    fun checkForUpdate() = viewModelScope.launch(Dispatchers.IO) {
+        _update.value = UpdateChecker(appVersion).check()
     }
 
     /** All'avvio: prima la sessione salvata, poi (se scaduta) le credenziali salvate, infine login. */

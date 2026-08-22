@@ -155,6 +155,42 @@ class CloudClient(val region: Region = REGIONS.getValue("eu")) {
         if (userid == null || loginSession == null) throw CloudException("registrazione senza sessione")
     }
 
+    // ---------------- impostazioni account (a sessione aperta) ----------------
+    /** Header firmati + chiave per una chiamata che richiede la sessione (userid+loginsession). */
+    private fun sessionSigned(bj: String): Pair<Map<String, String>, ByteArray> {
+        check(loggedIn) { "sessione assente" }
+        val ts = (System.currentTimeMillis() / 1000).toString()
+        val key = md5Hex(ts + Salts.TOKEN).hexToBytes()
+        val headers = mapOf(
+            "timestamp" to ts,
+            "token" to md5Hex(bj + Salts.BODY),
+            "lid" to region.licenseId,
+            "licenseId" to region.licenseId,
+            "userid" to userid!!,
+            "loginsession" to loginSession!!,
+        )
+        return headers to key
+    }
+
+    private fun accountPost(path: String, body: JSONObject, where: String): JSONObject {
+        val bj = body.toString()
+        val (headers, key) = sessionSigned(bj)
+        return ensureOk(request("${region.baseUrl}$path", headers, aesEncrypt(bj.toByteArray(), key)), where)
+    }
+
+    /** Cambia la password dell'account (serve la vecchia; nessun codice). */
+    fun changePassword(oldPassword: String, newPassword: String) {
+        accountPost("/account/modifypwd", JSONObject()
+            .put("oldpassword", sha1Hex(oldPassword + Salts.PASSWORD))
+            .put("newpassword", sha1Hex(newPassword + Salts.PASSWORD)), "cambio password")
+    }
+
+    /** Cambia il soprannome (nickname) dell'account. */
+    fun changeNickname(nickname: String) {
+        accountPost("/account/modifynickname", JSONObject()
+            .put("userid", userid).put("nickname", nickname), "cambio nickname")
+    }
+
     val loggedIn get() = userid != null && loginSession != null
 
     /** Riusa una sessione salvata (userid + loginsession), senza rifare il login. */

@@ -26,12 +26,14 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.material3.Text
 import net.klimakontrol.data.AcUnit
 import net.klimakontrol.data.Mode
+import net.klimakontrol.data.update.UpdateStatus
 import net.klimakontrol.ui.theme.Klima
 import net.klimakontrol.ui.theme.ModeColors
 import net.klimakontrol.ui.theme.QuadType
@@ -48,6 +50,7 @@ fun HomeScreen(
     onRefreshHouse: () -> Unit = {},
     onRefresh: () -> Unit = {},
     onSettings: () -> Unit = {},
+    update: UpdateStatus = UpdateStatus.Unknown,
     send: Map<String, SendState> = emptyMap(),
 ) {
     val c = Klima.colors
@@ -72,6 +75,23 @@ fun HomeScreen(
             RoundIcon("⟳", c.ink2, c.surface1, onRefresh)
             Spacer(Modifier.width(8.dp))
             RoundIcon("⚙", c.ink2, c.surface1, onSettings)
+        }
+
+        // banner "aggiornamento disponibile" (tap = apre la release su GitHub)
+        (update as? UpdateStatus.Available)?.let { avail ->
+            val uriHandler = LocalUriHandler.current
+            val cool = c.mode(Mode.FREDDO)
+            Row(
+                Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 2.dp)
+                    .clip(RoundedCornerShape(12.dp)).background(cool.container)
+                    .clickable { uriHandler.openUri(avail.htmlUrl) }
+                    .padding(horizontal = 14.dp, vertical = 10.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text("Aggiornamento disponibile · v${avail.latest}",
+                    style = QuadType.body, color = cool.on, modifier = Modifier.weight(1f))
+                Text("Apri", style = QuadType.name.copy(fontWeight = FontWeight.SemiBold), color = cool.on)
+            }
         }
 
         LazyColumn(

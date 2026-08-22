@@ -50,6 +50,18 @@ class CloudService(context: Context) {
         store.saveMeta(account.trim(), regionCode)
     }
 
+    /** Cambia la password dell'account (a sessione aperta). */
+    suspend fun changePassword(oldPassword: String, newPassword: String) = withContext(Dispatchers.IO) {
+        client.changePassword(oldPassword, newPassword)
+        // se le credenziali erano salvate, aggiorna la password memorizzata (email invariata)
+        store.creds()?.let { store.saveCreds(it.email, newPassword, it.region) }
+    }
+
+    /** Cambia il soprannome dell'account (a sessione aperta). */
+    suspend fun changeNickname(nickname: String) = withContext(Dispatchers.IO) {
+        client.changeNickname(nickname)
+    }
+
     /** Riusa la sessione salvata, se c'è. */
     suspend fun restore(): Boolean = withContext(Dispatchers.IO) {
         val s = store.session() ?: return@withContext false

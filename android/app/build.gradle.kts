@@ -35,6 +35,7 @@ android {
     }
     buildFeatures {
         compose = true
+        buildConfig = true   // per BuildConfig.VERSION_NAME (mostrata in Impostazioni + update-check)
     }
     packaging {
         resources {

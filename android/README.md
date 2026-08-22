@@ -45,7 +45,15 @@ Corrispondenza con il telecomando fisico: MODE→Modalità, FAN→Ventola, ECO�
 SLEEP→Notte, SWING↕↔→Oscillazione. Non pilotabili via cloud (assenti dal set): **MUTE**, **HEALTH**,
 **DISPLAY**, **I FEEL**, e **TIMER** (le pianificazioni, feature a parte).
 
-Il gestore (⚙ nell'header) per ora fa **logout** (provvisorio).
+- ✅ **Impostazioni** (⚙ nell'header) — profilo (email), **cambia nome** (`modifynickname`) e
+  **cambia password** (`modifypwd`, ricostruiti dal dex), versione app, **controllo aggiornamenti**
+  (confronto con l'ultima GitHub Release), logout e "dimentica credenziali" — `ui/SettingsScreen.kt`
+- ✅ **Rinfresca casa** / **Spegni tutte** — barra azioni rapide in Home
+- ✅ **Controllo aggiornamenti** — `data/update/UpdateChecker.kt` (GitHub Releases API, `BuildConfig.VERSION_NAME`);
+  banner in Home se c'è una versione più recente
+
+Fuso orario: **nessuna impostazione server** (i moduli sono fissi a UTC+8, la conversione è locale);
+in Impostazioni c'è solo la nota informativa.
 
 ## Note
 
@@ -60,7 +68,8 @@ Il gestore (⚙ nell'header) per ora fa **logout** (provvisorio).
 ## Prossimi passi
 
 1. **Pianificazioni** (il tasto TIMER): manca la scrittura sul filo — vedi `docs/open-questions.md` §2.
-2. Schermata impostazioni vera (ora ⚙ = logout), `WindowSizeClass` per griglia su tablet/foldable.
+2. **Pubblicazione Play Store**: build release firmata (AAB), R8, versioning da tag, privacy policy — vedi `docs/play-store.md`.
+3. `WindowSizeClass` per griglia su tablet/foldable; abbinamento dispositivi in-app.
 
 ## Struttura
 
