@@ -147,8 +147,8 @@ fun SettingsScreen(
             Section("Suono") {
                 Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                     Column(Modifier.weight(1f)) {
-                        Text("Bip a ogni comando", style = QuadType.body, color = c.ink)
-                        Text("Sperimentale: manda il parametro «beep». Se il modulo non lo gestisce, non suona.",
+                        Text("Bip del climatizzatore", style = QuadType.body, color = c.ink)
+                        Text("Attivo: fa bip a ogni comando. Disattivo: silenzioso (applicato subito).",
                             style = QuadType.micro, color = c.ink3)
                     }
                     Spacer(Modifier.width(12.dp))

@@ -108,11 +108,23 @@ class KlimaViewModel(app: Application) : AndroidViewModel(app) {
         homesStore.saveAssignments(_assignments.value)
     }
 
-    // ---- bip del climatizzatore a ogni comando (sperimentale: parametro `beep`) ----
+    // ---- bip del climatizzatore (parametro `beep`). Il modulo RICORDA l'impostazione, quindi
+    //      per zittirlo va mandato esplicitamente beep=0, non basta smettere di mandare beep=1. ----
     private val _beep = MutableStateFlow(homesStore.beepOnCommand())
     val beep = _beep.asStateFlow()
-    fun setBeep(on: Boolean) { _beep.value = on; homesStore.setBeepOnCommand(on) }
-    private fun beepExtra(): Map<String, Int> = if (_beep.value) mapOf("beep" to 1) else emptyMap()
+
+    fun setBeep(on: Boolean) {
+        _beep.value = on
+        homesStore.setBeepOnCommand(on)
+        // applica subito a tutte le unità online, così l'effetto è immediato (non al prossimo comando)
+        val v = if (on) 1 else 0
+        viewModelScope.launch {
+            _units.value.filter { it.online }.forEach { u -> runCatching { service.push(u.id, mapOf("beep" to v)) } }
+        }
+    }
+
+    // ogni comando porta lo stato esplicito del bip (0 o 1): così resta coerente con la scelta
+    private fun beepExtra(): Map<String, Int> = mapOf("beep" to if (_beep.value) 1 else 0)
 
     fun exportConfig(): String = homesStore.exportJson()
 
