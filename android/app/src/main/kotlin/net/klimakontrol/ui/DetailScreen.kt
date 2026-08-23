@@ -194,7 +194,7 @@ fun DetailScreen(
                         val sel = m == unit.mode
                         val mc = c.mode(m)
                         Column(
-                            Modifier.weight(1f).pressClickable { onSetMode(m) }
+                            Modifier.weight(1f).pressClickable(onClick = { onSetMode(m) })
                                 .clip(RoundedCornerShape(14.dp))
                                 .background(if (sel) mc.container else c.surface1)
                                 .padding(vertical = 9.dp),
@@ -214,7 +214,7 @@ fun DetailScreen(
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         val autoSel = unit.fan == FanSpeed.AUTO
                         Box(
-                            Modifier.pressClickable { onSetFan(FanSpeed.AUTO) }
+                            Modifier.pressClickable(onClick = { onSetFan(FanSpeed.AUTO) })
                                 .clip(RoundedCornerShape(12.dp))
                                 .background(if (autoSel) mode.container else c.surface1)
                                 .padding(horizontal = 14.dp, vertical = 9.dp),

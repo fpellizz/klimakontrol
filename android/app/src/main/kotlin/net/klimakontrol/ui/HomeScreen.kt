@@ -124,7 +124,7 @@ fun HomeScreen(
             ) {
                 // Rinfresca casa (primario): tutte accese, 16°, ventola al massimo
                 Row(
-                    Modifier.weight(1f).pressClickable { onRefreshHouse() }
+                    Modifier.weight(1f).pressClickable(onClick = { onRefreshHouse() })
                         .clip(RoundedCornerShape(16.dp)).background(cool.accent).padding(vertical = 15.dp),
                     horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.CenterVertically,
                 ) {
@@ -158,7 +158,7 @@ private fun UnitCard(u: AcUnit, send: SendState, onOpen: (AcUnit) -> Unit, onTog
 
     Row(
         Modifier
-            .pressClickable { onOpen(u) }
+            .pressClickable(onClick = { onOpen(u) })
             .fillMaxWidth()
             .heightIn(min = 108.dp)
             .clip(RoundedCornerShape(22.dp))
