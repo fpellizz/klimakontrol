@@ -36,6 +36,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -73,6 +74,32 @@ internal fun RegionChips(selected: String, onSelect: (String) -> Unit) {
     }
 }
 
+/** Campo password con toggle "Mostra/Nascondi", condiviso da login/registrazione/impostazioni. */
+@Composable
+internal fun PasswordField(
+    value: String,
+    onValueChange: (String) -> Unit,
+    label: String,
+    modifier: Modifier = Modifier,
+) {
+    val c = Klima.colors
+    var visible by rememberSaveable { mutableStateOf(false) }
+    OutlinedTextField(
+        value = value, onValueChange = onValueChange,
+        label = { Text(label) }, singleLine = true,
+        visualTransformation = if (visible) VisualTransformation.None else PasswordVisualTransformation(),
+        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+        trailingIcon = {
+            Text(
+                if (visible) "Nascondi" else "Mostra",
+                style = QuadType.micro, color = c.ink2,
+                modifier = Modifier.clickable { visible = !visible }.padding(horizontal = 12.dp),
+            )
+        },
+        modifier = modifier,
+    )
+}
+
 @Composable
 fun LoginScreen(
     state: Phase.Login,
@@ -106,13 +133,7 @@ fun LoginScreen(
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
                 modifier = Modifier.fillMaxWidth(),
             )
-            OutlinedTextField(
-                value = password, onValueChange = { password = it },
-                label = { Text("Password") }, singleLine = true,
-                visualTransformation = PasswordVisualTransformation(),
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
-                modifier = Modifier.fillMaxWidth(),
-            )
+            PasswordField(password, { password = it }, "Password", Modifier.fillMaxWidth())
 
             // ---- regione / vendor (determina il lid dell'account) ----
             RegionChips(region) { region = it }

@@ -33,7 +33,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.input.KeyboardType
-import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import net.klimakontrol.data.Mode
 import net.klimakontrol.ui.theme.Klima
@@ -99,13 +98,7 @@ fun RegisterScreen(
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                     modifier = Modifier.fillMaxWidth(),
                 )
-                OutlinedTextField(
-                    value = password, onValueChange = { password = it },
-                    label = { Text("Password (nuova)") }, singleLine = true,
-                    visualTransformation = PasswordVisualTransformation(),
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
-                    modifier = Modifier.fillMaxWidth(),
-                )
+                PasswordField(password, { password = it }, "Password (nuova)", Modifier.fillMaxWidth())
                 OutlinedTextField(
                     value = nickname, onValueChange = { nickname = it },
                     label = { Text("Nome (facoltativo)") }, singleLine = true,

@@ -18,7 +18,6 @@ import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
@@ -32,8 +31,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalUriHandler
-import androidx.compose.ui.text.input.KeyboardType
-import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import net.klimakontrol.data.Mode
 import net.klimakontrol.data.update.UpdateStatus
@@ -104,21 +101,9 @@ fun SettingsScreen(
                 Spacer(Modifier.height(16.dp))
                 Text("Cambia password", style = QuadType.name, color = c.ink)
                 Spacer(Modifier.height(8.dp))
-                OutlinedTextField(
-                    value = oldPw, onValueChange = { oldPw = it },
-                    label = { Text("Password attuale") }, singleLine = true,
-                    visualTransformation = PasswordVisualTransformation(),
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
-                    modifier = Modifier.fillMaxWidth(),
-                )
+                PasswordField(oldPw, { oldPw = it }, "Password attuale", Modifier.fillMaxWidth())
                 Spacer(Modifier.height(8.dp))
-                OutlinedTextField(
-                    value = newPw, onValueChange = { newPw = it },
-                    label = { Text("Nuova password") }, singleLine = true,
-                    visualTransformation = PasswordVisualTransformation(),
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
-                    modifier = Modifier.fillMaxWidth(),
-                )
+                PasswordField(newPw, { newPw = it }, "Nuova password", Modifier.fillMaxWidth())
                 Spacer(Modifier.height(8.dp))
                 Action("Cambia password",
                     enabled = !busy && oldPw.isNotBlank() && newPw.length >= 6, accent = accent) {
