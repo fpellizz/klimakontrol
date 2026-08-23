@@ -10,6 +10,7 @@ import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.gestures.drag
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -42,6 +43,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import kotlin.math.atan2
 import kotlin.math.min
 import kotlin.math.roundToInt
@@ -106,7 +108,14 @@ fun DetailScreen(
         ((it - AcUnit.TEMP_MIN) / (AcUnit.TEMP_MAX - AcUnit.TEMP_MIN)).coerceIn(0f, 1f)
     }
 
-    Column(
+    BoxWithConstraints(Modifier.fillMaxSize()) {
+      // layout dinamico: il quadrante e le spaziature scalano con l'altezza schermo,
+      // entro un limite inferiore e superiore (compatto sui piccoli, arioso sui grandi)
+      val dialSize = (maxHeight * 0.33f).coerceIn(210.dp, 272.dp)
+      val sectionGap = (maxHeight * 0.02f).coerceIn(10.dp, 20.dp)
+      val tempFont = (dialSize.value * 0.30f).sp   // il numero scala col quadrante: mai fuori dall'anello
+
+      Column(
         Modifier.fillMaxSize().background(c.bg).windowInsetsPadding(WindowInsets.safeDrawing),
     ) {
         // filo di "invio in corso" in cima allo schermo
@@ -133,7 +142,7 @@ fun DetailScreen(
         // ---- quadrante hero (trascinabile come slider circolare) ----
         Box(Modifier.fillMaxWidth().padding(top = 4.dp), contentAlignment = Alignment.Center) {
             Box(
-                Modifier.size(200.dp).pointerInput(unit.id) {
+                Modifier.size(dialSize).pointerInput(unit.id) {
                     // tocco/trascinamento sull'anello -> temperatura (stesso arco 135°+270°).
                     // Il centro (dove sta il numero) è ignorato per non cambiare valore leggendo.
                     awaitEachGesture {
@@ -158,7 +167,7 @@ fun DetailScreen(
                 )
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Row(verticalAlignment = Alignment.Bottom) {
-                        Text(fmt(unit.targetTemp), style = QuadType.tempHero, color = c.ink)
+                        Text(fmt(unit.targetTemp), style = QuadType.tempHero.copy(fontSize = tempFont), color = c.ink)
                         Text("°C", style = QuadType.tempUnit, color = c.ink2)
                     }
                     Row(verticalAlignment = Alignment.CenterVertically) {
@@ -198,7 +207,7 @@ fun DetailScreen(
         Column(
             Modifier.weight(1f).fillMaxWidth().verticalScroll(rememberScrollState())
                 .padding(horizontal = 18.dp, vertical = 4.dp),
-            verticalArrangement = Arrangement.spacedBy(10.dp),
+            verticalArrangement = Arrangement.spacedBy(sectionGap),
         ) {
             Section("Modalità") {
                 Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -264,6 +273,7 @@ fun DetailScreen(
         ) {
             BigPower(unit.power, mode.accent, onTogglePower)
         }
+      }
     }
 }
 
