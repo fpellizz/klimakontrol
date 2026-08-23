@@ -131,9 +131,9 @@ fun DetailScreen(
         }
 
         // ---- quadrante hero (trascinabile come slider circolare) ----
-        Box(Modifier.fillMaxWidth().padding(top = 12.dp), contentAlignment = Alignment.Center) {
+        Box(Modifier.fillMaxWidth().padding(top = 4.dp), contentAlignment = Alignment.Center) {
             Box(
-                Modifier.size(250.dp).pointerInput(unit.id) {
+                Modifier.size(200.dp).pointerInput(unit.id) {
                     // tocco/trascinamento sull'anello -> temperatura (stesso arco 135°+270°).
                     // Il centro (dove sta il numero) è ignorato per non cambiare valore leggendo.
                     awaitEachGesture {
@@ -186,7 +186,7 @@ fun DetailScreen(
 
         // ---- temperatura: +/− subito sotto il quadrante ----
         Row(
-            Modifier.fillMaxWidth().padding(horizontal = 22.dp, vertical = 10.dp),
+            Modifier.fillMaxWidth().padding(horizontal = 22.dp, vertical = 6.dp),
             horizontalArrangement = Arrangement.spacedBy(14.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
@@ -194,11 +194,11 @@ fun DetailScreen(
             StepButton("+", Modifier.weight(1f)) { onStep(AcUnit.TEMP_STEP) }
         }
 
-        // ---- controlli (scrollabili) ----
+        // ---- controlli (scrollabili se serve, ma pensati per stare in una schermata) ----
         Column(
             Modifier.weight(1f).fillMaxWidth().verticalScroll(rememberScrollState())
-                .padding(horizontal = 18.dp, vertical = 6.dp),
-            verticalArrangement = Arrangement.spacedBy(14.dp),
+                .padding(horizontal = 18.dp, vertical = 4.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp),
         ) {
             Section("Modalità") {
                 Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -222,20 +222,19 @@ fun DetailScreen(
             }
 
             Section("Ventola") {
-                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        val autoSel = unit.fan == FanSpeed.AUTO
-                        Box(
-                            Modifier.pressClickable(onClick = { onSetFan(FanSpeed.AUTO) })
-                                .clip(RoundedCornerShape(12.dp))
-                                .background(if (autoSel) mode.container else c.surface1)
-                                .padding(horizontal = 14.dp, vertical = 9.dp),
-                        ) { Text("Auto", style = QuadType.body, color = if (autoSel) mode.on else c.ink2) }
-                        Spacer(Modifier.weight(1f))
-                        Text(unit.fan.label, style = QuadType.body, color = c.ink2)
-                    }
-                    // slider ventola: tocca/trascina per scegliere il livello (bassa → alta)
-                    FanSlider(unit.fan, mode.accent, onSetFan)
+                // tutto su una riga: Auto + slider (tocca/trascina) + livello corrente
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    val autoSel = unit.fan == FanSpeed.AUTO
+                    Box(
+                        Modifier.pressClickable(onClick = { onSetFan(FanSpeed.AUTO) })
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(if (autoSel) mode.container else c.surface1)
+                            .padding(horizontal = 14.dp, vertical = 8.dp),
+                    ) { Text("Auto", style = QuadType.body, color = if (autoSel) mode.on else c.ink2) }
+                    Spacer(Modifier.width(12.dp))
+                    FanSlider(unit.fan, mode.accent, onSetFan, Modifier.weight(1f))
+                    Spacer(Modifier.width(12.dp))
+                    Text(unit.fan.label, style = QuadType.body, color = c.ink2)
                 }
             }
 
@@ -260,7 +259,7 @@ fun DetailScreen(
 
         // ---- accensione (azione primaria, a portata di pollice) ----
         Box(
-            Modifier.fillMaxWidth().padding(22.dp, 12.dp, 22.dp, 24.dp),
+            Modifier.fillMaxWidth().padding(22.dp, 6.dp, 22.dp, 16.dp),
             contentAlignment = Alignment.Center,
         ) {
             BigPower(unit.power, mode.accent, onTogglePower)
@@ -273,7 +272,7 @@ private fun Section(label: String, content: @Composable () -> Unit) {
     val c = Klima.colors
     Column {
         Text(label.uppercase(), style = QuadType.overline, color = c.ink3)
-        Spacer(Modifier.height(6.dp))
+        Spacer(Modifier.height(4.dp))
         content()
     }
 }
@@ -283,7 +282,7 @@ private fun FeatureTile(label: String, on: Boolean, feat: Color, modifier: Modif
     val c = Klima.colors
     Row(
         modifier.pressClickable(onClick).clip(RoundedCornerShape(14.dp)).background(c.surface1)
-            .padding(vertical = 11.dp),
+            .padding(vertical = 9.dp),
         horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.CenterVertically,
     ) {
         Box(Modifier.size(8.dp).clip(CircleShape).background(if (on) feat else c.ink3))
@@ -298,7 +297,7 @@ private fun SwingTile(label: String, glyph: String, on: Boolean, accent: Color, 
     val c = Klima.colors
     Row(
         modifier.pressClickable(onClick).clip(RoundedCornerShape(14.dp))
-            .background(if (on) c.surface2 else c.surface1).padding(vertical = 11.dp),
+            .background(if (on) c.surface2 else c.surface1).padding(vertical = 9.dp),
         horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.CenterVertically,
     ) {
         Text(glyph, style = QuadType.name, color = if (on) accent else c.ink3)
@@ -309,11 +308,11 @@ private fun SwingTile(label: String, glyph: String, on: Boolean, accent: Color, 
 
 // slider ventola: barre a scatti, trascinabile (mappa la x sul livello 1..5)
 @Composable
-private fun FanSlider(current: FanSpeed, accent: Color, onSet: (FanSpeed) -> Unit) {
+private fun FanSlider(current: FanSpeed, accent: Color, onSet: (FanSpeed) -> Unit, modifier: Modifier = Modifier) {
     val c = Klima.colors
     val curIdx = fanSteps.indexOf(current)   // -1 se AUTO
     Row(
-        Modifier.fillMaxWidth().height(40.dp).pointerInput(Unit) {
+        modifier.height(34.dp).pointerInput(Unit) {
             awaitEachGesture {
                 // traccia l'ultimo livello inviato NELLA gesture: niente comandi ripetuti
                 // trascinando dentro lo stesso segmento
@@ -365,7 +364,7 @@ private fun BackButton(tint: Color, onClick: () -> Unit) {
 private fun StepButton(glyph: String, modifier: Modifier, onClick: () -> Unit) {
     val c = Klima.colors
     Box(
-        modifier.pressClickable(onClick).height(64.dp).clip(RoundedCornerShape(32.dp))
+        modifier.pressClickable(onClick).height(52.dp).clip(RoundedCornerShape(26.dp))
             .background(c.surface1),
         contentAlignment = Alignment.Center,
     ) { Text(glyph, style = QuadType.tempUnit, color = c.ink) }
