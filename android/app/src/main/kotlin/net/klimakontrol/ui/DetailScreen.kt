@@ -203,29 +203,20 @@ fun DetailScreen(
             }
 
             Section("Ventola") {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    val autoSel = unit.fan == FanSpeed.AUTO
-                    Box(
-                        Modifier.clip(RoundedCornerShape(12.dp))
-                            .background(if (autoSel) mode.container else c.surface1)
-                            .clickable { onSetFan(FanSpeed.AUTO) }
-                            .padding(horizontal = 14.dp, vertical = 9.dp),
-                    ) { Text("Auto", style = QuadType.body, color = if (autoSel) mode.on else c.ink2) }
-                    Spacer(Modifier.width(12.dp))
-                    Row(verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                        val curIdx = fanSteps.indexOf(unit.fan)
-                        fanSteps.forEachIndexed { i, fs ->
-                            val on = curIdx >= 0 && i <= curIdx
-                            Box(
-                                Modifier.width(12.dp).height((12 + i * 6).dp)
-                                    .clip(RoundedCornerShape(3.dp))
-                                    .background(if (on) mode.accent else c.border)
-                                    .clickable { onSetFan(fs) },
-                            )
-                        }
+                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        val autoSel = unit.fan == FanSpeed.AUTO
+                        Box(
+                            Modifier.clip(RoundedCornerShape(12.dp))
+                                .background(if (autoSel) mode.container else c.surface1)
+                                .clickable { onSetFan(FanSpeed.AUTO) }
+                                .padding(horizontal = 14.dp, vertical = 9.dp),
+                        ) { Text("Auto", style = QuadType.body, color = if (autoSel) mode.on else c.ink2) }
+                        Spacer(Modifier.weight(1f))
+                        Text(unit.fan.label, style = QuadType.body, color = c.ink2)
                     }
-                    Spacer(Modifier.weight(1f))
-                    Text(unit.fan.label, style = QuadType.body, color = c.ink2)
+                    // slider ventola: tocca/trascina per scegliere il livello (bassa → alta)
+                    FanSlider(unit.fan, mode.accent, onSetFan)
                 }
             }
 
@@ -297,6 +288,39 @@ private fun SwingTile(label: String, glyph: String, on: Boolean, accent: Color, 
         Text(glyph, style = QuadType.name, color = if (on) accent else c.ink3)
         Spacer(Modifier.width(8.dp))
         Text(label, style = QuadType.body, color = if (on) c.ink else c.ink2)
+    }
+}
+
+// slider ventola: barre a scatti, trascinabile (mappa la x sul livello 1..5)
+@Composable
+private fun FanSlider(current: FanSpeed, accent: Color, onSet: (FanSpeed) -> Unit) {
+    val c = Klima.colors
+    val curIdx = fanSteps.indexOf(current)   // -1 se AUTO
+    Row(
+        Modifier.fillMaxWidth().height(40.dp).pointerInput(Unit) {
+            awaitEachGesture {
+                // traccia l'ultimo livello inviato NELLA gesture: niente comandi ripetuti
+                // trascinando dentro lo stesso segmento
+                var lastSent = fanSteps.indexOf(current)
+                fun setAt(x: Float) {
+                    val i = ((x / size.width) * fanSteps.size).toInt().coerceIn(0, fanSteps.size - 1)
+                    if (i != lastSent) { lastSent = i; onSet(fanSteps[i]) }
+                }
+                val down = awaitFirstDown(requireUnconsumed = false)
+                setAt(down.position.x); down.consume()
+                drag(down.id) { ch -> setAt(ch.position.x); ch.consume() }
+            }
+        },
+        verticalAlignment = Alignment.Bottom,
+        horizontalArrangement = Arrangement.spacedBy(6.dp),
+    ) {
+        fanSteps.forEachIndexed { i, _ ->
+            val on = curIdx >= 0 && i <= curIdx
+            Box(
+                Modifier.weight(1f).height((16 + i * 5).dp).clip(RoundedCornerShape(4.dp))
+                    .background(if (on) accent else c.border),
+            )
+        }
     }
 }
 

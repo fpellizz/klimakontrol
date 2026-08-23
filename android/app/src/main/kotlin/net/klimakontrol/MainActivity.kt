@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -20,6 +21,10 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.viewmodel.compose.viewModel
 import net.klimakontrol.data.AcUnit
 import net.klimakontrol.ui.DetailScreen
@@ -71,10 +76,30 @@ private fun AppRoot(vm: KlimaViewModel = viewModel()) {
     }
 }
 
+/** Traccia il primo piano (per il polling) e rilegge lo stato al ritorno dell'app,
+ *  così l'app riflette le modifiche fatte col telecomando durante l'uso promiscuo. */
+@Composable
+private fun LifecycleBridge(vm: KlimaViewModel) {
+    val owner = LocalContext.current as? LifecycleOwner ?: return
+    DisposableEffect(owner) {
+        val obs = LifecycleEventObserver { _, e ->
+            when (e) {
+                Lifecycle.Event.ON_START -> vm.setForeground(true)
+                Lifecycle.Event.ON_RESUME -> vm.refresh()
+                Lifecycle.Event.ON_STOP -> vm.setForeground(false)
+                else -> {}
+            }
+        }
+        owner.lifecycle.addObserver(obs)
+        onDispose { owner.lifecycle.removeObserver(obs) }
+    }
+}
+
 @Composable
 private fun Connected(vm: KlimaViewModel, units: List<AcUnit>) {
     var selected by rememberSaveable { mutableStateOf<String?>(null) }
     val send by vm.send.collectAsState()
+    LifecycleBridge(vm)
     val update by vm.update.collectAsState()
     val settingsMsg by vm.settingsMsg.collectAsState()
     val settingsBusy by vm.settingsBusy.collectAsState()

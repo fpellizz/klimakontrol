@@ -31,7 +31,10 @@ L'app fa **login** e controlla i climatizzatori **veri** via cloud.
 - ✅ **"Ricorda le credenziali"** — email+password cifrate nel Keystore (`EncryptedSharedPreferences`),
   auto-login quando la sessione scade; se disattivato, si salva solo la sessione (mai la password)
 
-- ✅ **Ventola completa**: Auto + 5 livelli (bassa → alta) con selettore chiaro
+- ✅ **Ventola completa**: Auto + **slider a scatti** (bassa → alta), trascinabile
+- ✅ **Stato in tempo reale**: rilettura periodica (15s in foreground) + al ritorno dell'app, così
+  l'app riflette le modifiche fatte col telecomando (uso promiscuo). Non calpesta i comandi in volo;
+  in background il polling è sospeso — `KlimaViewModel.startPolling()`, `MainActivity.LifecycleBridge`
 - ✅ **Oscillazione** — swing **verticale** (`ac_vdir`) e **orizzontale** (`ac_hdir`), i due tasti
   SWING del telecomando. Il modulo riporta lo swing con questi nomi `ac_*` (NON `tcl_vdir`/`tcl_hdir`
   come nell'estrazione APK): visto sul filo il 2026-08-22

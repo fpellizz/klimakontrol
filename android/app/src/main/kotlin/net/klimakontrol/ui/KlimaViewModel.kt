@@ -50,6 +50,7 @@ enum class SendState { Idle, Sending, Ok, Error }
 private const val DEBOUNCE_MS = 400L
 private const val OK_HOLD_MS = 900L
 private const val ERR_HOLD_MS = 1600L
+private const val POLL_MS = 15_000L   // aggiornamento periodico dello stato reale (uso promiscuo)
 
 class KlimaViewModel(app: Application) : AndroidViewModel(app) {
 
@@ -103,6 +104,31 @@ class KlimaViewModel(app: Application) : AndroidViewModel(app) {
     init {
         viewModelScope.launch { bootstrap() }
         checkForUpdate()
+        startPolling()
+    }
+
+    @Volatile private var foreground = true
+    /** L'app è in primo piano? Il polling gira solo qui, per non consumare in background. */
+    fun setForeground(v: Boolean) { foreground = v }
+
+    // ---- stato in tempo reale: rilettura periodica (riflette modifiche fatte col telecomando) ----
+    private fun startPolling() = viewModelScope.launch {
+        while (true) {
+            delay(POLL_MS)
+            if (!foreground || _phase.value != Phase.Connected || isBusy()) continue
+            val fresh = runCatching { service.loadUnits() }.getOrNull() ?: continue
+            if (isBusy()) continue   // un comando può essere partito durante la lettura
+            mergeUnits(fresh)
+        }
+    }
+
+    /** Vero se c'è un comando in volo (invio o debounce temperatura): non aggiornare adesso. */
+    private fun isBusy() = _send.value.values.any { it == SendState.Sending } || tempJobs.isNotEmpty()
+
+    /** Applica lo stato fresco senza calpestare le unità con un comando in volo. */
+    private fun mergeUnits(fresh: List<AcUnit>) {
+        val busy = _send.value.filterValues { it == SendState.Sending }.keys + tempJobs.keys
+        _units.value = fresh.map { f -> if (f.id in busy) unit(f.id) ?: f else f }
     }
 
     /** Controlla se su GitHub c'è una release più recente. Silenzioso: non disturba se fallisce. */
