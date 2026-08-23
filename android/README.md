@@ -45,9 +45,13 @@ L'app fa **login** e controlla i climatizzatori **veri** via cloud.
   riflette i cambi fatti col telecomando IR (come per il controllo locale `-5`), non c'è polling che
   tenga. Diagnostica: `adb logcat -s klima-poll` mostra ogni tick e `cambiate=N` (0 = il modulo non
   vede il cambio)
-- ✅ **Bip del climatizzatore** (Impostazioni → Suono): il modulo **gestisce** il parametro `beep`.
-  L'interruttore manda `beep=1`/`beep=0` esplicitamente (il modulo lo **ricorda**, quindi per
-  zittirlo serve `beep=0`); applicato subito a tutte le unità e a ogni comando
+- ❌ **Bip del climatizzatore**: *tolto*. Il modulo **ignora** il parametro `beep` (non è nel set
+  gestito, come mute/salute/display): l'unità suona a ogni comando ricevuto e **non si può zittire
+  dall'app**. La feature causava solo beep in più (un push per unità): rimossa.
+- 🖼️ **Branding produttore** (Impostazioni → Hardware): inserendo il **codice costruttore** (es.
+  `WISNOW`) l'app scarica il **logo** dal cloud del produttore (`/neutralapp/companyinfo?code=…`) e
+  lo mostra. Nessun asset impacchettato: arriva a runtime dal *loro* server (interop) —
+  `data/branding/VendorBranding.kt`
 - ✅ **Oscillazione** — swing **verticale** (`ac_vdir`) e **orizzontale** (`ac_hdir`), i due tasti
   SWING del telecomando. Il modulo riporta lo swing con questi nomi `ac_*` (NON `tcl_vdir`/`tcl_hdir`
   come nell'estrazione APK): visto sul filo il 2026-08-22

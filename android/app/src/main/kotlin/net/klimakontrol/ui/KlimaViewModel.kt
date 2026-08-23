@@ -12,6 +12,7 @@ import kotlinx.coroutines.launch
 import net.klimakontrol.BuildConfig
 import net.klimakontrol.data.AcUnit
 import net.klimakontrol.data.Home
+import net.klimakontrol.data.branding.VendorBranding
 import net.klimakontrol.data.homes.HomesStore
 import net.klimakontrol.data.update.UpdateChecker
 import net.klimakontrol.data.update.UpdateStatus
@@ -108,23 +109,27 @@ class KlimaViewModel(app: Application) : AndroidViewModel(app) {
         homesStore.saveAssignments(_assignments.value)
     }
 
-    // ---- bip del climatizzatore (parametro `beep`). Il modulo RICORDA l'impostazione, quindi
-    //      per zittirlo va mandato esplicitamente beep=0, non basta smettere di mandare beep=1. ----
-    private val _beep = MutableStateFlow(homesStore.beepOnCommand())
-    val beep = _beep.asStateFlow()
+    // ---- branding produttore: logo scaricato a runtime dal cloud del produttore, mai impacchettato ----
+    private val _vendorCode = MutableStateFlow(homesStore.vendorCode())
+    val vendorCode = _vendorCode.asStateFlow()
+    private val _vendorLogo = MutableStateFlow(homesStore.vendorLogo())
+    val vendorLogo = _vendorLogo.asStateFlow()
+    private val _vendorBusy = MutableStateFlow(false)
+    val vendorBusy = _vendorBusy.asStateFlow()
 
-    fun setBeep(on: Boolean) {
-        _beep.value = on
-        homesStore.setBeepOnCommand(on)
-        // applica subito a tutte le unità online, così l'effetto è immediato (non al prossimo comando)
-        val v = if (on) 1 else 0
-        viewModelScope.launch {
-            _units.value.filter { it.online }.forEach { u -> runCatching { service.push(u.id, mapOf("beep" to v)) } }
+    /** Imposta il codice costruttore e scarica il logo dal cloud (in cache locale). */
+    fun setVendorCode(code: String) {
+        val c = code.trim()
+        _vendorCode.value = c
+        homesStore.setVendorCode(c)
+        if (c.isEmpty()) { homesStore.saveVendorLogo(null); _vendorLogo.value = null; return }
+        _vendorBusy.value = true
+        viewModelScope.launch(Dispatchers.IO) {
+            val bytes = runCatching { VendorBranding.fetchLogo(service.baseUrl(), c) }.getOrNull()
+            if (bytes != null) { homesStore.saveVendorLogo(bytes); _vendorLogo.value = bytes }
+            _vendorBusy.value = false
         }
     }
-
-    // ogni comando porta lo stato esplicito del bip (0 o 1): così resta coerente con la scelta
-    private fun beepExtra(): Map<String, Int> = mapOf("beep" to if (_beep.value) 1 else 0)
 
     fun exportConfig(): String = homesStore.exportJson()
 
@@ -309,7 +314,7 @@ class KlimaViewModel(app: Application) : AndroidViewModel(app) {
         setSend(id, SendState.Sending)
         viewModelScope.launch {
             try {
-                service.push(id, changes(after) + beepExtra()); setSend(id, SendState.Ok); holdThenIdle(id, OK_HOLD_MS)
+                service.push(id, changes(after)); setSend(id, SendState.Ok); holdThenIdle(id, OK_HOLD_MS)
             } catch (e: Exception) {
                 setUnit(before); setSend(id, SendState.Error); holdThenIdle(id, ERR_HOLD_MS)
             }
@@ -328,7 +333,7 @@ class KlimaViewModel(app: Application) : AndroidViewModel(app) {
             val before = burstBefore.remove(id) ?: cur
             val target = unit(id)?.targetTemp ?: return@launch
             try {
-                service.push(id, targetWire(target) + beepExtra()); setSend(id, SendState.Ok); holdThenIdle(id, OK_HOLD_MS)
+                service.push(id, targetWire(target)); setSend(id, SendState.Ok); holdThenIdle(id, OK_HOLD_MS)
             } catch (e: Exception) {
                 setUnit(before); setSend(id, SendState.Error); holdThenIdle(id, ERR_HOLD_MS)
             } finally {

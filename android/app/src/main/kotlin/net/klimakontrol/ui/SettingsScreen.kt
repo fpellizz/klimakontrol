@@ -1,5 +1,7 @@
 package net.klimakontrol.ui
 
+import android.graphics.BitmapFactory
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -18,8 +20,6 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Switch
-import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -30,6 +30,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.unit.dp
 import net.klimakontrol.data.Mode
@@ -48,8 +50,10 @@ fun SettingsScreen(
     onChangeNickname: (String) -> Unit,
     onChangePassword: (String, String) -> Unit,
     onManageHomes: () -> Unit,
-    beep: Boolean,
-    onToggleBeep: (Boolean) -> Unit,
+    vendorCode: String,
+    vendorLogo: ByteArray?,
+    vendorBusy: Boolean,
+    onSetVendorCode: (String) -> Unit,
     onLogout: () -> Unit,
     onForget: () -> Unit,
     onBack: () -> Unit,
@@ -143,17 +147,28 @@ fun SettingsScreen(
                 Action("Gestisci zone", enabled = true, accent = c.surface2, textColor = c.ink) { onManageHomes() }
             }
 
-            // ---- suono (sperimentale: dipende dal firmware del modulo) ----
-            Section("Suono") {
-                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                    Column(Modifier.weight(1f)) {
-                        Text("Bip del climatizzatore", style = QuadType.body, color = c.ink)
-                        Text("Attivo: fa bip a ogni comando. Disattivo: silenzioso (applicato subito).",
-                            style = QuadType.micro, color = c.ink3)
+            // ---- hardware / branding produttore (logo scaricato a runtime dal cloud del produttore) ----
+            Section("Hardware") {
+                vendorLogo?.let { bytes ->
+                    val bmp = remember(bytes) { BitmapFactory.decodeByteArray(bytes, 0, bytes.size)?.asImageBitmap() }
+                    if (bmp != null) {
+                        Box(Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp))
+                            .background(Color(0xFF0E1A2E)).padding(16.dp), contentAlignment = Alignment.Center) {
+                            Image(bitmap = bmp, contentDescription = "Logo del produttore",
+                                modifier = Modifier.fillMaxWidth().height(84.dp), contentScale = ContentScale.Fit)
+                        }
+                        Spacer(Modifier.height(10.dp))
                     }
-                    Spacer(Modifier.width(12.dp))
-                    Switch(checked = beep, onCheckedChange = onToggleBeep,
-                        colors = SwitchDefaults.colors(checkedTrackColor = accent))
+                }
+                Text("Codice del costruttore (dal QR o dalla confezione), es. WISNOW. Il logo viene scaricato dal cloud del produttore.",
+                    style = QuadType.micro, color = c.ink3)
+                Spacer(Modifier.height(8.dp))
+                var code by remember(vendorCode) { mutableStateOf(vendorCode) }
+                OutlinedTextField(value = code, onValueChange = { code = it }, singleLine = true,
+                    label = { Text("Codice costruttore") }, modifier = Modifier.fillMaxWidth())
+                Spacer(Modifier.height(8.dp))
+                Action(if (vendorBusy) "Scarico…" else "Applica", enabled = !vendorBusy, accent = accent) {
+                    onSetVendorCode(code)
                 }
             }
 

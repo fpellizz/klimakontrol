@@ -16,6 +16,9 @@ class CloudService(context: Context) {
     private var client = CloudClient(region)
     private var devices: List<CloudDevice> = emptyList()
 
+    /** Base URL della regione corrente (per il branding: /neutralapp/companyinfo). */
+    fun baseUrl(): String = region.baseUrl
+
     fun hasSession(): Boolean = store.session() != null
     fun hasCreds(): Boolean = store.creds() != null
     fun savedEmail(): String = store.email()

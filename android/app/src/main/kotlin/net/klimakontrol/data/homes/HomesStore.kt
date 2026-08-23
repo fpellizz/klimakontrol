@@ -10,7 +10,18 @@ import org.json.JSONObject
  * Nessun dato dal cloud: sono gruppi/filtri gestiti in app, in un semplice SharedPreferences.
  */
 class HomesStore(context: Context) {
+    private val ctx = context.applicationContext
     private val sp = context.getSharedPreferences("klima_homes", Context.MODE_PRIVATE)
+
+    // ---- branding produttore (codice costruttore + logo cachato su file) ----
+    fun vendorCode(): String = sp.getString("vendor", "") ?: ""
+    fun setVendorCode(code: String) = sp.edit().putString("vendor", code.trim()).apply()
+
+    private val logoFile get() = java.io.File(ctx.filesDir, "vendor_logo.png")
+    fun vendorLogo(): ByteArray? = logoFile.takeIf { it.exists() }?.readBytes()
+    fun saveVendorLogo(bytes: ByteArray?) {
+        if (bytes == null) logoFile.delete() else logoFile.writeBytes(bytes)
+    }
 
     fun homes(): List<Home> {
         val arr = JSONArray(sp.getString("homes", "[]"))
@@ -24,10 +35,6 @@ class HomesStore(context: Context) {
         list.forEach { arr.put(JSONObject().put("id", it.id).put("name", it.name)) }
         sp.edit().putString("homes", arr.toString()).apply()
     }
-
-    /** Preferenza locale: aggiungere `beep=1` a ogni comando (bip del climatizzatore). */
-    fun beepOnCommand(): Boolean = sp.getBoolean("beep", false)
-    fun setBeepOnCommand(on: Boolean) = sp.edit().putBoolean("beep", on).apply()
 
     /** did del dispositivo → id della casa. */
     fun assignments(): Map<String, String> {

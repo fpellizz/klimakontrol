@@ -111,7 +111,9 @@ private fun Connected(vm: KlimaViewModel, units: List<AcUnit>) {
     val homes by vm.homes.collectAsState()
     val assignments by vm.assignments.collectAsState()
     val selectedHome by vm.selectedHome.collectAsState()
-    val beep by vm.beep.collectAsState()
+    val vendorCode by vm.vendorCode.collectAsState()
+    val vendorLogo by vm.vendorLogo.collectAsState()
+    val vendorBusy by vm.vendorBusy.collectAsState()
     val c = Klima.colors
 
     AnimatedContent(
@@ -135,8 +137,10 @@ private fun Connected(vm: KlimaViewModel, units: List<AcUnit>) {
                 onChangeNickname = { vm.changeNickname(it) },
                 onChangePassword = { o, n -> vm.changePassword(o, n) },
                 onManageHomes = { selected = HOMES },
-                beep = beep,
-                onToggleBeep = { vm.setBeep(it) },
+                vendorCode = vendorCode,
+                vendorLogo = vendorLogo,
+                vendorBusy = vendorBusy,
+                onSetVendorCode = { vm.setVendorCode(it) },
                 onLogout = { vm.logout() },
                 onForget = { vm.forget() },
                 onBack = { vm.clearSettingsMsg(); selected = null },
