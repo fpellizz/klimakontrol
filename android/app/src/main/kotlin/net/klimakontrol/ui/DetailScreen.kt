@@ -1,5 +1,8 @@
 package net.klimakontrol.ui
 
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.awaitEachGesture
@@ -92,6 +95,9 @@ fun DetailScreen(
     val c = Klima.colors
     val mode = c.mode(unit.mode)
     val f = ((unit.targetTemp - AcUnit.TEMP_MIN) / (AcUnit.TEMP_MAX - AcUnit.TEMP_MIN)).coerceIn(0f, 1f)
+    // l'arco scivola dolcemente verso il nuovo valore (firma animata del quadrante); durante il
+    // trascinamento la molla insegue il dito con un microritardo "liquido"
+    val animF = animateFloatAsState(f, spring(stiffness = Spring.StiffnessMediumLow), label = "dialFrac").value
     val ambFrac = unit.ambientTemp?.let {
         ((it - AcUnit.TEMP_MIN) / (AcUnit.TEMP_MAX - AcUnit.TEMP_MIN)).coerceIn(0f, 1f)
     }
@@ -144,7 +150,7 @@ fun DetailScreen(
                 contentAlignment = Alignment.Center,
             ) {
                 DialRing(
-                    frac = f, accent = mode.accent, track = c.border, stroke = 14.dp,
+                    frac = animF, accent = mode.accent, track = c.border, stroke = 14.dp,
                     modifier = Modifier.fillMaxSize(),
                     ambientFrac = ambFrac, ambientColor = c.ink2, showKnob = true, knobRing = c.bg,
                 )
@@ -188,9 +194,10 @@ fun DetailScreen(
                         val sel = m == unit.mode
                         val mc = c.mode(m)
                         Column(
-                            Modifier.weight(1f).clip(RoundedCornerShape(14.dp))
+                            Modifier.weight(1f).pressClickable { onSetMode(m) }
+                                .clip(RoundedCornerShape(14.dp))
                                 .background(if (sel) mc.container else c.surface1)
-                                .clickable { onSetMode(m) }.padding(vertical = 9.dp),
+                                .padding(vertical = 9.dp),
                             horizontalAlignment = Alignment.CenterHorizontally,
                         ) {
                             Text(modeGlyph(m), color = if (sel) mc.on else c.ink2, style = QuadType.name)
@@ -207,9 +214,9 @@ fun DetailScreen(
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         val autoSel = unit.fan == FanSpeed.AUTO
                         Box(
-                            Modifier.clip(RoundedCornerShape(12.dp))
+                            Modifier.pressClickable { onSetFan(FanSpeed.AUTO) }
+                                .clip(RoundedCornerShape(12.dp))
                                 .background(if (autoSel) mode.container else c.surface1)
-                                .clickable { onSetFan(FanSpeed.AUTO) }
                                 .padding(horizontal = 14.dp, vertical = 9.dp),
                         ) { Text("Auto", style = QuadType.body, color = if (autoSel) mode.on else c.ink2) }
                         Spacer(Modifier.weight(1f))
@@ -266,7 +273,7 @@ private fun Section(label: String, content: @Composable () -> Unit) {
 private fun FeatureTile(label: String, on: Boolean, feat: Color, modifier: Modifier, onClick: () -> Unit) {
     val c = Klima.colors
     Row(
-        modifier.clip(RoundedCornerShape(14.dp)).background(c.surface1).clickable { onClick() }
+        modifier.pressClickable(onClick).clip(RoundedCornerShape(14.dp)).background(c.surface1)
             .padding(vertical = 11.dp),
         horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -281,8 +288,8 @@ private fun FeatureTile(label: String, on: Boolean, feat: Color, modifier: Modif
 private fun SwingTile(label: String, glyph: String, on: Boolean, accent: Color, modifier: Modifier, onClick: () -> Unit) {
     val c = Klima.colors
     Row(
-        modifier.clip(RoundedCornerShape(14.dp)).background(if (on) c.surface2 else c.surface1)
-            .clickable { onClick() }.padding(vertical = 11.dp),
+        modifier.pressClickable(onClick).clip(RoundedCornerShape(14.dp))
+            .background(if (on) c.surface2 else c.surface1).padding(vertical = 11.dp),
         horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.CenterVertically,
     ) {
         Text(glyph, style = QuadType.name, color = if (on) accent else c.ink3)
@@ -328,8 +335,8 @@ private fun FanSlider(current: FanSpeed, accent: Color, onSet: (FanSpeed) -> Uni
 private fun StepButton(glyph: String, modifier: Modifier, onClick: () -> Unit) {
     val c = Klima.colors
     Box(
-        modifier.height(64.dp).clip(RoundedCornerShape(32.dp)).background(c.surface1)
-            .clickable { onClick() },
+        modifier.pressClickable(onClick).height(64.dp).clip(RoundedCornerShape(32.dp))
+            .background(c.surface1),
         contentAlignment = Alignment.Center,
     ) { Text(glyph, style = QuadType.tempUnit, color = c.ink) }
 }
@@ -338,8 +345,8 @@ private fun StepButton(glyph: String, modifier: Modifier, onClick: () -> Unit) {
 private fun BigPower(on: Boolean, accent: Color, onClick: () -> Unit) {
     val c = Klima.colors
     Box(
-        Modifier.size(64.dp).clip(CircleShape)
-            .background(if (on) c.surface2 else accent).clickable { onClick() },
+        Modifier.pressClickable(onClick).size(64.dp).clip(CircleShape)
+            .background(if (on) c.surface2 else accent),
         contentAlignment = Alignment.Center,
     ) { PowerGlyph(color = if (on) c.ink else Color(0xFF1A1208), modifier = Modifier.size(28.dp)) }
 }

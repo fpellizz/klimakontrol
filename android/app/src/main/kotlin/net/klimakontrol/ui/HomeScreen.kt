@@ -124,8 +124,8 @@ fun HomeScreen(
             ) {
                 // Rinfresca casa (primario): tutte accese, 16°, ventola al massimo
                 Row(
-                    Modifier.weight(1f).clip(RoundedCornerShape(16.dp)).background(cool.accent)
-                        .clickable { onRefreshHouse() }.padding(vertical = 15.dp),
+                    Modifier.weight(1f).pressClickable { onRefreshHouse() }
+                        .clip(RoundedCornerShape(16.dp)).background(cool.accent).padding(vertical = 15.dp),
                     horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Text("❄", color = Color(0xFF10161A), style = QuadType.body)
@@ -135,9 +135,8 @@ fun HomeScreen(
                 }
                 // Spegni tutte (secondario): attivo solo se qualcosa è acceso
                 Row(
-                    Modifier.weight(1f).clip(RoundedCornerShape(16.dp)).background(c.surface2)
-                        .then(if (canPowerOff) Modifier.clickable { onPowerAllOff() } else Modifier)
-                        .padding(vertical = 15.dp),
+                    Modifier.weight(1f).pressClickable({ onPowerAllOff() }, enabled = canPowerOff)
+                        .clip(RoundedCornerShape(16.dp)).background(c.surface2).padding(vertical = 15.dp),
                     horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.CenterVertically,
                 ) {
                     PowerGlyph(color = if (canPowerOff) c.ink else c.ink3, modifier = Modifier.size(20.dp))
@@ -159,11 +158,11 @@ private fun UnitCard(u: AcUnit, send: SendState, onOpen: (AcUnit) -> Unit, onTog
 
     Row(
         Modifier
+            .pressClickable { onOpen(u) }
             .fillMaxWidth()
             .heightIn(min = 108.dp)
             .clip(RoundedCornerShape(22.dp))
             .background(surface)
-            .clickable { onOpen(u) }
             .padding(start = 0.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -237,10 +236,10 @@ private fun PowerToggle(on: Boolean, enabled: Boolean, accent: Color, onClick: (
     val fg = if (on) Color(0xFF1A1208) else c.ink3
     Box(
         Modifier
+            .pressClickable({ onClick() }, enabled = enabled)
             .size(52.dp)
             .clip(CircleShape)
             .background(bg)
-            .then(if (enabled) Modifier.clickable { onClick() } else Modifier)
             .padding(2.dp),
         contentAlignment = Alignment.Center,
     ) {
@@ -251,7 +250,7 @@ private fun PowerToggle(on: Boolean, enabled: Boolean, accent: Color, onClick: (
 @Composable
 private fun RoundIcon(glyph: String, fg: Color, bg: Color, onClick: () -> Unit) {
     Box(
-        Modifier.size(38.dp).clip(CircleShape).background(bg).clickable { onClick() },
+        Modifier.pressClickable(onClick).size(38.dp).clip(CircleShape).background(bg),
         contentAlignment = Alignment.Center,
     ) { Text(glyph, color = fg, style = QuadType.body) }
 }

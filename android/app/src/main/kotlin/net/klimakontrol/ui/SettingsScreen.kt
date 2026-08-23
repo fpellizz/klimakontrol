@@ -180,9 +180,9 @@ private fun Action(
 ) {
     val c = Klima.colors
     Box(
-        Modifier.fillMaxWidth().height(48.dp).clip(RoundedCornerShape(12.dp))
-            .background(if (enabled) accent else c.surfaceOff)
-            .then(if (enabled) Modifier.clickable { onClick() } else Modifier),
+        Modifier.pressClickable({ onClick() }, enabled = enabled)
+            .fillMaxWidth().height(48.dp).clip(RoundedCornerShape(12.dp))
+            .background(if (enabled) accent else c.surfaceOff),
         contentAlignment = Alignment.Center,
     ) {
         Text(label, style = QuadType.name, color = if (enabled) textColor else c.ink3)

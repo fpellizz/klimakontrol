@@ -5,8 +5,11 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
@@ -107,7 +110,10 @@ private fun Connected(vm: KlimaViewModel, units: List<AcUnit>) {
 
     AnimatedContent(
         targetState = selected,
-        transitionSpec = { fadeIn() togetherWith fadeOut() },
+        transitionSpec = {
+            (fadeIn(tween(220)) + scaleIn(tween(220), initialScale = 0.98f)) togetherWith
+                (fadeOut(tween(150)) + scaleOut(tween(150), targetScale = 1.01f))
+        },
         modifier = Modifier.fillMaxSize().background(c.bg),
         label = "nav",
     ) { sel ->

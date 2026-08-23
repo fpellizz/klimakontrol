@@ -12,6 +12,9 @@ App nativa **Kotlin + Jetpack Compose** che implementa il sistema di design **"Q
 L'app fa **login** e controlla i climatizzatori **veri** via cloud.
 
 - ✅ Tema Quadrante (token chiaro/scuro, colore per modalità) — `ui/theme/`
+- ✅ **Rifinitura grafica**: quadrante **animato** (l'arco scivola con una molla), **micro-pressione**
+  coerente su tutte le superfici toccabili (`ui/Pressable.kt`, senza ripple), transizioni schermata
+  fade + micro-scala
 - ✅ **Login** + **selettore regione/vendor** (eu/ab/cn/ru, da `REGIONS`) + **mostra password** +
   sessione persistente (senza password, come `session.py`) — `ui/LoginScreen.kt`, `data/cloud/SessionStore.kt`.
   Il campo password con toggle Mostra/Nascondi (`PasswordField`) è condiviso da login/registrazione/impostazioni

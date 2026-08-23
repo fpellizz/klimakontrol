@@ -59,9 +59,8 @@ internal fun RegionChips(selected: String, onSelect: (String) -> Unit) {
         REGION_ORDER.filter { it in REGIONS }.forEach { code ->
             val sel = code == selected
             Box(
-                Modifier.weight(1f).clip(RoundedCornerShape(12.dp))
-                    .background(if (sel) accentMode.container else c.surface1)
-                    .clickable { onSelect(code) }.padding(vertical = 10.dp),
+                Modifier.weight(1f).pressClickable { onSelect(code) }.clip(RoundedCornerShape(12.dp))
+                    .background(if (sel) accentMode.container else c.surface1).padding(vertical = 10.dp),
                 contentAlignment = Alignment.Center,
             ) {
                 Text(
