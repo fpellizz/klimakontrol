@@ -29,6 +29,7 @@ enum class Reachability { ONLINE, OFFLINE }
 data class AcUnit(
     val id: String,
     val name: String,
+    val home: String = "",   // casa (famiglia) a cui appartiene, per il raggruppamento multi-casa
     val reachable: Reachability = Reachability.ONLINE,
     val power: Boolean = false,
     val mode: Mode = Mode.FREDDO,

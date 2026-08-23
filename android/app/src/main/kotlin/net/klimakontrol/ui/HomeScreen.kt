@@ -55,6 +55,15 @@ fun HomeScreen(
 ) {
     val c = Klima.colors
     val onCount = units.count { it.power }
+    // raggruppamento multi-casa: le unità arrivano già ordinate per casa dal cloud
+    val groups = units.groupBy { it.home }
+    val homeNames = groups.keys.filter { it.isNotBlank() }
+    val multiHome = groups.size > 1
+    val title = when {
+        multiHome -> "Le tue case"
+        homeNames.size == 1 -> homeNames.first()   // casa unica con nome: mostralo come titolo
+        else -> "Casa"
+    }
 
     Column(
         Modifier
@@ -68,8 +77,9 @@ fun HomeScreen(
             verticalAlignment = Alignment.Top,
         ) {
             Column(Modifier.weight(1f)) {
-                Text("Casa", style = QuadType.title, color = c.ink)
-                Text("${units.size} unità · $onCount ${if (onCount == 1) "accesa" else "accese"}",
+                Text(title, style = QuadType.title, color = c.ink)
+                Text("${units.size} unità · $onCount ${if (onCount == 1) "accesa" else "accese"}"
+                    + if (multiHome) " · ${groups.size} case" else "",
                     style = QuadType.body, color = c.ink2)
             }
             RoundIcon("⟳", c.ink2, c.surface1, onRefresh)
@@ -109,8 +119,21 @@ fun HomeScreen(
                     }
                 }
             }
-            items(units, key = { it.id }) { u ->
-                UnitCard(u, send[u.id] ?: SendState.Idle, onOpen, onTogglePower)
+            if (multiHome) {
+                groups.forEach { (home, list) ->
+                    item(key = "home:$home") {
+                        Text((home.ifBlank { "Altre" }).uppercase(),
+                            style = QuadType.overline, color = c.ink3,
+                            modifier = Modifier.padding(start = 6.dp, top = 6.dp, bottom = 2.dp))
+                    }
+                    items(list, key = { it.id }) { u ->
+                        UnitCard(u, send[u.id] ?: SendState.Idle, onOpen, onTogglePower)
+                    }
+                }
+            } else {
+                items(units, key = { it.id }) { u ->
+                    UnitCard(u, send[u.id] ?: SendState.Idle, onOpen, onTogglePower)
+                }
             }
         }
 
