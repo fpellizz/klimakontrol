@@ -11,6 +11,8 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import net.klimakontrol.BuildConfig
 import net.klimakontrol.data.AcUnit
+import net.klimakontrol.data.Home
+import net.klimakontrol.data.homes.HomesStore
 import net.klimakontrol.data.update.UpdateChecker
 import net.klimakontrol.data.update.UpdateStatus
 import net.klimakontrol.data.FanSpeed
@@ -55,6 +57,7 @@ private const val POLL_MS = 15_000L   // aggiornamento periodico dello stato rea
 class KlimaViewModel(app: Application) : AndroidViewModel(app) {
 
     private val service = CloudService(app)
+    private val homesStore = HomesStore(app)
 
     private val _phase = MutableStateFlow<Phase>(Phase.Loading)
     val phase = _phase.asStateFlow()
@@ -67,6 +70,53 @@ class KlimaViewModel(app: Application) : AndroidViewModel(app) {
 
     private val _update = MutableStateFlow<UpdateStatus>(UpdateStatus.Unknown)
     val update = _update.asStateFlow()
+
+    // ---- case (locali): elenco, assegnazioni dispositivo->casa, casa selezionata (filtro) ----
+    private val _homes = MutableStateFlow(homesStore.homes())
+    val homes = _homes.asStateFlow()
+    private val _assignments = MutableStateFlow(homesStore.assignments())  // did -> homeId
+    val assignments = _assignments.asStateFlow()
+    private val _selectedHome = MutableStateFlow<String?>(null)            // null = Tutte
+    val selectedHome = _selectedHome.asStateFlow()
+
+    fun selectHome(id: String?) { _selectedHome.value = id }
+
+    fun addHome(name: String) {
+        val n = name.trim().ifEmpty { return }
+        _homes.value = _homes.value + Home(java.util.UUID.randomUUID().toString(), n)
+        homesStore.saveHomes(_homes.value)
+    }
+
+    fun renameHome(id: String, name: String) {
+        val n = name.trim().ifEmpty { return }
+        _homes.value = _homes.value.map { if (it.id == id) it.copy(name = n) else it }
+        homesStore.saveHomes(_homes.value)
+    }
+
+    fun deleteHome(id: String) {
+        _homes.value = _homes.value.filterNot { it.id == id }
+        homesStore.saveHomes(_homes.value)
+        // togli le assegnazioni a quella casa e resetta il filtro se puntava lì
+        _assignments.value = _assignments.value.filterValues { it != id }
+        homesStore.saveAssignments(_assignments.value)
+        if (_selectedHome.value == id) _selectedHome.value = null
+    }
+
+    fun assignUnit(unitId: String, homeId: String?) {
+        _assignments.value = if (homeId == null) _assignments.value - unitId
+                             else _assignments.value + (unitId to homeId)
+        homesStore.saveAssignments(_assignments.value)
+    }
+
+    fun exportConfig(): String = homesStore.exportJson()
+
+    fun importConfig(json: String): Boolean = try {
+        homesStore.importJson(json)
+        _homes.value = homesStore.homes()
+        _assignments.value = homesStore.assignments()
+        _selectedHome.value = null
+        true
+    } catch (e: Exception) { false }
 
     val appVersion: String = BuildConfig.VERSION_NAME
 
@@ -271,10 +321,17 @@ class KlimaViewModel(app: Application) : AndroidViewModel(app) {
     fun toggleEco(id: String) = immediate(id, { it.copy(eco = !it.eco, turbo = false, night = false) }, { ecoWire(it.eco) })
     fun toggleTurbo(id: String) = immediate(id, { it.copy(turbo = !it.turbo, eco = false, night = false) }, { turboWire(it.turbo) })
     fun toggleNight(id: String) = immediate(id, { it.copy(night = !it.night, eco = false, turbo = false) }, { nightWire(it.night) })
-    fun powerAllOff() = _units.value.filter { it.power }.forEach { togglePower(it.id) }
+    /** Le unità della casa selezionata (o tutte se il filtro è "Tutte"): le azioni di massa
+     *  (spegni tutte / rinfresca casa) agiscono su queste, coerenti con ciò che si vede. */
+    private fun visibleUnits(): List<AcUnit> {
+        val h = _selectedHome.value ?: return _units.value
+        return _units.value.filter { _assignments.value[it.id] == h }
+    }
 
-    /** Rinfresca casa: accende tutte le unità online in freddo, 16°, ventola al massimo. */
-    fun refreshHouse() = _units.value.filter { it.online }.forEach { u ->
+    fun powerAllOff() = visibleUnits().filter { it.power }.forEach { togglePower(it.id) }
+
+    /** Rinfresca casa: accende le unità online (della casa vista) in freddo, 16°, ventola al massimo. */
+    fun refreshHouse() = visibleUnits().filter { it.online }.forEach { u ->
         immediate(
             u.id,
             { it.copy(power = true, mode = Mode.FREDDO, targetTemp = AcUnit.TEMP_MIN,

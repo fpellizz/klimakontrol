@@ -30,8 +30,11 @@ import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material3.Text
 import net.klimakontrol.data.AcUnit
+import net.klimakontrol.data.Home
 import net.klimakontrol.data.Mode
 import net.klimakontrol.data.update.UpdateStatus
 import net.klimakontrol.ui.theme.Klima
@@ -51,19 +54,17 @@ fun HomeScreen(
     onRefresh: () -> Unit = {},
     onSettings: () -> Unit = {},
     update: UpdateStatus = UpdateStatus.Unknown,
+    homes: List<Home> = emptyList(),
+    assignments: Map<String, String> = emptyMap(),
+    selectedHome: String? = null,
+    onSelectHome: (String?) -> Unit = {},
     send: Map<String, SendState> = emptyMap(),
 ) {
     val c = Klima.colors
-    val onCount = units.count { it.power }
-    // raggruppamento multi-casa: le unità arrivano già ordinate per casa dal cloud
-    val groups = units.groupBy { it.home }
-    val homeNames = groups.keys.filter { it.isNotBlank() }
-    val multiHome = groups.size > 1
-    val title = when {
-        multiHome -> "Le tue case"
-        homeNames.size == 1 -> homeNames.first()   // casa unica con nome: mostralo come titolo
-        else -> "Casa"
-    }
+    // filtro locale per casa: se una casa è selezionata, mostra solo le sue unità
+    val shown = if (selectedHome == null) units
+                else units.filter { assignments[it.id] == selectedHome }
+    val onCount = shown.count { it.power }
 
     Column(
         Modifier
@@ -77,14 +78,26 @@ fun HomeScreen(
             verticalAlignment = Alignment.Top,
         ) {
             Column(Modifier.weight(1f)) {
-                Text(title, style = QuadType.title, color = c.ink)
-                Text("${units.size} unità · $onCount ${if (onCount == 1) "accesa" else "accese"}"
-                    + if (multiHome) " · ${groups.size} case" else "",
+                val hn = homes.firstOrNull { it.id == selectedHome }?.name
+                Text(hn ?: "Casa", style = QuadType.title, color = c.ink)
+                Text("${shown.size} unità · $onCount ${if (onCount == 1) "accesa" else "accese"}",
                     style = QuadType.body, color = c.ink2)
             }
             RoundIcon("⟳", c.ink2, c.surface1, onRefresh)
             Spacer(Modifier.width(8.dp))
             RoundIcon("⚙", c.ink2, c.surface1, onSettings)
+        }
+
+        // filtro case (locale): i chip appaiono solo se l'utente ha definito almeno una casa
+        if (homes.isNotEmpty()) {
+            Row(
+                Modifier.fillMaxWidth().horizontalScroll(rememberScrollState())
+                    .padding(start = 16.dp, end = 16.dp, bottom = 10.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                HomeChip("Tutte", selectedHome == null) { onSelectHome(null) }
+                homes.forEach { h -> HomeChip(h.name, selectedHome == h.id) { onSelectHome(h.id) } }
+            }
         }
 
         // banner "aggiornamento disponibile" (tap = apre la release su GitHub)
@@ -109,36 +122,24 @@ fun HomeScreen(
             contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 16.dp, vertical = 2.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            if (units.isEmpty()) {
+            if (shown.isEmpty()) {
                 item {
                     Box(Modifier.fillMaxWidth().padding(top = 40.dp), contentAlignment = Alignment.Center) {
                         Text(
-                            "Nessuna unità.\nAbbina i climatizzatori con l'app ufficiale, poi torna qui.",
+                            if (selectedHome != null) "Nessuna unità in questa casa.\nAssegnale da Impostazioni → Gestisci case."
+                            else "Nessuna unità.\nAbbina i climatizzatori con l'app ufficiale, poi torna qui.",
                             style = QuadType.body, color = c.ink3, textAlign = TextAlign.Center,
                         )
                     }
                 }
             }
-            if (multiHome) {
-                groups.forEach { (home, list) ->
-                    item(key = "home:$home") {
-                        Text((home.ifBlank { "Altre" }).uppercase(),
-                            style = QuadType.overline, color = c.ink3,
-                            modifier = Modifier.padding(start = 6.dp, top = 6.dp, bottom = 2.dp))
-                    }
-                    items(list, key = { it.id }) { u ->
-                        UnitCard(u, send[u.id] ?: SendState.Idle, onOpen, onTogglePower)
-                    }
-                }
-            } else {
-                items(units, key = { it.id }) { u ->
-                    UnitCard(u, send[u.id] ?: SendState.Idle, onOpen, onTogglePower)
-                }
+            items(shown, key = { it.id }) { u ->
+                UnitCard(u, send[u.id] ?: SendState.Idle, onOpen, onTogglePower)
             }
         }
 
-        // barra azioni rapide: sempre presente quando ci sono unità
-        if (units.isNotEmpty()) {
+        // barra azioni rapide: agisce sulle unità mostrate (la casa selezionata)
+        if (shown.isNotEmpty()) {
             val cool = c.mode(Mode.FREDDO)
             val canPowerOff = onCount > 0
             Row(
@@ -267,6 +268,20 @@ private fun PowerToggle(on: Boolean, enabled: Boolean, accent: Color, onClick: (
         contentAlignment = Alignment.Center,
     ) {
         PowerGlyph(color = if (enabled) fg else c.offline, modifier = Modifier.size(22.dp))
+    }
+}
+
+// chip di filtro/selezione casa (Tutte / nome casa), condiviso con la schermata Gestisci case
+@Composable
+internal fun HomeChip(label: String, selected: Boolean, onClick: () -> Unit) {
+    val c = Klima.colors
+    val accent = c.mode(Mode.FREDDO)
+    Box(
+        Modifier.pressClickable(onClick = onClick).clip(RoundedCornerShape(20.dp))
+            .background(if (selected) accent.container else c.surface1)
+            .padding(horizontal = 16.dp, vertical = 8.dp),
+    ) {
+        Text(label, style = QuadType.body, color = if (selected) accent.on else c.ink2)
     }
 }
 

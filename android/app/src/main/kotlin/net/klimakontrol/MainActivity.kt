@@ -35,14 +35,16 @@ import net.klimakontrol.ui.HomeScreen
 import net.klimakontrol.ui.KlimaViewModel
 import net.klimakontrol.ui.Phase
 import net.klimakontrol.ui.SendState
+import net.klimakontrol.ui.HomesScreen
 import net.klimakontrol.ui.LoginScreen
 import net.klimakontrol.ui.RegisterScreen
 import net.klimakontrol.ui.SettingsScreen
 import net.klimakontrol.ui.theme.Klima
 import net.klimakontrol.ui.theme.KlimaTheme
 
-/** Valore speciale di `selected` per aprire le Impostazioni (non è un id di unità). */
+/** Valori speciali di `selected` per aprire schermate non legate a una singola unità. */
 private const val SETTINGS = "__settings__"
+private const val HOMES = "__homes__"
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -106,6 +108,9 @@ private fun Connected(vm: KlimaViewModel, units: List<AcUnit>) {
     val update by vm.update.collectAsState()
     val settingsMsg by vm.settingsMsg.collectAsState()
     val settingsBusy by vm.settingsBusy.collectAsState()
+    val homes by vm.homes.collectAsState()
+    val assignments by vm.assignments.collectAsState()
+    val selectedHome by vm.selectedHome.collectAsState()
     val c = Klima.colors
 
     AnimatedContent(
@@ -128,9 +133,23 @@ private fun Connected(vm: KlimaViewModel, units: List<AcUnit>) {
                 onCheckUpdate = { vm.checkForUpdate() },
                 onChangeNickname = { vm.changeNickname(it) },
                 onChangePassword = { o, n -> vm.changePassword(o, n) },
+                onManageHomes = { selected = HOMES },
                 onLogout = { vm.logout() },
                 onForget = { vm.forget() },
                 onBack = { vm.clearSettingsMsg(); selected = null },
+            )
+        } else if (sel == HOMES) {
+            HomesScreen(
+                homes = homes,
+                units = units,
+                assignments = assignments,
+                onAddHome = { vm.addHome(it) },
+                onRenameHome = { id, name -> vm.renameHome(id, name) },
+                onDeleteHome = { vm.deleteHome(it) },
+                onAssign = { u, h -> vm.assignUnit(u, h) },
+                onExport = { vm.exportConfig() },
+                onImport = { vm.importConfig(it) },
+                onBack = { selected = SETTINGS },
             )
         } else if (sel == null || current == null) {
             HomeScreen(
@@ -142,6 +161,10 @@ private fun Connected(vm: KlimaViewModel, units: List<AcUnit>) {
                 onRefresh = { vm.refresh() },
                 onSettings = { vm.clearSettingsMsg(); selected = SETTINGS },
                 update = update,
+                homes = homes,
+                assignments = assignments,
+                selectedHome = selectedHome,
+                onSelectHome = { vm.selectHome(it) },
                 send = send,
             )
         } else {

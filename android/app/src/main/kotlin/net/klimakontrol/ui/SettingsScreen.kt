@@ -47,6 +47,7 @@ fun SettingsScreen(
     onCheckUpdate: () -> Unit,
     onChangeNickname: (String) -> Unit,
     onChangePassword: (String, String) -> Unit,
+    onManageHomes: () -> Unit,
     onLogout: () -> Unit,
     onForget: () -> Unit,
     onBack: () -> Unit,
@@ -131,6 +132,14 @@ fun SettingsScreen(
                         }
                     }
                 }
+            }
+
+            // ---- case (gestione locale: gruppi/filtri definiti dall'utente) ----
+            Section("Case") {
+                Text("Raggruppa i climatizzatori per casa e filtra la Home. Tutto in locale.",
+                    style = QuadType.body, color = c.ink2)
+                Spacer(Modifier.height(10.dp))
+                Action("Gestisci case", enabled = true, accent = c.surface2, textColor = c.ink) { onManageHomes() }
             }
 
             // ---- fuso orario (informativo: nessuna impostazione server) ----

@@ -22,6 +22,9 @@ enum class FanSpeed(val label: String, val level: Int) {
 /** Stato di raggiungibilità dell'unità (il controllo passa dal cloud). */
 enum class Reachability { ONLINE, OFFLINE }
 
+/** Una "casa" definita dall'utente in locale (non arriva dal cloud): un gruppo per filtrare. */
+data class Home(val id: String, val name: String)
+
 /**
  * Una unità (split). `targetTemp` è il setpoint (su questi moduli è `save_temp`, decimi di grado
  * nel protocollo, qui in gradi). `ambientTemp` è la temperatura ambiente letta.
@@ -29,7 +32,6 @@ enum class Reachability { ONLINE, OFFLINE }
 data class AcUnit(
     val id: String,
     val name: String,
-    val home: String = "",   // casa (famiglia) a cui appartiene, per il raggruppamento multi-casa
     val reachable: Reachability = Reachability.ONLINE,
     val power: Boolean = false,
     val mode: Mode = Mode.FREDDO,

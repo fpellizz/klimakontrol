@@ -31,7 +31,6 @@ data class Region(val code: String, val label: String, val licenseId: String, va
 data class CloudDevice(
     val did: String, val mac: String, val aeskey: String,
     val pid: String, val name: String, val lanaddr: String?, val devtype: Int,
-    val home: String = "",   // nome della casa (famiglia) a cui appartiene
 )
 
 object Salts {
@@ -224,36 +223,26 @@ class CloudClient(val region: Region = REGIONS.getValue("eu")) {
         return ensureOk(resp, path)
     }
 
-    /** Le case (famiglie) dell'utente: coppie (id, nome). */
-    private fun families(): List<Pair<String, String>> {
+    private fun familyIds(): List<String> {
         if (familyKey == null) refreshFamilyKey()
         val resp = ec4("/ec4/v1/user/getfamilyid", JSONObject().put("userid", userid))
-        val out = mutableListOf<Pair<String, String>>()
+        val out = mutableListOf<String>()
         resp.optJSONArray("familyinfo")?.let { arr ->
-            for (i in 0 until arr.length()) {
-                val f = arr.getJSONObject(i)
-                val id = f.optString("id")
-                if (id.isNotEmpty()) out.add(id to f.optString("name"))
-            }
+            for (i in 0 until arr.length()) arr.getJSONObject(i).optString("id").takeIf { it.isNotEmpty() }?.let(out::add)
         }
         return out
     }
 
     fun devices(): List<CloudDevice> {
-        val fams = families()
+        val fams = familyIds()
         if (fams.isEmpty()) return emptyList()
-        val nameById = fams.toMap()
-        val body = JSONObject().put("userid", userid).put("familyid", JSONArray(fams.map { it.first }))
+        val body = JSONObject().put("userid", userid).put("familyid", JSONArray(fams))
         val resp = ec4("/ec4/v1/family/getallinfo", body)
         val out = mutableListOf<CloudDevice>()
         val seen = HashSet<String>()
         resp.optJSONArray("familyallinfo")?.let { fams2 ->
             for (i in 0 until fams2.length()) {
                 val fam = fams2.getJSONObject(i)
-                val famId = fam.optString("familyid").ifEmpty { fam.optString("id") }
-                val home = (nameById[famId] ?: "").ifEmpty { fam.optString("name") }
-                // diagnostica: chiavi della famiglia + nome risolto (per confermare il campo del nome)
-                android.util.Log.i("klima-home", "casa: keys=${fam.keys().asSequence().toList()} nome='$home'")
                 for (field in listOf("devinfo", "subdevinfo")) {
                     val arr = fam.optJSONArray(field) ?: continue
                     for (j in 0 until arr.length()) {
@@ -264,7 +253,7 @@ class CloudClient(val region: Region = REGIONS.getValue("eu")) {
                             did = did, mac = d.optString("mac"), aeskey = aes,
                             pid = d.optString("pid"), name = d.optString("name"),
                             lanaddr = d.optString("lanaddr").ifEmpty { null },
-                            devtype = d.optInt("devtype"), home = home,
+                            devtype = d.optInt("devtype"),
                         ))
                     }
                 }

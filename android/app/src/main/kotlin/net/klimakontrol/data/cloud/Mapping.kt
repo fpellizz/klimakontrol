@@ -29,7 +29,6 @@ fun cloudUnit(dev: CloudDevice, s: Map<String, Int>, online: Boolean): AcUnit {
     return AcUnit(
         id = dev.did,
         name = dev.name.ifBlank { dev.mac },
-        home = dev.home,
         reachable = if (online) Reachability.ONLINE else Reachability.OFFLINE,
         power = (s["pwr"] ?: 0) == 1,
         mode = Wire.mode(s["tcl_mode"] ?: 5),

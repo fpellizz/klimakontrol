@@ -22,9 +22,10 @@ L'app fa **login** e controlla i climatizzatori **veri** via cloud.
   `ui/RegisterScreen.kt`, `CloudClient.sendRegisterCode()/register()` (multipart). La `register` è
   anche login: al successo la sessione è già pronta. Ricostruita dal dex, come la libreria Python
 - ✅ **Home** (panoramica multi-split, stati acceso/spento/offline) — `ui/HomeScreen.kt`
-- ✅ **Multi-casa**: le unità sono raggruppate per **casa** (famiglia cloud). Con una sola casa la
-  vista resta piatta (col nome della casa come titolo); con più case, intestazione per gruppo.
-  Il nome casa arriva da `getfamilyid`/`getallinfo` (log diagnostico `klima-home` per confermarlo)
+- ✅ **Case (locali)**: gruppi definiti dall'utente, **non** letti dal cloud. Crea/rinomina/elimina
+  case e assegna i dispositivi in **Impostazioni → Gestisci case** (`ui/HomesScreen.kt`), poi in
+  Home **filtri** con i chip per casa. Le azioni "Rinfresca/Spegni tutte" agiscono sulla casa vista.
+  **Export/Import** della configurazione (JSON, via condivisione). Persistenza in `data/homes/HomesStore.kt`
 - ✅ **Dettaglio** col **quadrante** (`Canvas`) **trascinabile** (slider circolare: tocca/trascina
   l'anello per impostare la temperatura, oltre ai pulsanti +/−), modalità/ventola/funzioni,
   fascia pollice — `ui/DetailScreen.kt`, `ui/Dial.kt`
