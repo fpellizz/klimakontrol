@@ -1,7 +1,6 @@
 package net.klimakontrol.data.cloud
 
 import android.content.Context
-import android.util.Log
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import net.klimakontrol.data.AcUnit
@@ -99,16 +98,9 @@ class CloudService(context: Context) {
     /** Carica l'elenco unità con il loro stato (una lettura per unità). */
     suspend fun loadUnits(): List<AcUnit> = withContext(Dispatchers.IO) {
         devices = client.devices()
-        devices.mapIndexed { i, d ->
+        devices.map { d ->
             try {
-                val raw = client.getState(d, READ_PARAMS)
-                // il modulo ignora i params richiesti e ritorna il SUO set: è la lista di capacità.
-                // Logga chiavi + valori (solo stato del climatizzatore, nessun segreto) per capire
-                // quali funzioni l'unità supporta davvero. Etichetta col nome o l'indice: MAI il MAC
-                // né il did (identificatori del dispositivo — vedi CLAUDE.md §7).
-                val label = d.name.ifBlank { "unità #${i + 1}" }
-                Log.i("klima-caps", "$label riporta ${raw.size}: $raw")
-                cloudUnit(d, raw, online = true)
+                cloudUnit(d, client.getState(d, READ_PARAMS), online = true)
             } catch (e: Exception) {
                 cloudUnit(d, emptyMap(), online = false)
             }

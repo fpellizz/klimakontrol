@@ -79,7 +79,7 @@ fun HomeScreen(
         ) {
             Column(Modifier.weight(1f)) {
                 val hn = homes.firstOrNull { it.id == selectedHome }?.name
-                Text(hn ?: "Casa", style = QuadType.title, color = c.ink)
+                Text(hn ?: "Dispositivi", style = QuadType.title, color = c.ink)
                 Text("${shown.size} unità · $onCount ${if (onCount == 1) "accesa" else "accese"}",
                     style = QuadType.body, color = c.ink2)
             }
@@ -126,7 +126,7 @@ fun HomeScreen(
                 item {
                     Box(Modifier.fillMaxWidth().padding(top = 40.dp), contentAlignment = Alignment.Center) {
                         Text(
-                            if (selectedHome != null) "Nessuna unità in questa casa.\nAssegnale da Impostazioni → Gestisci case."
+                            if (selectedHome != null) "Nessuna unità in questa zona.\nAssegnale da Impostazioni → Gestisci zone."
                             else "Nessuna unità.\nAbbina i climatizzatori con l'app ufficiale, poi torna qui.",
                             style = QuadType.body, color = c.ink3, textAlign = TextAlign.Center,
                         )

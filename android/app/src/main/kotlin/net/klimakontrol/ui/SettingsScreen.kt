@@ -1,7 +1,6 @@
 package net.klimakontrol.ui
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -16,7 +15,6 @@ import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.OutlinedTextField
@@ -68,9 +66,8 @@ fun SettingsScreen(
             Modifier.fillMaxWidth().padding(20.dp, 10.dp, 20.dp, 8.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Text("‹", color = c.ink, style = QuadType.title,
-                modifier = Modifier.clip(CircleShape).clickable { onBack() }.padding(horizontal = 6.dp))
-            Spacer(Modifier.width(8.dp))
+            BackButton(c.ink, onBack)
+            Spacer(Modifier.width(10.dp))
             Text("Impostazioni", style = QuadType.title, color = c.ink)
         }
 
@@ -138,12 +135,12 @@ fun SettingsScreen(
                 }
             }
 
-            // ---- case (gestione locale: gruppi/filtri definiti dall'utente) ----
-            Section("Case") {
-                Text("Raggruppa i climatizzatori per casa e filtra la Home. Tutto in locale.",
+            // ---- zone (gestione locale: gruppi/filtri definiti dall'utente) ----
+            Section("Zone") {
+                Text("Raggruppa i climatizzatori per zona (piano terra, zona notte…) e filtra la Home. Tutto in locale.",
                     style = QuadType.body, color = c.ink2)
                 Spacer(Modifier.height(10.dp))
-                Action("Gestisci case", enabled = true, accent = c.surface2, textColor = c.ink) { onManageHomes() }
+                Action("Gestisci zone", enabled = true, accent = c.surface2, textColor = c.ink) { onManageHomes() }
             }
 
             // ---- suono (sperimentale: dipende dal firmware del modulo) ----

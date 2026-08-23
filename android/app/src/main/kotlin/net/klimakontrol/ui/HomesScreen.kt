@@ -17,7 +17,6 @@ import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.OutlinedTextField
@@ -61,10 +60,9 @@ fun HomesScreen(
 
     Column(Modifier.fillMaxSize().background(c.bg).windowInsetsPadding(WindowInsets.safeDrawing)) {
         Row(Modifier.fillMaxWidth().padding(20.dp, 10.dp, 20.dp, 8.dp), verticalAlignment = Alignment.CenterVertically) {
-            Text("‹", color = c.ink, style = QuadType.title,
-                modifier = Modifier.clip(CircleShape).pressClickable(onClick = onBack).padding(horizontal = 6.dp))
-            Spacer(Modifier.width(8.dp))
-            Text("Gestisci case", style = QuadType.title, color = c.ink)
+            BackButton(c.ink, onBack)
+            Spacer(Modifier.width(10.dp))
+            Text("Gestisci zone", style = QuadType.title, color = c.ink)
         }
 
         Column(
@@ -73,9 +71,10 @@ fun HomesScreen(
         ) {
             note?.let { Text(it, style = QuadType.body, color = if (it.endsWith("✓")) c.ok else c.error) }
 
-            // ---- crea / rinomina / elimina case ----
-            Section("Le tue case") {
-                if (homes.isEmpty()) Text("Nessuna casa. Creane una qui sotto.", style = QuadType.body, color = c.ink3)
+            // ---- crea / rinomina / elimina zone ----
+            Section("Le tue zone") {
+                if (homes.isEmpty()) Text("Nessuna zona. Creane una qui sotto (es. Piano terra, Zona notte…).",
+                    style = QuadType.body, color = c.ink3)
                 homes.forEach { h ->
                     var name by remember(h.id) { mutableStateOf(h.name) }
                     Row(Modifier.fillMaxWidth().padding(vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -95,7 +94,7 @@ fun HomesScreen(
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     OutlinedTextField(
                         value = newHome, onValueChange = { newHome = it }, singleLine = true,
-                        label = { Text("Nuova casa") }, modifier = Modifier.weight(1f),
+                        label = { Text("Nuova zona") }, modifier = Modifier.weight(1f),
                     )
                     Spacer(Modifier.width(8.dp))
                     MiniButton("Aggiungi", accent, enabled = newHome.isNotBlank()) {
@@ -127,7 +126,7 @@ fun HomesScreen(
                     val json = onExport()
                     val intent = Intent(Intent.ACTION_SEND).apply {
                         type = "text/plain"
-                        putExtra(Intent.EXTRA_SUBJECT, "klimakontrol — configurazione case")
+                        putExtra(Intent.EXTRA_SUBJECT, "klimakontrol — configurazione zone")
                         putExtra(Intent.EXTRA_TEXT, json)
                     }
                     context.startActivity(Intent.createChooser(intent, "Esporta configurazione"))

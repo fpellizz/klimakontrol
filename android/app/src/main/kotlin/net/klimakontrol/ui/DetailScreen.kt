@@ -349,9 +349,10 @@ private fun FanSlider(current: FanSpeed, accent: Color, onSet: (FanSpeed) -> Uni
     }
 }
 
-// tasto "indietro": chevron disegnato (crisp, non dipende dal font) in un cerchietto tenue
+// tasto "indietro": chevron disegnato (crisp, non dipende dal font) in un cerchietto tenue.
+// Condiviso con Impostazioni / Gestione zone.
 @Composable
-private fun BackButton(tint: Color, onClick: () -> Unit) {
+internal fun BackButton(tint: Color, onClick: () -> Unit) {
     Box(
         Modifier.pressClickable(onClick = onClick).size(38.dp).clip(CircleShape)
             .background(tint.copy(alpha = 0.14f)),
