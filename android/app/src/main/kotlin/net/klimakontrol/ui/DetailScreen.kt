@@ -3,8 +3,8 @@ package net.klimakontrol.ui
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.gestures.drag
@@ -33,6 +33,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.StrokeJoin
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -112,11 +116,9 @@ fun DetailScreen(
         // ---- app bar (fondo = container modalità) ----
         Column(Modifier.fillMaxWidth().background(mode.container).padding(20.dp, 14.dp, 20.dp, 16.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Text("‹", color = mode.on, style = QuadType.title,
-                    modifier = Modifier.clip(CircleShape).clickable { onBack() }.padding(horizontal = 6.dp))
-                Spacer(Modifier.width(6.dp))
+                BackButton(mode.on, onBack)
+                Spacer(Modifier.width(10.dp))
                 Text(unit.name, style = QuadType.unit, color = mode.on, modifier = Modifier.weight(1f))
-                Text("⋯", color = mode.on, style = QuadType.unit)
             }
             Spacer(Modifier.height(2.dp))
             Text(
@@ -180,6 +182,16 @@ fun DetailScreen(
                         modifier = Modifier.height(18.dp))
                 }
             }
+        }
+
+        // ---- temperatura: +/− subito sotto il quadrante ----
+        Row(
+            Modifier.fillMaxWidth().padding(horizontal = 22.dp, vertical = 10.dp),
+            horizontalArrangement = Arrangement.spacedBy(14.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            StepButton("−", Modifier.weight(1f)) { onStep(-AcUnit.TEMP_STEP) }
+            StepButton("+", Modifier.weight(1f)) { onStep(AcUnit.TEMP_STEP) }
         }
 
         // ---- controlli (scrollabili) ----
@@ -246,15 +258,12 @@ fun DetailScreen(
             }
         }
 
-        // ---- thumb zone ----
-        Row(
-            Modifier.fillMaxWidth().padding(22.dp, 14.dp, 22.dp, 24.dp),
-            horizontalArrangement = Arrangement.spacedBy(14.dp),
-            verticalAlignment = Alignment.CenterVertically,
+        // ---- accensione (azione primaria, a portata di pollice) ----
+        Box(
+            Modifier.fillMaxWidth().padding(22.dp, 12.dp, 22.dp, 24.dp),
+            contentAlignment = Alignment.Center,
         ) {
-            StepButton("−", Modifier.weight(1f)) { onStep(-AcUnit.TEMP_STEP) }
             BigPower(unit.power, mode.accent, onTogglePower)
-            StepButton("+", Modifier.weight(1f)) { onStep(AcUnit.TEMP_STEP) }
         }
     }
 }
@@ -327,6 +336,27 @@ private fun FanSlider(current: FanSpeed, accent: Color, onSet: (FanSpeed) -> Uni
                 Modifier.weight(1f).height((16 + i * 5).dp).clip(RoundedCornerShape(4.dp))
                     .background(if (on) accent else c.border),
             )
+        }
+    }
+}
+
+// tasto "indietro": chevron disegnato (crisp, non dipende dal font) in un cerchietto tenue
+@Composable
+private fun BackButton(tint: Color, onClick: () -> Unit) {
+    Box(
+        Modifier.pressClickable(onClick = onClick).size(38.dp).clip(CircleShape)
+            .background(tint.copy(alpha = 0.14f)),
+        contentAlignment = Alignment.Center,
+    ) {
+        Canvas(Modifier.size(16.dp)) {
+            val w = size.width; val h = size.height
+            val p = Path().apply {
+                moveTo(w * 0.62f, h * 0.20f)
+                lineTo(w * 0.34f, h * 0.50f)
+                lineTo(w * 0.62f, h * 0.80f)
+            }
+            drawPath(p, tint, style = Stroke(
+                width = size.minDimension * 0.14f, cap = StrokeCap.Round, join = StrokeJoin.Round))
         }
     }
 }
