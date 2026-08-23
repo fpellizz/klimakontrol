@@ -378,11 +378,13 @@ class KlimaViewModel(app: Application) : AndroidViewModel(app) {
     private fun readable(e: Exception): String {
         val m = e.message ?: return "Operazione fallita"
         return when {
-            "-1008" in m -> "Credenziali non riconosciute"
+            "-1006" in m || "-1008" in m -> "Email o password errati"
             "-1036" in m -> "Troppi tentativi, riprova tra qualche minuto"
             "has_been_registered" in m -> "Questo account è già registrato: accedi invece di crearlo"
             "vcode" in m || "-3002" in m -> "Codice di verifica mancante o errato"
-            else -> m
+            // fallback: mai mostrare il messaggio cinese grezzo del server, solo il codice
+            else -> Regex("-?\\d{3,5}").find(m)?.let { "Operazione non riuscita (errore ${it.value})" }
+                ?: "Operazione non riuscita"
         }
     }
 }

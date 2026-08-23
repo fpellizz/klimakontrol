@@ -152,10 +152,10 @@ fun SettingsScreen(
                 vendorLogo?.let { bytes ->
                     val bmp = remember(bytes) { BitmapFactory.decodeByteArray(bytes, 0, bytes.size)?.asImageBitmap() }
                     if (bmp != null) {
-                        Box(Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp))
-                            .background(Color(0xFF0E1A2E)).padding(16.dp), contentAlignment = Alignment.Center) {
+                        Box(Modifier.fillMaxWidth().height(140.dp).clip(RoundedCornerShape(12.dp))
+                            .background(Color.White).padding(12.dp), contentAlignment = Alignment.Center) {
                             Image(bitmap = bmp, contentDescription = "Logo del produttore",
-                                modifier = Modifier.fillMaxWidth().height(84.dp), contentScale = ContentScale.Fit)
+                                modifier = Modifier.fillMaxSize(), contentScale = ContentScale.Fit)
                         }
                         Spacer(Modifier.height(10.dp))
                     }

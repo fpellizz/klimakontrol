@@ -35,9 +35,11 @@ object VendorBranding {
                     e = zip.nextEntry
                 }
             }
-            // preferisci il logo dedicato, poi uno splash, poi il primo PNG disponibile
-            pngs["abouticon.png"]
+            // preferisci lo splash `loading_*` (logo a colori su bianco, ben visibile) — l'aboutIcon
+            // è la versione tutta bianca, invisibile su sfondo chiaro. Poi fallback.
+            pngs["loading_640x960.png"]
                 ?: pngs.entries.firstOrNull { it.key.startsWith("loading") }?.value
+                ?: pngs["abouticon.png"]
                 ?: pngs.values.firstOrNull()
         } catch (_: Exception) {
             null

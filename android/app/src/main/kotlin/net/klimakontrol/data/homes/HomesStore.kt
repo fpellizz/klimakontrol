@@ -17,7 +17,8 @@ class HomesStore(context: Context) {
     fun vendorCode(): String = sp.getString("vendor", "") ?: ""
     fun setVendorCode(code: String) = sp.edit().putString("vendor", code.trim()).apply()
 
-    private val logoFile get() = java.io.File(ctx.filesDir, "vendor_logo.png")
+    // v2: invalida la vecchia cache (aboutIcon bianco) — ora si usa lo splash a colori
+    private val logoFile get() = java.io.File(ctx.filesDir, "vendor_logo_v2.png")
     fun vendorLogo(): ByteArray? = logoFile.takeIf { it.exists() }?.readBytes()
     fun saveVendorLogo(bytes: ByteArray?) {
         if (bytes == null) logoFile.delete() else logoFile.writeBytes(bytes)
