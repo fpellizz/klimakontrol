@@ -25,6 +25,10 @@ class HomesStore(context: Context) {
         sp.edit().putString("homes", arr.toString()).apply()
     }
 
+    /** Preferenza locale: aggiungere `beep=1` a ogni comando (bip del climatizzatore). */
+    fun beepOnCommand(): Boolean = sp.getBoolean("beep", false)
+    fun setBeepOnCommand(on: Boolean) = sp.edit().putBoolean("beep", on).apply()
+
     /** did del dispositivo → id della casa. */
     fun assignments(): Map<String, String> {
         val o = JSONObject(sp.getString("assign", "{}"))

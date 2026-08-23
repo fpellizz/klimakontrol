@@ -20,6 +20,8 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Switch
+import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -48,6 +50,8 @@ fun SettingsScreen(
     onChangeNickname: (String) -> Unit,
     onChangePassword: (String, String) -> Unit,
     onManageHomes: () -> Unit,
+    beep: Boolean,
+    onToggleBeep: (Boolean) -> Unit,
     onLogout: () -> Unit,
     onForget: () -> Unit,
     onBack: () -> Unit,
@@ -140,6 +144,20 @@ fun SettingsScreen(
                     style = QuadType.body, color = c.ink2)
                 Spacer(Modifier.height(10.dp))
                 Action("Gestisci case", enabled = true, accent = c.surface2, textColor = c.ink) { onManageHomes() }
+            }
+
+            // ---- suono (sperimentale: dipende dal firmware del modulo) ----
+            Section("Suono") {
+                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                    Column(Modifier.weight(1f)) {
+                        Text("Bip a ogni comando", style = QuadType.body, color = c.ink)
+                        Text("Sperimentale: manda il parametro «beep». Se il modulo non lo gestisce, non suona.",
+                            style = QuadType.micro, color = c.ink3)
+                    }
+                    Spacer(Modifier.width(12.dp))
+                    Switch(checked = beep, onCheckedChange = onToggleBeep,
+                        colors = SwitchDefaults.colors(checkedTrackColor = accent))
+                }
             }
 
             // ---- fuso orario (informativo: nessuna impostazione server) ----

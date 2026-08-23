@@ -52,7 +52,7 @@ enum class SendState { Idle, Sending, Ok, Error }
 private const val DEBOUNCE_MS = 400L
 private const val OK_HOLD_MS = 900L
 private const val ERR_HOLD_MS = 1600L
-private const val POLL_MS = 15_000L   // aggiornamento periodico dello stato reale (uso promiscuo)
+private const val POLL_MS = 10_000L   // aggiornamento periodico dello stato reale (uso promiscuo)
 
 class KlimaViewModel(app: Application) : AndroidViewModel(app) {
 
@@ -107,6 +107,12 @@ class KlimaViewModel(app: Application) : AndroidViewModel(app) {
                              else _assignments.value + (unitId to homeId)
         homesStore.saveAssignments(_assignments.value)
     }
+
+    // ---- bip del climatizzatore a ogni comando (sperimentale: parametro `beep`) ----
+    private val _beep = MutableStateFlow(homesStore.beepOnCommand())
+    val beep = _beep.asStateFlow()
+    fun setBeep(on: Boolean) { _beep.value = on; homesStore.setBeepOnCommand(on) }
+    private fun beepExtra(): Map<String, Int> = if (_beep.value) mapOf("beep" to 1) else emptyMap()
 
     fun exportConfig(): String = homesStore.exportJson()
 
@@ -165,9 +171,18 @@ class KlimaViewModel(app: Application) : AndroidViewModel(app) {
     private fun startPolling() = viewModelScope.launch {
         while (true) {
             delay(POLL_MS)
-            if (!foreground || _phase.value != Phase.Connected || isBusy()) continue
-            val fresh = runCatching { service.loadUnits() }.getOrNull() ?: continue
+            if (!foreground || _phase.value != Phase.Connected || isBusy()) {
+                android.util.Log.i("klima-poll",
+                    "skip (fg=$foreground, connesso=${_phase.value == Phase.Connected}, busy=${isBusy()})")
+                continue
+            }
+            val fresh = runCatching { service.loadUnits() }.getOrNull()
+            if (fresh == null) { android.util.Log.i("klima-poll", "lettura fallita"); continue }
             if (isBusy()) continue   // un comando può essere partito durante la lettura
+            // quante unità hanno lo stato diverso da prima? (0 = il modulo NON riflette il cambio)
+            val before = _units.value.associateBy { it.id }
+            val changed = fresh.count { f -> before[f.id]?.let { it != f } ?: true }
+            android.util.Log.i("klima-poll", "ok: ${fresh.size} unità lette, cambiate=$changed")
             mergeUnits(fresh)
         }
     }
@@ -282,7 +297,7 @@ class KlimaViewModel(app: Application) : AndroidViewModel(app) {
         setSend(id, SendState.Sending)
         viewModelScope.launch {
             try {
-                service.push(id, changes(after)); setSend(id, SendState.Ok); holdThenIdle(id, OK_HOLD_MS)
+                service.push(id, changes(after) + beepExtra()); setSend(id, SendState.Ok); holdThenIdle(id, OK_HOLD_MS)
             } catch (e: Exception) {
                 setUnit(before); setSend(id, SendState.Error); holdThenIdle(id, ERR_HOLD_MS)
             }
@@ -301,7 +316,7 @@ class KlimaViewModel(app: Application) : AndroidViewModel(app) {
             val before = burstBefore.remove(id) ?: cur
             val target = unit(id)?.targetTemp ?: return@launch
             try {
-                service.push(id, targetWire(target)); setSend(id, SendState.Ok); holdThenIdle(id, OK_HOLD_MS)
+                service.push(id, targetWire(target) + beepExtra()); setSend(id, SendState.Ok); holdThenIdle(id, OK_HOLD_MS)
             } catch (e: Exception) {
                 setUnit(before); setSend(id, SendState.Error); holdThenIdle(id, ERR_HOLD_MS)
             } finally {
