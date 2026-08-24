@@ -100,8 +100,8 @@ private fun LifecycleBridge(vm: KlimaViewModel) {
     DisposableEffect(owner) {
         val obs = LifecycleEventObserver { _, e ->
             when (e) {
+                // ON_START: primo piano -> setForeground(true) ricarica già subito lo stato
                 Lifecycle.Event.ON_START -> vm.setForeground(true)
-                Lifecycle.Event.ON_RESUME -> vm.refresh()
                 Lifecycle.Event.ON_STOP -> vm.setForeground(false)
                 else -> {}
             }
