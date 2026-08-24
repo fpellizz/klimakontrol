@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -29,6 +30,7 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.viewmodel.compose.viewModel
+import kotlinx.coroutines.delay
 import net.klimakontrol.data.AcUnit
 import net.klimakontrol.ui.DetailScreen
 import net.klimakontrol.ui.HomeScreen
@@ -39,6 +41,7 @@ import net.klimakontrol.ui.HomesScreen
 import net.klimakontrol.ui.LoginScreen
 import net.klimakontrol.ui.RegisterScreen
 import net.klimakontrol.ui.SettingsScreen
+import net.klimakontrol.ui.SplashScreen
 import net.klimakontrol.ui.theme.Klima
 import net.klimakontrol.ui.theme.KlimaTheme
 
@@ -61,6 +64,10 @@ private fun AppRoot(vm: KlimaViewModel = viewModel()) {
     val vendorLogo by vm.vendorLogo.collectAsState()
     val c = Klima.colors
 
+    var showSplash by rememberSaveable { mutableStateOf(true) }
+    LaunchedEffect(Unit) { delay(1500); showSplash = false }
+    if (showSplash) { SplashScreen(vendorLogo); return }
+
     when (val p = phase) {
         is Phase.Loading -> Box(
             Modifier.fillMaxSize().background(c.bg), contentAlignment = Alignment.Center,
@@ -69,7 +76,6 @@ private fun AppRoot(vm: KlimaViewModel = viewModel()) {
         is Phase.Login -> LoginScreen(
             p, onLogin = { e, pw, rem, reg -> vm.login(e, pw, rem, reg) },
             onCreateAccount = { vm.startRegister() },
-            vendorLogo = vendorLogo,
         )
 
         is Phase.Register -> RegisterScreen(

@@ -22,12 +22,18 @@ private val provider = GoogleFont.Provider(
 
 private val spaceGrotesk = GoogleFont("Space Grotesk")
 private val inter = GoogleFont("Inter")
+private val outfit = GoogleFont("Outfit")   // wordmark del nome app
 
 private val Display = FontFamily(
     Font(spaceGrotesk, provider, FontWeight.Light),
     Font(spaceGrotesk, provider, FontWeight.Normal),
     Font(spaceGrotesk, provider, FontWeight.Medium),
     Font(spaceGrotesk, provider, FontWeight.Bold),
+)
+private val Wordmark = FontFamily(
+    Font(outfit, provider, FontWeight.Medium),
+    Font(outfit, provider, FontWeight.SemiBold),
+    Font(outfit, provider, FontWeight.Bold),
 )
 private val Body = FontFamily(
     Font(inter, provider, FontWeight.Normal),
@@ -42,6 +48,7 @@ object QuadType {
     val tempUnit = TextStyle(fontFamily = Display, fontWeight = FontWeight.Normal, fontSize = 26.sp)
     val target = TextStyle(fontFamily = Display, fontWeight = FontWeight.Normal, fontSize = 34.sp, fontFeatureSettings = TNUM)
     val title = TextStyle(fontFamily = Display, fontWeight = FontWeight.Medium, fontSize = 26.sp)
+    val wordmark = TextStyle(fontFamily = Wordmark, fontWeight = FontWeight.SemiBold, fontSize = 30.sp, letterSpacing = 0.3.sp)
     val unit = TextStyle(fontFamily = Body, fontWeight = FontWeight.Medium, fontSize = 22.sp)
     val name = TextStyle(fontFamily = Body, fontWeight = FontWeight.Medium, fontSize = 18.sp)
     val body = TextStyle(fontFamily = Body, fontWeight = FontWeight.Normal, fontSize = 15.sp)
