@@ -144,6 +144,27 @@ def cmd_register(args) -> None:
               "ufficiale (l'abbinamento non e' ancora implementato qui)." % path)
 
 
+def cmd_bind(args) -> None:
+    cli, devices = session.load()
+    # I2: guard nessuna sessione
+    if cli is None:
+        sys.exit("Nessuna sessione: lancia `klimakontrol login`.")
+    # I4: chiave AES da getpass, non da argv (non finisce in ps/history)
+    key = args.key or getpass.getpass("Chiave AES del dispositivo (devkey): ")
+    dev = CloudDevice(did=args.did, pid=args.pid, mac=args.mac, aeskey=key,
+                      name=args.name or "")
+    resp = cli.bind_device(dev, name=args.name or "", family_id=args.family)
+    # I3: did troncato in output (non stampare in chiaro)
+    print("Registrato %s (%s)" % (args.name or args.did[:8], resp.get("msg", "ok")))
+    print(json.dumps(session.mask(resp), indent=1, ensure_ascii=False))
+    # I1: rileggi elenco dal cloud dopo bind riuscito
+    try:
+        devices = cli.devices()
+    except CloudError as exc:
+        print("(bind ok, ma rilettura elenco fallita: %s)" % exc, file=sys.stderr)
+    session.save(cli, devices)
+
+
 def cmd_list(args) -> None:
     _, devices = session.load()
     if not devices:
@@ -252,6 +273,15 @@ def build_parser() -> argparse.ArgumentParser:
     sp.add_argument("--nickname", help="soprannome (default: l'account stesso)")
     sp.add_argument("--countrycode", help="prefisso internazionale se telefono (es. 39)")
     sp.set_defaults(func=cmd_register)
+
+    sp = sub.add_parser("bind", help="registra un modulo gia' configurato nell'account")
+    sp.add_argument("--did", required=True, help="device id restituito dalla config SoftAP")
+    sp.add_argument("--pid", required=True, help="product id del modello")
+    sp.add_argument("--mac", required=True, help="MAC del modulo")
+    sp.add_argument("--key", help="chiave AES del dispositivo (devkey); se omessa, chiede interattivamente")
+    sp.add_argument("--name", help="nome da dare all'unita'")
+    sp.add_argument("--family", help="id famiglia (default: la prima dell'account)")
+    sp.set_defaults(func=cmd_bind)
 
     sub.add_parser("list", help="elenco unita'").set_defaults(func=cmd_list)
 
