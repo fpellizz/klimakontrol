@@ -169,8 +169,10 @@ class KlimaViewModel(app: Application) : AndroidViewModel(app) {
     fun changeNickname(nick: String) =
         settingsOp("Nome aggiornato ✓") { service.changeNickname(nick) }
 
-    private val tempJobs = mutableMapOf<String, Job>()      // debounce per unità
-    private val burstBefore = mutableMapOf<String, AcUnit>() // snapshot per il roll-back del burst
+    private val tempJobs = mutableMapOf<String, Job>()      // debounce temperatura per unità
+    private val burstBefore = mutableMapOf<String, AcUnit>() // snapshot per il roll-back del burst temp
+    private val fanJobs = mutableMapOf<String, Job>()       // debounce ventola per unità
+    private val fanBurstBefore = mutableMapOf<String, AcUnit>() // snapshot roll-back del burst ventola
 
     fun unit(id: String): AcUnit? = _units.value.firstOrNull { it.id == id }
 
@@ -205,11 +207,12 @@ class KlimaViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     /** Vero se c'è un comando in volo (invio o debounce temperatura): non aggiornare adesso. */
-    private fun isBusy() = _send.value.values.any { it == SendState.Sending } || tempJobs.isNotEmpty()
+    private fun isBusy() = _send.value.values.any { it == SendState.Sending } ||
+        tempJobs.isNotEmpty() || fanJobs.isNotEmpty()
 
     /** Applica lo stato fresco senza calpestare le unità con un comando in volo. */
     private fun mergeUnits(fresh: List<AcUnit>) {
-        val busy = _send.value.filterValues { it == SendState.Sending }.keys + tempJobs.keys
+        val busy = _send.value.filterValues { it == SendState.Sending }.keys + tempJobs.keys + fanJobs.keys
         _units.value = fresh.map { f -> if (f.id in busy) unit(f.id) ?: f else f }
     }
 
@@ -321,33 +324,41 @@ class KlimaViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
-    // ---- temperatura: aggiorna subito, invia UNA volta dopo la quiete (debounce) ----
-    private fun debouncedTarget(id: String, newTarget: (AcUnit) -> Float) {
+    // ---- comando con debounce: aggiorna subito lo stato, ma invia UNA sola volta dopo la quiete.
+    //      Usato da temperatura e ventola (slider/step): niente un comando — e un bip — per passo. ----
+    private fun debounced(id: String, jobs: MutableMap<String, Job>, snapshots: MutableMap<String, AcUnit>,
+                          apply: (AcUnit) -> AcUnit, wire: (AcUnit) -> Map<String, Int>) {
         val cur = unit(id) ?: return
-        if (!tempJobs.containsKey(id)) burstBefore[id] = cur  // inizio burst
-        setUnit(cur.copy(targetTemp = clampT(newTarget(cur))))
+        if (!jobs.containsKey(id)) snapshots[id] = cur   // inizio burst
+        setUnit(apply(cur))
         setSend(id, SendState.Sending)
-        tempJobs[id]?.cancel()
-        tempJobs[id] = viewModelScope.launch {
+        jobs[id]?.cancel()
+        jobs[id] = viewModelScope.launch {
             delay(DEBOUNCE_MS)
-            val before = burstBefore.remove(id) ?: cur
-            val target = unit(id)?.targetTemp ?: return@launch
+            val before = snapshots.remove(id) ?: cur
+            val u = unit(id) ?: return@launch
             try {
-                service.push(id, targetWire(target)); setSend(id, SendState.Ok); holdThenIdle(id, OK_HOLD_MS)
+                service.push(id, wire(u)); setSend(id, SendState.Ok); holdThenIdle(id, OK_HOLD_MS)
             } catch (e: Exception) {
                 setUnit(before); setSend(id, SendState.Error); holdThenIdle(id, ERR_HOLD_MS)
             } finally {
-                tempJobs.remove(id)
+                jobs.remove(id)
             }
         }
     }
+
+    private fun debouncedTarget(id: String, newTarget: (AcUnit) -> Float) =
+        debounced(id, tempJobs, burstBefore,
+            { it.copy(targetTemp = clampT(newTarget(it))) }, { targetWire(it.targetTemp) })
 
     fun stepTarget(id: String, d: Float) = debouncedTarget(id) { it.targetTemp + d }
     fun setTarget(id: String, t: Float) = debouncedTarget(id) { t }
 
     fun togglePower(id: String) = immediate(id, { it.copy(power = !it.power) }, { powerWire(it.power) })
     fun setMode(id: String, m: Mode) = immediate(id, { it.copy(mode = m) }, { modeChangeWire(it.mode) })
-    fun setFan(id: String, f: FanSpeed) = immediate(id, { it.copy(fan = f) }, { fanChangeWire(it.fan) })
+    // ventola: debounce come la temperatura — trascinando lo slider parte un solo comando alla fine
+    fun setFan(id: String, f: FanSpeed) =
+        debounced(id, fanJobs, fanBurstBefore, { it.copy(fan = f) }, { fanChangeWire(it.fan) })
     fun toggleSwingV(id: String) = immediate(id, { it.copy(swingV = !it.swingV) }, { swingVWire(it.swingV) })
     fun toggleSwingH(id: String) = immediate(id, { it.copy(swingH = !it.swingH) }, { swingHWire(it.swingH) })
     fun toggleEco(id: String) = immediate(id, { it.copy(eco = !it.eco, turbo = false, night = false) }, { ecoWire(it.eco) })
