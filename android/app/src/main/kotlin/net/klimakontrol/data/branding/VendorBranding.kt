@@ -1,5 +1,8 @@
 package net.klimakontrol.data.branding
 
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
+import java.io.ByteArrayOutputStream
 import java.net.HttpURLConnection
 import java.net.URL
 import java.net.URLEncoder
@@ -37,14 +40,47 @@ object VendorBranding {
             }
             // preferisci lo splash `loading_*` (logo a colori su bianco, ben visibile) — l'aboutIcon
             // è la versione tutta bianca, invisibile su sfondo chiaro. Poi fallback.
-            pngs["loading_640x960.png"]
+            val chosen = pngs["loading_640x960.png"]
                 ?: pngs.entries.firstOrNull { it.key.startsWith("loading") }?.value
                 ?: pngs["abouticon.png"]
                 ?: pngs.values.firstOrNull()
+            // ritaglia i margini uniformi (bianco/trasparente) attorno al marchio, così riempie il
+            // riquadro invece di essere piccolo in mezzo a molto bianco
+            chosen?.let { autoCrop(it) ?: it }
         } catch (_: Exception) {
             null
         } finally {
             con.disconnect()
         }
+    }
+
+    /** Ritaglia i bordi uniformi (quasi-bianco o trasparente) attorno al contenuto. */
+    private fun autoCrop(png: ByteArray): ByteArray? {
+        val bmp = BitmapFactory.decodeByteArray(png, 0, png.size) ?: return null
+        val w = bmp.width; val h = bmp.height
+        if (w == 0 || h == 0) return null
+        var minX = w; var minY = h; var maxX = -1; var maxY = -1
+        val row = IntArray(w)
+        for (y in 0 until h) {
+            bmp.getPixels(row, 0, w, 0, y, w, 1)
+            for (x in 0 until w) {
+                val p = row[x]
+                val a = (p ushr 24) and 0xFF
+                val r = (p ushr 16) and 0xFF; val g = (p ushr 8) and 0xFF; val b = p and 0xFF
+                val background = a < 16 || (r > 240 && g > 240 && b > 240)  // trasparente o quasi-bianco
+                if (!background) {
+                    if (x < minX) minX = x; if (x > maxX) maxX = x
+                    if (y < minY) minY = y; if (y > maxY) maxY = y
+                }
+            }
+        }
+        if (maxX < minX || maxY < minY) return null  // immagine tutta "sfondo"
+        val pad = (maxOf(maxX - minX, maxY - minY) * 0.06f).toInt()
+        minX = (minX - pad).coerceAtLeast(0); minY = (minY - pad).coerceAtLeast(0)
+        maxX = (maxX + pad).coerceAtMost(w - 1); maxY = (maxY + pad).coerceAtMost(h - 1)
+        val cropped = Bitmap.createBitmap(bmp, minX, minY, maxX - minX + 1, maxY - minY + 1)
+        val out = ByteArrayOutputStream()
+        cropped.compress(Bitmap.CompressFormat.PNG, 100, out)
+        return out.toByteArray()
     }
 }

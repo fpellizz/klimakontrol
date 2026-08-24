@@ -58,6 +58,7 @@ class MainActivity : ComponentActivity() {
 private fun AppRoot(vm: KlimaViewModel = viewModel()) {
     val phase by vm.phase.collectAsState()
     val units by vm.units.collectAsState()
+    val vendorLogo by vm.vendorLogo.collectAsState()
     val c = Klima.colors
 
     when (val p = phase) {
@@ -68,6 +69,7 @@ private fun AppRoot(vm: KlimaViewModel = viewModel()) {
         is Phase.Login -> LoginScreen(
             p, onLogin = { e, pw, rem, reg -> vm.login(e, pw, rem, reg) },
             onCreateAccount = { vm.startRegister() },
+            vendorLogo = vendorLogo,
         )
 
         is Phase.Register -> RegisterScreen(

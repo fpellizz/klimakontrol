@@ -1,5 +1,7 @@
 package net.klimakontrol.ui
 
+import android.graphics.BitmapFactory
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -34,6 +36,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
@@ -104,6 +108,7 @@ fun LoginScreen(
     state: Phase.Login,
     onLogin: (String, String, Boolean, String) -> Unit,
     onCreateAccount: () -> Unit = {},
+    vendorLogo: ByteArray? = null,
 ) {
     val c = Klima.colors
     val accent = c.mode(net.klimakontrol.data.Mode.FREDDO).accent
@@ -124,6 +129,17 @@ fun LoginScreen(
             Text("klimakontrol", style = QuadType.title, color = c.ink)
             Text("Accedi al tuo account per controllare i climatizzatori.",
                 style = QuadType.body, color = c.ink2)
+            // logo del produttore (se impostato in Impostazioni → Hardware): piccola cifra di branding
+            vendorLogo?.let { bytes ->
+                val bmp = remember(bytes) { BitmapFactory.decodeByteArray(bytes, 0, bytes.size)?.asImageBitmap() }
+                if (bmp != null) {
+                    Box(Modifier.clip(RoundedCornerShape(10.dp)).background(Color.White)
+                        .padding(horizontal = 14.dp, vertical = 8.dp)) {
+                        Image(bitmap = bmp, contentDescription = "Logo del produttore",
+                            modifier = Modifier.height(26.dp), contentScale = ContentScale.Fit)
+                    }
+                }
+            }
             Spacer(Modifier.height(6.dp))
 
             OutlinedTextField(
