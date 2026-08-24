@@ -470,3 +470,56 @@ class TestRegister(unittest.TestCase):
         c._request = lambda *a, **k: {"error": 0}   # nessun userid/loginsession
         with self.assertRaises(CloudError):
             c.register("z@z.it", "pw", code="1")
+
+
+class BindDevice(unittest.TestCase):
+    def _bound_client(self):
+        c = _client()                       # CloudClient("eu") + restore_session
+        c.family_ids = lambda: ["FAM-1"]    # niente rete
+        return c
+
+    def test_bind_builds_add_request(self):
+        c = self._bound_client()
+        captured = {}
+
+        def fake_request(url, headers, body=None):
+            captured["url"] = url
+            captured["headers"] = headers
+            captured["body"] = json.loads(body.decode())
+            return {"status": 0}
+
+        c._request = fake_request
+        dev = CloudDevice(did="did-XYZ", pid="pid-abc", mac="AABBCCDDEEFF",
+                          aeskey="00112233445566778899aabbccddeeff", local_id=7)
+        resp = c.bind_device(dev, name="Salotto")
+
+        self.assertTrue(captured["url"].endswith(
+            "/appsync/group/dev/manage?operation=add"))
+        self.assertEqual(captured["body"]["familyId"], "FAM-1")
+        ep = captured["body"]["endpoints"][0]
+        self.assertEqual(ep["endpointId"], "did-XYZ")
+        self.assertEqual(ep["productId"], "pid-abc")
+        self.assertEqual(ep["mac"], "AABBCCDDEEFF")
+        self.assertEqual(ep["friendlyName"], "Salotto")
+        self.assertTrue(ep["cookie"])                     # cookie Base64 presente
+        self.assertEqual(captured["headers"]["userid"], c.userid)
+        self.assertEqual(resp, {"status": 0})
+
+    def test_bind_uses_first_family_when_unspecified(self):
+        c = self._bound_client()
+        seen = {}
+        c._request = lambda url, headers, body=None: seen.update(
+            fam=json.loads(body.decode())["familyId"]) or {"status": 0}
+        c.bind_device(CloudDevice(did="d", pid="p", mac="m", aeskey="k"))
+        self.assertEqual(seen["fam"], "FAM-1")
+
+    def test_bind_without_session_is_refused(self):
+        from klimakontrol.cloud import CloudClient
+        with self.assertRaises(CloudError):
+            CloudClient("eu").bind_device(CloudDevice(did="d", pid="p", mac="m", aeskey="k"))
+
+    def test_bind_raises_on_error_code(self):
+        c = self._bound_client()
+        c._request = lambda *a, **k: {"status": -1, "msg": "già associato"}
+        with self.assertRaises(CloudError):
+            c.bind_device(CloudDevice(did="d", pid="p", mac="m", aeskey="k"))

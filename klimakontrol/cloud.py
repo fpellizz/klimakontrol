@@ -549,6 +549,33 @@ class CloudClient:
             dev.dev_session = session      # il cloud ruota la sessione del dispositivo
         return event.get("payload") or {}
 
+    def bind_device(self, dev: CloudDevice, name: str = "",
+                    family_id: Optional[str] = None, room_id: str = "") -> Dict[str, Any]:
+        """Registra un dispositivo appena configurato nella famiglia (casa cloud) dell'account.
+
+        `dev` porta did/pid/mac/aeskey — dalla config SoftAP (Punto 2) o inseriti a mano.
+        Se `family_id` manca, usa la prima famiglia dell'account. La chiave viaggia nel
+        campo `cookie` (Base64), come per `sdkcontrol`. Ricostruito da `BLFamilyManager.addEndpoint`.
+        """
+        self._require_session()
+        family = family_id or (self.family_ids() or [""])[0]
+        if not family:
+            raise CloudError("bind: nessuna famiglia disponibile per l'account")
+        endpoint = {
+            "productId": dev.pid,
+            "endpointId": dev.did,
+            "mac": dev.mac,
+            "friendlyName": name or dev.name or dev.did,
+            "cookie": self.build_cookie(dev),
+            "roomId": room_id,
+            "order": 0,
+        }
+        body = {"familyId": family, "endpoints": [endpoint]}
+        url = "%s/appsync/group/dev/manage?operation=add" % self.base
+        headers = self._control_headers()
+        headers["Content-type"] = "text/plain;charset=utf-8"   # come l'app: body JSON in chiaro
+        return self._ensure_ok(self._request(url, headers, _jd(body).encode()), "bind dispositivo")
+
     def get_state(self, dev: CloudDevice, names: Optional[List[str]] = None) -> Dict[str, Any]:
         from .local import flatten_params_vals
         from .params import READ_SET
