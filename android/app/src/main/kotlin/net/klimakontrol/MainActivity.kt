@@ -21,6 +21,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -64,8 +65,10 @@ private fun AppRoot(vm: KlimaViewModel = viewModel()) {
     val vendorLogo by vm.vendorLogo.collectAsState()
     val c = Klima.colors
 
-    var showSplash by rememberSaveable { mutableStateOf(true) }
-    LaunchedEffect(Unit) { delay(1500); showSplash = false }
+    // `remember` (non saveable): lo splash parte a ogni creazione dell'Activity, non viene
+    // ripristinato a false da uno stato salvato precedente
+    var showSplash by remember { mutableStateOf(true) }
+    LaunchedEffect(Unit) { delay(1600); showSplash = false }
     if (showSplash) { SplashScreen(vendorLogo); return }
 
     when (val p = phase) {
