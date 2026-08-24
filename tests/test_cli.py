@@ -1,4 +1,6 @@
+import contextlib
 import getpass as getpass_module
+import io
 import json
 import types
 import unittest
@@ -42,7 +44,9 @@ class TestBindCommand(unittest.TestCase):
         try:
             args = types.SimpleNamespace(
                 did="D1", pid="P1", mac="M1", key="KEYHEX", name="Camera", family=None)
-            cli.cmd_bind(args)
+            with contextlib.redirect_stdout(io.StringIO()) as output:
+                cli.cmd_bind(args)
+            printed = output.getvalue()
         finally:
             cli.session.load = orig_load
             cli.session.mask = orig_mask
@@ -57,7 +61,48 @@ class TestBindCommand(unittest.TestCase):
         # Verifica mapping --family → family_id (fix minore)
         self.assertIsNone(calls["family"])
         # Verifica che dispositivi siano stati riletti (I1)
-        self.assertIsNotNone(saved_devices.get("devices"))
+        self.assertEqual(len(saved_devices["devices"]), 1)
+        self.assertEqual(saved_devices["devices"][0].did, "D1")
+        # Verifica output: AES key non deve apparire, did deve essere troncato
+        # (Fix C - asserzioni stdout)
+        self.assertNotIn("KEYHEX", printed)
+        self.assertIn("Camera", printed)  # il nome completo appare se fornito
+
+    def test_cmd_bind_no_name_truncates_did(self):
+        """Test: cmd_bind senza --name tronca il did a 8 caratteri in output (I3)."""
+        class FakeClient:
+            userid = "u"
+            def bind_device(self, dev, name="", family_id=None, room_id=""):
+                return {"status": 0, "msg": "ok"}
+
+            def devices(self):
+                return []
+
+        orig_load = cli.session.load
+        orig_mask = cli.session.mask
+        orig_save = cli.session.save
+
+        cli.session.load = lambda: (FakeClient(), [])
+        cli.session.mask = lambda o: o
+        cli.session.save = lambda *a, **k: None
+        try:
+            long_did = "0123456789ABCDEF0123456789ABCDEF"  # 32 char did
+            args = types.SimpleNamespace(
+                did=long_did, pid="P1", mac="M1", key="KEYHEX", name=None, family=None)
+            with contextlib.redirect_stdout(io.StringIO()) as output:
+                cli.cmd_bind(args)
+            printed = output.getvalue()
+        finally:
+            cli.session.load = orig_load
+            cli.session.mask = orig_mask
+            cli.session.save = orig_save
+
+        # Verifica che il did sia troncato a 8 caratteri
+        self.assertIn("01234567", printed)
+        # Verifica che il did completo NON appaia
+        self.assertNotIn(long_did, printed)
+        # Verifica che la chiave AES non appaia
+        self.assertNotIn("KEYHEX", printed)
 
     def test_cmd_bind_no_session(self):
         """Test: cmd_bind con nessuna sessione fa sys.exit (I2)."""
@@ -66,8 +111,9 @@ class TestBindCommand(unittest.TestCase):
         try:
             args = types.SimpleNamespace(
                 did="D1", pid="P1", mac="M1", key="KEYHEX", name="Camera", family=None)
-            with self.assertRaises(SystemExit):
-                cli.cmd_bind(args)
+            with contextlib.redirect_stdout(io.StringIO()):
+                with self.assertRaises(SystemExit):
+                    cli.cmd_bind(args)
         finally:
             cli.session.load = orig_load
 
@@ -96,7 +142,8 @@ class TestBindCommand(unittest.TestCase):
         try:
             args = types.SimpleNamespace(
                 did="D1", pid="P1", mac="M1", key=None, name="Camera", family=None)
-            cli.cmd_bind(args)
+            with contextlib.redirect_stdout(io.StringIO()):
+                cli.cmd_bind(args)
         finally:
             cli.session.load = orig_load
             cli.session.mask = orig_mask

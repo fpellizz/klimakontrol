@@ -561,6 +561,14 @@ class CloudClient:
         family = family_id or (self.family_ids() or [""])[0]
         if not family:
             raise CloudError("bind: nessuna famiglia disponibile per l'account")
+        # Provenienza (ricostruito dall'APK, non indovinato):
+        #   host/percorso: BLFamilyManager.addEndpoint -> POST BLApiUrls.BASE_URL
+        #     (= https://<lid>appservice.ibroadlink.com) + "/appsync/group/dev/manage?operation=add"
+        #   corpo in chiaro: BLHttpPostAccessor -> HttpPost -> HttpBase.addBodyData invia la
+        #     stringa come text/plain (NON AES come il ramo _ec4)
+        #   campi endpoint: BLEndpointInfo (productId/endpointId/mac/friendlyName/cookie/roomId/order)
+        #   NB: la forma della risposta di successo va confermata su HW (Punto 3,
+        #     KLIMAKONTROL_DEBUG=1); qui _ensure_ok assume l'envelope error/status.
         endpoint = {
             "productId": dev.pid,
             "endpointId": dev.did,

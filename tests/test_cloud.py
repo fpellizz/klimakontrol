@@ -472,7 +472,7 @@ class TestRegister(unittest.TestCase):
             c.register("z@z.it", "pw", code="1")
 
 
-class BindDevice(unittest.TestCase):
+class TestBindDevice(unittest.TestCase):
     def _bound_client(self):
         c = _client()                       # CloudClient("eu") + restore_session
         c.family_ids = lambda: ["FAM-1"]    # niente rete
