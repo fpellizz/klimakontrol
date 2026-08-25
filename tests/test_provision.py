@@ -45,3 +45,52 @@ class BuildSoftApPacket(unittest.TestCase):
     def test_accepts_str(self):
         self.assertEqual(build_softap_packet("TestNet", "secret12", 0),
                          build_softap_packet(b"TestNet", b"secret12", 0))
+
+
+class SoftApConfig(unittest.TestCase):
+    def test_sends_golden_packet_to_gateway(self):
+        import klimakontrol.provision as prov
+
+        sent = []
+
+        class FakeSock:
+            def __init__(self, *a, **k): pass
+            def __enter__(self): return self
+            def __exit__(self, *a): return False
+            def setsockopt(self, *a): pass
+            def settimeout(self, *a): pass
+            def sendto(self, data, dest): sent.append((data, dest))
+            def recvfrom(self, n): raise prov.socket.timeout()
+
+        orig = prov.socket.socket
+        prov.socket.socket = lambda *a, **k: FakeSock()
+        try:
+            resp = prov.softap_config("TestNet", "secret12", 0, tries=3)
+        finally:
+            prov.socket.socket = orig
+
+        self.assertIsNone(resp)                              # nessuna risposta -> None
+        self.assertEqual(len(sent), 3)                       # inviato tries volte
+        data, dest = sent[0]
+        self.assertEqual(dest, ("192.168.10.1", 80))
+        self.assertEqual(data, prov.build_softap_packet(b"TestNet", b"secret12", 0))
+
+    def test_returns_response_bytes_when_module_replies(self):
+        import klimakontrol.provision as prov
+
+        class FakeSock:
+            def __init__(self, *a, **k): self.n = 0
+            def __enter__(self): return self
+            def __exit__(self, *a): return False
+            def setsockopt(self, *a): pass
+            def settimeout(self, *a): pass
+            def sendto(self, data, dest): pass
+            def recvfrom(self, n): return (b"\x01\x02ok", ("192.168.10.1", 80))
+
+        orig = prov.socket.socket
+        prov.socket.socket = lambda *a, **k: FakeSock()
+        try:
+            resp = prov.softap_config("W", "P", 0, tries=1)
+        finally:
+            prov.socket.socket = orig
+        self.assertEqual(resp, b"\x01\x02ok")

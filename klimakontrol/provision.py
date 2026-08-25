@@ -5,6 +5,10 @@ comando 0x14, checksum seed 0xBEAF, inviato in UDP a 192.168.10.1:80.
 """
 from __future__ import annotations
 
+import socket
+import time
+from typing import Optional
+
 from .local import checksum, LocalError
 
 #: Gateway della SoftAP del modulo e porta (hard-coded nel nativo).
@@ -36,3 +40,25 @@ def build_softap_packet(ssid, password, security: int = 0) -> bytes:
     pkt[0x20] = c & 0xFF
     pkt[0x21] = (c >> 8) & 0xFF
     return bytes(pkt)
+
+
+def softap_config(ssid, password, security: int = 0,
+                  gateway: str = SOFTAP_GATEWAY, port: int = SOFTAP_PORT,
+                  tries: int = 3, recv_timeout: float = 2.0) -> Optional[bytes]:
+    """Manda al modulo (in SoftAP) le credenziali WiFi. Ritorna la risposta grezza o None.
+
+    Prerequisito: il telefono/PC deve essere connesso all'hotspot del modulo
+    (SSID `Broadlink_tcl_...`), così `192.168.10.1` è raggiungibile.
+    """
+    pkt = build_softap_packet(ssid, password, security)
+    with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as sock:
+        sock.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
+        sock.settimeout(recv_timeout)
+        for _ in range(max(1, tries)):
+            sock.sendto(pkt, (gateway, port))
+            time.sleep(0.2)                # come il nativo (sendto ripetuti con usleep)
+        try:
+            data, _ = sock.recvfrom(2048)
+            return data
+        except socket.timeout:
+            return None
