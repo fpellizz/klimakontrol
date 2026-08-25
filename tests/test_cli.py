@@ -193,20 +193,20 @@ class ProvisionCommand(unittest.TestCase):
         self.assertEqual(seen["pw"], "dal-prompt")
 
     def test_cmd_provision_oserror_exit_no_password_in_message(self):
-        """Test: cmd_provision con OSError da softap_config fa SystemExit senza stampare la password."""
+        """Test: cmd_provision con OSError da softap_config fa SystemExit senza esporre la password nel messaggio."""
         import klimakontrol.provision as prov
 
         orig = prov.softap_config
         prov.softap_config = lambda ssid, password, security=0, **k: (_ for _ in ()).throw(
-            OSError("Network unreachable"))
+            ConnectionRefusedError("no route to host"))
         try:
             args = types.SimpleNamespace(ssid="W", password="segretaPassword", security="open")
-            with contextlib.redirect_stdout(io.StringIO()) as buf:
-                with self.assertRaises(SystemExit):
-                    cli.cmd_provision(args)
-            # La password non deve apparire nemmeno nel messaggio d'errore catturato
-            # (SystemExit stampa il messaggio su stderr, quindi non lo catturiamo qui,
-            # ma verifichiamo che la funzione non abbia stampato nulla su stdout)
-            self.assertNotIn("segretaPassword", buf.getvalue())
+            with self.assertRaises(SystemExit) as ctx:
+                cli.cmd_provision(args)
+            # Verifica che la password non compaia nel messaggio d'errore (in SystemExit.args)
+            error_msg = str(ctx.exception)
+            self.assertNotIn("segretaPassword", error_msg)
+            # Verifica che il messaggio contenga l'hint per l'utente (Broadlink_tcl)
+            self.assertIn("Broadlink_tcl", error_msg)
         finally:
             prov.softap_config = orig
