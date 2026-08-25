@@ -22,7 +22,6 @@ import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -42,7 +41,6 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import net.klimakontrol.data.Mode
 import net.klimakontrol.ui.theme.Klima
@@ -54,7 +52,9 @@ import net.klimakontrol.ui.theme.QuadType
  * modulo → invio. La chiave del filo è il pacchetto ricostruito (SoftApClient).
  *
  * Vincolo Android (MVP): la connessione all'hotspot del modulo la fa l'utente a mano nelle
- * impostazioni WiFi; l'app poi manda l'UDP. Semplice e robusto su ogni versione.
+ * impostazioni WiFi; l'app poi manda l'UDP legando il socket alla rete del modulo
+ * (vedi SoftApClient, altrimenti su un telefono con dati mobili il pacchetto uscirebbe dal
+ * cellulare). Approccio senza permessi nuovi né API WiFi fragili.
  */
 @Composable
 fun OnboardingScreen(
@@ -180,13 +180,18 @@ private fun ConnectStep(state: OnboardingState, accent: Color, onSend: () -> Uni
 @Composable
 private fun DoneStep(state: OnboardingState, accent: Color, onFinish: () -> Unit) {
     val c = Klima.colors
-    Text("Fatto ✓", style = QuadType.title, color = c.ok)
-    Text("Credenziali inviate. Il climatizzatore si sta connettendo alla tua rete. Riconnetti il " +
-        "telefono al WiFi di casa: tra poco l'unità comparirà nell'elenco.",
-        style = QuadType.body, color = c.ink2)
-    if (state.responded) {
-        Text("Il modulo ha risposto alla configurazione.", style = QuadType.micro, color = c.ink3)
-    }
+    Text("Credenziali inviate", style = QuadType.title, color = c.ink)
+    Text(
+        if (state.responded)
+            "Il climatizzatore ha ricevuto la configurazione e si sta connettendo alla tua rete."
+        else
+            "Abbiamo mandato le credenziali al climatizzatore (di solito non risponde: è normale).",
+        style = QuadType.body, color = c.ink2,
+    )
+    Text("Ora riconnetti il telefono al WiFi di casa. Se il modulo entra in rete ed è già associato " +
+        "a questo account, tra poco l'unità comparirà nell'elenco; un modulo mai visto da questo " +
+        "account potrebbe richiedere ancora un passaggio.",
+        style = QuadType.micro, color = c.ink3)
     PrimaryButton("Fine", busy = false, enabled = true, accent = accent, onClick = onFinish)
 }
 

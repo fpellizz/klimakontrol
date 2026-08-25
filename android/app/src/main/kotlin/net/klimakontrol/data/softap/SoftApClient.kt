@@ -1,5 +1,8 @@
 package net.klimakontrol.data.softap
 
+import android.content.Context
+import android.net.ConnectivityManager
+import android.net.NetworkCapabilities
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.net.DatagramPacket
@@ -45,8 +48,14 @@ object SoftApClient {
      *
      * Prerequisito: il telefono dev'essere connesso all'hotspot del modulo (Broadlink_tcl_…),
      * così 192.168.10.1 è raggiungibile. L'invio è ripetuto come nel nativo.
+     *
+     * Su Android moderno, con i dati mobili attivi, il sistema tiene la rete "validata" (cellulare)
+     * come default per i socket: senza legare il socket alla rete WiFi del modulo, il pacchetto
+     * uscirebbe dall'interfaccia sbagliata. Qui troviamo la rete WiFi **senza internet** (l'hotspot
+     * del modulo) e ci leghiamo il socket. Serve solo ACCESS_NETWORK_STATE (già nel manifest).
      */
     suspend fun provision(
+        context: Context,
         ssid: String,
         password: String,
         security: Int,
@@ -59,6 +68,7 @@ object SoftApClient {
             security,
         )
         DatagramSocket().use { sock ->
+            bindToSoftApNetwork(context, sock)
             sock.soTimeout = timeoutMs
             val addr = InetAddress.getByName(GATEWAY)
             val out = DatagramPacket(pkt, pkt.size, addr, PORT)
@@ -75,6 +85,23 @@ object SoftApClient {
             } catch (e: SocketTimeoutException) {
                 null
             }
+        }
+    }
+
+    /** Lega il socket alla rete WiFi senza internet (l'hotspot del modulo), se presente. */
+    private fun bindToSoftApNetwork(context: Context, socket: DatagramSocket) {
+        try {
+            val cm = context.getSystemService(Context.CONNECTIVITY_SERVICE) as? ConnectivityManager
+                ?: return
+            val apNetwork = cm.allNetworks.firstOrNull { n ->
+                val caps = cm.getNetworkCapabilities(n)
+                caps != null &&
+                    caps.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) &&
+                    !caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
+            }
+            apNetwork?.bindSocket(socket)
+        } catch (e: Exception) {
+            // best effort: se non riusciamo a legare, proviamo comunque a inviare
         }
     }
 }

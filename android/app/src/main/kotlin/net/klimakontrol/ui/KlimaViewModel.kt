@@ -308,7 +308,7 @@ class KlimaViewModel(app: Application) : AndroidViewModel(app) {
         _onboarding.value = OnboardingState(busy = true)
         viewModelScope.launch {
             try {
-                val resp = SoftApClient.provision(ssid, password, security)
+                val resp = SoftApClient.provision(getApplication<Application>(), ssid, password, security)
                 _onboarding.value = OnboardingState(sent = true, responded = resp != null)
             } catch (e: Exception) {
                 _onboarding.value = OnboardingState(
