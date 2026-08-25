@@ -9,7 +9,7 @@ import socket
 import time
 from typing import Optional
 
-from .local import checksum, LocalError
+from .local import checksum
 
 #: Gateway della SoftAP del modulo e porta (hard-coded nel nativo).
 SOFTAP_GATEWAY = "192.168.10.1"
@@ -52,11 +52,12 @@ def softap_config(ssid, password, security: int = 0,
     """
     pkt = build_softap_packet(ssid, password, security)
     with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as sock:
-        sock.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
         sock.settimeout(recv_timeout)
-        for _ in range(max(1, tries)):
+        n = max(1, tries)
+        for i in range(n):
             sock.sendto(pkt, (gateway, port))
-            time.sleep(0.2)                # come il nativo (sendto ripetuti con usleep)
+            if i < n - 1:
+                time.sleep(0.2)                # come il nativo (sendto ripetuti con usleep)
         try:
             data, _ = sock.recvfrom(2048)
             return data
