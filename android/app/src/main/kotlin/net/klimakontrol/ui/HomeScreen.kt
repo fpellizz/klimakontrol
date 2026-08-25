@@ -53,6 +53,7 @@ fun HomeScreen(
     onRefreshHouse: () -> Unit = {},
     onRefresh: () -> Unit = {},
     onSettings: () -> Unit = {},
+    onAddDevice: () -> Unit = {},
     update: UpdateStatus = UpdateStatus.Unknown,
     homes: List<Home> = emptyList(),
     assignments: Map<String, String> = emptyMap(),
@@ -83,6 +84,8 @@ fun HomeScreen(
                 Text("${shown.size} unità · $onCount ${if (onCount == 1) "accesa" else "accese"}",
                     style = QuadType.body, color = c.ink2)
             }
+            RoundIcon("+", c.ink2, c.surface1, onAddDevice)
+            Spacer(Modifier.width(8.dp))
             RoundIcon("⟳", c.ink2, c.surface1, onRefresh)
             Spacer(Modifier.width(8.dp))
             RoundIcon("⚙", c.ink2, c.surface1, onSettings)
@@ -124,12 +127,32 @@ fun HomeScreen(
         ) {
             if (shown.isEmpty()) {
                 item {
-                    Box(Modifier.fillMaxWidth().padding(top = 40.dp), contentAlignment = Alignment.Center) {
+                    Column(
+                        Modifier.fillMaxWidth().padding(top = 40.dp, start = 8.dp, end = 8.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                    ) {
                         Text(
                             if (selectedHome != null) "Nessuna unità in questa zona.\nAssegnale da Impostazioni → Gestisci zone."
-                            else "Nessuna unità.\nAbbina i climatizzatori con l'app ufficiale, poi torna qui.",
+                            else "Nessun climatizzatore.\nAggiungine uno per iniziare.",
                             style = QuadType.body, color = c.ink3, textAlign = TextAlign.Center,
                         )
+                        if (selectedHome == null) {
+                            Spacer(Modifier.height(16.dp))
+                            val cool = c.mode(Mode.FREDDO)
+                            Row(
+                                Modifier.pressClickable(onClick = { onAddDevice() })
+                                    .clip(RoundedCornerShape(16.dp)).background(cool.accent)
+                                    .padding(horizontal = 22.dp, vertical = 14.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                Text("+", color = Color(0xFF10161A),
+                                    style = QuadType.name.copy(fontWeight = FontWeight.SemiBold))
+                                Spacer(Modifier.width(8.dp))
+                                Text("Aggiungi climatizzatore",
+                                    style = QuadType.name.copy(fontWeight = FontWeight.SemiBold),
+                                    color = Color(0xFF10161A))
+                            }
+                        }
                     }
                 }
             }

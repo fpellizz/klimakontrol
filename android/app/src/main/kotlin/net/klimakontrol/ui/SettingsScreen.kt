@@ -50,6 +50,7 @@ fun SettingsScreen(
     onChangeNickname: (String) -> Unit,
     onChangePassword: (String, String) -> Unit,
     onManageHomes: () -> Unit,
+    onAddDevice: () -> Unit,
     vendorCode: String,
     vendorLogo: ByteArray?,
     vendorBusy: Boolean,
@@ -137,6 +138,14 @@ fun SettingsScreen(
                         }
                     }
                 }
+            }
+
+            // ---- dispositivi: aggiungi un modulo vergine (config SoftAP) ----
+            Section("Dispositivi") {
+                Text("Aggiungi un climatizzatore collegando il suo modulo WiFi alla rete di casa, " +
+                    "senza l'app ufficiale.", style = QuadType.body, color = c.ink2)
+                Spacer(Modifier.height(10.dp))
+                Action("Aggiungi climatizzatore", enabled = true, accent = accent) { onAddDevice() }
             }
 
             // ---- zone (gestione locale: gruppi/filtri definiti dall'utente) ----
