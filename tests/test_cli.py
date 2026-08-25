@@ -194,6 +194,8 @@ class ProvisionCommand(unittest.TestCase):
 
     def test_cmd_provision_oserror_exit_no_password_in_message(self):
         """Test: cmd_provision con OSError da softap_config fa SystemExit senza esporre la password nel messaggio."""
+        import contextlib
+        import io
         import klimakontrol.provision as prov
 
         orig = prov.softap_config
@@ -201,7 +203,7 @@ class ProvisionCommand(unittest.TestCase):
             ConnectionRefusedError("no route to host"))
         try:
             args = types.SimpleNamespace(ssid="W", password="segretaPassword", security="open")
-            with self.assertRaises(SystemExit) as ctx:
+            with self.assertRaises(SystemExit) as ctx, contextlib.redirect_stdout(io.StringIO()):
                 cli.cmd_provision(args)
             # Verifica che la password non compaia nel messaggio d'errore (in SystemExit.args)
             error_msg = str(ctx.exception)
