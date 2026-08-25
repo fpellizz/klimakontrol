@@ -245,6 +245,32 @@ def cmd_discover(args) -> None:
               % (f["host"], f["devtype"], f["mac"], f.get("name", "")))
 
 
+_SECURITY = {"open": 0, "wep": 1, "wpa1": 2, "wpa2": 3, "wpa12": 4}
+
+
+def cmd_provision(args) -> None:
+    from . import provision
+    sec = args.security
+    security = _SECURITY.get(str(sec).lower(), None)
+    if security is None:
+        try:
+            security = int(sec)
+        except (TypeError, ValueError):
+            sys.exit("Sicurezza sconosciuta: %r (usa open|wep|wpa1|wpa2|wpa12 o un intero)" % sec)
+    password = args.password or getpass.getpass("Password del WiFi di casa: ")
+    print("Invio credenziali al modulo in SoftAP (%s)..." % args.ssid)
+    try:
+        resp = provision.softap_config(args.ssid, password, security)
+    except OSError as exc:
+        sys.exit("Modulo non raggiungibile su %s: sei connesso all'hotspot del modulo "
+                 "(Broadlink_tcl_...)? (%s)" % (provision.SOFTAP_GATEWAY, exc))
+    if resp is None:
+        print("Inviato. Nessuna conferma dal modulo (normale): ora dovrebbe connettersi al WiFi.")
+    else:
+        print("Inviato. Il modulo ha risposto (%d byte)." % len(resp))
+    print("Poi: riconnetti il telefono al WiFi di casa e lancia `klimakontrol discover`.")
+
+
 # ------------------------------------------------------------------ parser
 
 
@@ -282,6 +308,13 @@ def build_parser() -> argparse.ArgumentParser:
     sp.add_argument("--name", help="nome da dare all'unita'")
     sp.add_argument("--family", help="id famiglia (default: la prima dell'account)")
     sp.set_defaults(func=cmd_bind)
+
+    sp = sub.add_parser("provision", help="configura un modulo vergine in SoftAP (credenziali WiFi)")
+    sp.add_argument("--ssid", required=True, help="SSID del WiFi di casa")
+    sp.add_argument("--password", help="password del WiFi (se omessa, viene chiesta)")
+    sp.add_argument("--security", default="wpa2",
+                    help="open|wep|wpa1|wpa2|wpa12 o un intero (default wpa2)")
+    sp.set_defaults(func=cmd_provision)
 
     sub.add_parser("list", help="elenco unita'").set_defaults(func=cmd_list)
 
