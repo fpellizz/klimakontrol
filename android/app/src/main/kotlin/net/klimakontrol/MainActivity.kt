@@ -40,6 +40,7 @@ import net.klimakontrol.ui.Phase
 import net.klimakontrol.ui.SendState
 import net.klimakontrol.ui.HomesScreen
 import net.klimakontrol.ui.LoginScreen
+import net.klimakontrol.ui.OnboardingScreen
 import net.klimakontrol.ui.RegisterScreen
 import net.klimakontrol.ui.SettingsScreen
 import net.klimakontrol.ui.SplashScreen
@@ -49,6 +50,7 @@ import net.klimakontrol.ui.theme.KlimaTheme
 /** Valori speciali di `selected` per aprire schermate non legate a una singola unità. */
 private const val SETTINGS = "__settings__"
 private const val HOMES = "__homes__"
+private const val ONBOARDING = "__onboarding__"
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -125,6 +127,7 @@ private fun Connected(vm: KlimaViewModel, units: List<AcUnit>) {
     val vendorCode by vm.vendorCode.collectAsState()
     val vendorLogo by vm.vendorLogo.collectAsState()
     val vendorBusy by vm.vendorBusy.collectAsState()
+    val onboarding by vm.onboarding.collectAsState()
     val c = Klima.colors
 
     AnimatedContent(
@@ -148,6 +151,7 @@ private fun Connected(vm: KlimaViewModel, units: List<AcUnit>) {
                 onChangeNickname = { vm.changeNickname(it) },
                 onChangePassword = { o, n -> vm.changePassword(o, n) },
                 onManageHomes = { selected = HOMES },
+                onAddDevice = { vm.startOnboarding(); selected = ONBOARDING },
                 vendorCode = vendorCode,
                 vendorLogo = vendorLogo,
                 vendorBusy = vendorBusy,
@@ -169,6 +173,13 @@ private fun Connected(vm: KlimaViewModel, units: List<AcUnit>) {
                 onImport = { vm.importConfig(it) },
                 onBack = { selected = SETTINGS },
             )
+        } else if (sel == ONBOARDING) {
+            OnboardingScreen(
+                state = onboarding,
+                onSend = { s, p, sec -> vm.onboardingSend(s, p, sec) },
+                onFinish = { vm.onboardingDone(); selected = null },
+                onBack = { selected = null },
+            )
         } else if (sel == null || current == null) {
             HomeScreen(
                 units = units,
@@ -178,6 +189,7 @@ private fun Connected(vm: KlimaViewModel, units: List<AcUnit>) {
                 onRefreshHouse = { vm.refreshHouse() },
                 onRefresh = { vm.refresh() },
                 onSettings = { vm.clearSettingsMsg(); selected = SETTINGS },
+                onAddDevice = { vm.startOnboarding(); selected = ONBOARDING },
                 update = update,
                 homes = homes,
                 assignments = assignments,

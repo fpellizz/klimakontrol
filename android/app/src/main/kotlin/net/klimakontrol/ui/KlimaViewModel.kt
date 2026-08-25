@@ -28,6 +28,7 @@ import net.klimakontrol.data.cloud.swingHWire
 import net.klimakontrol.data.cloud.swingVWire
 import net.klimakontrol.data.cloud.targetWire
 import net.klimakontrol.data.cloud.turboWire
+import net.klimakontrol.data.softap.SoftApClient
 
 sealed interface Phase {
     data object Loading : Phase
@@ -50,6 +51,14 @@ sealed interface Phase {
 /** Esito visibile di un comando per una singola unità. */
 enum class SendState { Idle, Sending, Ok, Error }
 
+/** Stato del wizard di onboarding (config SoftAP di un modulo vergine). */
+data class OnboardingState(
+    val busy: Boolean = false,
+    val error: String? = null,
+    val sent: Boolean = false,        // invio riuscito
+    val responded: Boolean = false,   // il modulo ha risposto (diagnostica)
+)
+
 private const val DEBOUNCE_MS = 400L
 private const val OK_HOLD_MS = 900L
 private const val ERR_HOLD_MS = 1600L
@@ -68,6 +77,9 @@ class KlimaViewModel(app: Application) : AndroidViewModel(app) {
 
     private val _send = MutableStateFlow<Map<String, SendState>>(emptyMap())
     val send = _send.asStateFlow()
+
+    private val _onboarding = MutableStateFlow(OnboardingState())
+    val onboarding = _onboarding.asStateFlow()
 
     private val _update = MutableStateFlow<UpdateStatus>(UpdateStatus.Unknown)
     val update = _update.asStateFlow()
@@ -283,6 +295,33 @@ class KlimaViewModel(app: Application) : AndroidViewModel(app) {
                 _phase.value = Phase.Register(email = email, region = region, codeSent = true, error = readable(e))
             }
         }
+    }
+
+    // ---- onboarding di un modulo vergine (config SoftAP) ----
+    /** Reset dello stato del wizard (all'apertura). */
+    fun startOnboarding() {
+        _onboarding.value = OnboardingState()
+    }
+
+    /** Manda le credenziali WiFi al modulo in SoftAP. Al successo il wizard avanza a "fatto". */
+    fun onboardingSend(ssid: String, password: String, security: Int) {
+        _onboarding.value = OnboardingState(busy = true)
+        viewModelScope.launch {
+            try {
+                val resp = SoftApClient.provision(getApplication<Application>(), ssid, password, security)
+                _onboarding.value = OnboardingState(sent = true, responded = resp != null)
+            } catch (e: Exception) {
+                _onboarding.value = OnboardingState(
+                    error = "Invio non riuscito. Sei connesso all'hotspot «Broadlink_tcl_…» del climatizzatore?",
+                )
+            }
+        }
+    }
+
+    /** Chiude il wizard e rilegge l'elenco (la nuova unità, entrata in rete, comparirà). */
+    fun onboardingDone() {
+        _onboarding.value = OnboardingState()
+        refresh()
     }
 
     /** Esci mantenendo le credenziali salvate (rientro automatico al prossimo avvio). */
