@@ -152,3 +152,63 @@ class TestBindCommand(unittest.TestCase):
 
         # Verifica che chiave venga dal prompt
         self.assertEqual(calls["key"], "PROMPTED")
+
+
+class ProvisionCommand(unittest.TestCase):
+    def test_cmd_provision_calls_softap_config(self):
+        """Test: cmd_provision chiama softap_config con i parametri corretti."""
+        import klimakontrol.provision as prov
+
+        calls = {}
+        orig = prov.softap_config
+        prov.softap_config = lambda ssid, password, security=0, **k: calls.update(
+            ssid=ssid, password=password, security=security) or None
+        try:
+            args = types.SimpleNamespace(ssid="CasaWifi", password="segreta1", security="wpa2")
+            buf = io.StringIO()
+            with contextlib.redirect_stdout(buf):
+                cli.cmd_provision(args)
+        finally:
+            prov.softap_config = orig
+
+        self.assertEqual(calls["ssid"], "CasaWifi")
+        self.assertEqual(calls["password"], "segreta1")
+        self.assertEqual(calls["security"], 3)              # wpa2 -> 3
+        self.assertNotIn("segreta1", buf.getvalue())        # password mai stampata
+
+    def test_cmd_provision_prompts_password_when_omitted(self):
+        """Test: cmd_provision con password=None chiede il prompt."""
+        import klimakontrol.provision as prov
+
+        seen = {}
+        orig_cfg, orig_gp = prov.softap_config, cli.getpass.getpass
+        prov.softap_config = lambda ssid, password, security=0, **k: seen.update(pw=password)
+        cli.getpass.getpass = lambda *a, **k: "dal-prompt"
+        try:
+            args = types.SimpleNamespace(ssid="W", password=None, security="open")
+            with contextlib.redirect_stdout(io.StringIO()):
+                cli.cmd_provision(args)
+        finally:
+            prov.softap_config, cli.getpass.getpass = orig_cfg, orig_gp
+        self.assertEqual(seen["pw"], "dal-prompt")
+
+    def test_cmd_provision_oserror_exit_no_password_in_message(self):
+        """Test: cmd_provision con OSError da softap_config fa SystemExit senza esporre la password nel messaggio."""
+        import contextlib
+        import io
+        import klimakontrol.provision as prov
+
+        orig = prov.softap_config
+        prov.softap_config = lambda ssid, password, security=0, **k: (_ for _ in ()).throw(
+            ConnectionRefusedError("no route to host"))
+        try:
+            args = types.SimpleNamespace(ssid="W", password="segretaPassword", security="open")
+            with self.assertRaises(SystemExit) as ctx, contextlib.redirect_stdout(io.StringIO()):
+                cli.cmd_provision(args)
+            # Verifica che la password non compaia nel messaggio d'errore (in SystemExit.args)
+            error_msg = str(ctx.exception)
+            self.assertNotIn("segretaPassword", error_msg)
+            # Verifica che il messaggio contenga l'hint per l'utente (Broadlink_tcl)
+            self.assertIn("Broadlink_tcl", error_msg)
+        finally:
+            prov.softap_config = orig
