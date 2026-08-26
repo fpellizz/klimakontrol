@@ -362,12 +362,13 @@ class KlimaViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     fun deleteTimer(unitId: String, type: Int, index: Int) {
+        _timers.value = _timers.value.copy(busy = true, error = null)
         viewModelScope.launch {
             try {
                 service.deleteTimer(unitId, type, index)
                 loadTimers(unitId)
             } catch (e: Exception) {
-                _timers.value = _timers.value.copy(error = readable(e))
+                _timers.value = _timers.value.copy(busy = false, error = readable(e))
             }
         }
     }

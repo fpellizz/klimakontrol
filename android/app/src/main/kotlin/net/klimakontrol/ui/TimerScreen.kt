@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.rememberScrollState
@@ -43,6 +44,7 @@ import net.klimakontrol.data.Mode
 import net.klimakontrol.data.tasks.Timer
 import net.klimakontrol.ui.theme.Klima
 import net.klimakontrol.ui.theme.QuadType
+import kotlin.math.roundToInt
 
 private val WD_RES = listOf(
     R.string.wd_mon, R.string.wd_tue, R.string.wd_wed, R.string.wd_thu,
@@ -102,27 +104,28 @@ fun TimerScreen(
 
             state.error?.let { Text(it, style = QuadType.micro, color = c.error) }
 
-            // ---- elenco ----
-            if (state.busy && state.timers.isEmpty()) {
+            // ---- elenco (MVP: solo i ricorrenti) ----
+            val shown = state.timers.filter { it.type == Timer.TYPE_PERIOD }
+            if (state.busy && shown.isEmpty()) {
                 Box(Modifier.fillMaxWidth().padding(20.dp), contentAlignment = Alignment.Center) {
                     CircularProgressIndicator(color = accent, strokeWidth = 2.dp,
-                        modifier = Modifier.height(22.dp))
+                        modifier = Modifier.size(22.dp))
                 }
-            } else if (state.timers.isEmpty()) {
+            } else if (shown.isEmpty()) {
                 Text(stringResource(R.string.timer_none), style = QuadType.body, color = c.ink3)
             } else {
-                state.timers.forEach { t -> TimerRow(t, onDelete) }
+                shown.forEach { t -> TimerRow(t, enabled = !state.busy, onDelete = onDelete) }
             }
 
             // ---- nuova pianificazione ----
-            AddTimerForm(accent, onAdd)
+            AddTimerForm(accent, busy = state.busy, onAdd = onAdd)
             Spacer(Modifier.height(24.dp))
         }
     }
 }
 
 @Composable
-private fun TimerRow(t: Timer, onDelete: (Int, Int) -> Unit) {
+private fun TimerRow(t: Timer, enabled: Boolean, onDelete: (Int, Int) -> Unit) {
     val c = Klima.colors
     val on = (t.action["pwr"] ?: 0) != 0
     val temp = t.action["save_temp"]
@@ -143,16 +146,16 @@ private fun TimerRow(t: Timer, onDelete: (Int, Int) -> Unit) {
         }
         if (t.index != null) {
             Box(
-                Modifier.pressClickable(onClick = { onDelete(t.type, t.index) })
+                Modifier.pressClickable(onClick = { onDelete(t.type, t.index) }, enabled = enabled)
                     .clip(RoundedCornerShape(10.dp)).background(c.surface2)
                     .padding(horizontal = 12.dp, vertical = 8.dp),
-            ) { Text("✕", style = QuadType.name, color = c.error) }
+            ) { Text("✕", style = QuadType.name, color = if (enabled) c.error else c.ink3) }
         }
     }
 }
 
 @Composable
-private fun AddTimerForm(accent: Color, onAdd: (Timer) -> Unit) {
+private fun AddTimerForm(accent: Color, busy: Boolean, onAdd: (Timer) -> Unit) {
     val c = Klima.colors
     var time by rememberSaveable { mutableStateOf("07:00") }
     var days by rememberSaveable { mutableStateOf(setOf<Int>()) }
@@ -168,8 +171,7 @@ private fun AddTimerForm(accent: Color, onAdd: (Timer) -> Unit) {
         OutlinedTextField(
             value = time, onValueChange = { time = it },
             label = { Text(stringResource(R.string.timer_time_label)) }, singleLine = true,
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier.fillMaxWidth(),   // tastiera testo: serve il ':'
         )
 
         Text(stringResource(R.string.timer_days).uppercase(), style = QuadType.overline, color = c.ink3)
@@ -191,7 +193,7 @@ private fun AddTimerForm(accent: Color, onAdd: (Timer) -> Unit) {
             OutlinedTextField(
                 value = temp, onValueChange = { temp = it },
                 label = { Text(stringResource(R.string.timer_temp_label)) }, singleLine = true,
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                 modifier = Modifier.fillMaxWidth(),
             )
         }
@@ -205,13 +207,15 @@ private fun AddTimerForm(accent: Color, onAdd: (Timer) -> Unit) {
                 val m = hm.groupValues[2].toInt()
                 val action = if (turnOn) {
                     val a = linkedMapOf("pwr" to 1)
-                    temp.trim().toDoubleOrNull()?.let { a["save_temp"] = (it * 10).toInt() }
+                    temp.trim().replace(',', '.').toDoubleOrNull()?.let {
+                        a["save_temp"] = (it.coerceIn(16.0, 31.0) * 10).roundToInt()
+                    }
                     a
                 } else linkedMapOf("pwr" to 0)
                 onAdd(Timer(type = Timer.TYPE_PERIOD, hour = h, minute = m,
                     weekday = days.sorted(), action = action))
             },
-            enabled = valid,
+            enabled = valid && !busy,
             shape = RoundedCornerShape(14.dp),
             colors = ButtonDefaults.buttonColors(containerColor = accent, contentColor = Color(0xFF10161A)),
             modifier = Modifier.fillMaxWidth().height(52.dp),

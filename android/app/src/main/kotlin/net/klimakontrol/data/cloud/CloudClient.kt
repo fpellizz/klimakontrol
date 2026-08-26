@@ -315,13 +315,13 @@ class CloudClient(val region: Region = REGIONS.getValue("eu")) {
 
     // ---------------- pianificazioni (dev_taskadd / dev_tasklist / dev_taskdel) ----------------
     fun addTask(d: CloudDevice, timer: Timer): JSONObject =
-        sdkControl(d, timer.toWire().put("act", "dev_taskadd"))
+        sdkControl(d, timer.toWire().put("act", Timer.CMD_ADD))
 
     fun listTasks(d: CloudDevice): List<Timer> =
-        parseTimers(sdkControl(d, JSONObject().put("act", "dev_tasklist")))
+        parseTimers(sdkControl(d, JSONObject().put("act", Timer.CMD_LIST)))
 
     fun deleteTask(d: CloudDevice, type: Int, index: Int): JSONObject =
-        sdkControl(d, JSONObject().put("act", "dev_taskdel").put("type", type).put("index", index))
+        sdkControl(d, JSONObject().put("act", Timer.CMD_DELETE).put("type", type).put("index", index))
 
     private fun parseTimers(payload: JSONObject): List<Timer> {
         val dataAny = payload.opt("data")

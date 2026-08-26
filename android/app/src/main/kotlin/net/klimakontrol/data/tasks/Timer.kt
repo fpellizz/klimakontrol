@@ -36,6 +36,10 @@ data class Timer(
         const val TYPE_RANDOM = 4
         const val DEVICE_TZ = 8
 
+        const val CMD_ADD = "dev_taskadd"
+        const val CMD_LIST = "dev_tasklist"
+        const val CMD_DELETE = "dev_taskdel"
+
         /** Spostamento locale → UTC+8 del firmware. */
         private fun deviceShift(): Duration {
             val off = ZoneId.systemDefault().rules.getOffset(Instant.now()).totalSeconds
