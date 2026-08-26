@@ -212,3 +212,39 @@ class ProvisionCommand(unittest.TestCase):
             self.assertIn("Broadlink_tcl", error_msg)
         finally:
             prov.softap_config = orig
+
+
+class TaskCommand(unittest.TestCase):
+    def _run(self, args):
+        captured = {}
+
+        class FakeClient:
+            def add_task(self, dev, task): captured["add"] = task
+            def delete_task(self, dev, t, i): captured["del"] = (t, i)
+            def list_tasks(self, dev): captured["list"] = True; return []
+
+        dev = CloudDevice(did="did1", pid="p", mac="m", aeskey="k", name="salone")
+        orig_load, orig_save = cli.session.load, cli.session.save
+        cli.session.load = lambda: (FakeClient(), [dev])
+        cli.session.save = lambda *a, **k: None
+        try:
+            with contextlib.redirect_stdout(io.StringIO()):
+                cli.cmd_task(args)
+        finally:
+            cli.session.load, cli.session.save = orig_load, orig_save
+        return captured
+
+    def test_add_maps_type_days_and_action(self):
+        args = types.SimpleNamespace(action="add", device="1", type="period",
+                                     time="07:00", days="lun,mer", index=None, set=["temp=23"])
+        cap = self._run(args)
+        t = cap["add"]
+        self.assertEqual(t.type, 2)              # period
+        self.assertEqual(t.weekday, [0, 2])      # lun, mer
+        self.assertIn("save_temp", t.status)     # temp -> save_temp sul filo
+
+    def test_del_passes_type_and_index(self):
+        args = types.SimpleNamespace(action="del", device="1", type="period",
+                                     time=None, days=None, index=3, set=None)
+        cap = self._run(args)
+        self.assertEqual(cap["del"], (2, 3))

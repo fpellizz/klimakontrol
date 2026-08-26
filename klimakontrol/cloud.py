@@ -549,6 +549,32 @@ class CloudClient:
             dev.dev_session = session      # il cloud ruota la sessione del dispositivo
         return event.get("payload") or {}
 
+    # ------------------------------------------------------------ pianificazioni
+    def add_task(self, dev: CloudDevice, task: "Task") -> Dict[str, Any]:
+        """Scrive una pianificazione sul modulo (esegue anche a telefono spento).
+
+        Ricostruito dalla SDK JS ufficiale (`_dnaControl(ctrlData, 'dev_taskadd')`): l'azione
+        e' un normale comando di controllo (`{params, vals}`, come `sdkcontrol`), i giorni sono
+        una lista `repeat` 1..7, gli orari in UTC+8 (`tasks.Task.to_wire`). La forma esatta
+        della direttiva per i comandi task **non e' ancora confermata su HW**: qui il comando
+        va nel campo `act` del payload di `sdkcontrol` (usa `KLIMAKONTROL_DEBUG=1` alla prima
+        prova per vedere richiesta/risposta e, se serve, aggiustare l'envelope).
+        """
+        from . import tasks
+        payload = dict(act=tasks.CMD_ADD, **task.to_wire())
+        return self.sdk_control(dev, payload)
+
+    def list_tasks(self, dev: CloudDevice) -> List["Task"]:
+        """Legge le pianificazioni presenti sul modulo (`dev_tasklist`)."""
+        from . import tasks
+        resp = self.sdk_control(dev, {"act": tasks.CMD_LIST})
+        return tasks.parse_task_list(resp)
+
+    def delete_task(self, dev: CloudDevice, task_type: int, index: int) -> Dict[str, Any]:
+        """Cancella una pianificazione per tipo e indice (`dev_taskdel`)."""
+        from . import tasks
+        return self.sdk_control(dev, {"act": tasks.CMD_DELETE, "type": int(task_type), "index": int(index)})
+
     def bind_device(self, dev: CloudDevice, name: str = "",
                     family_id: Optional[str] = None, room_id: str = "") -> Dict[str, Any]:
         """Registra un dispositivo appena configurato nella famiglia (casa cloud) dell'account.

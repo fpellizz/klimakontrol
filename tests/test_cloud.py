@@ -523,3 +523,35 @@ class TestBindDevice(unittest.TestCase):
         c._request = lambda *a, **k: {"status": -1, "msg": "già associato"}
         with self.assertRaises(CloudError):
             c.bind_device(CloudDevice(did="d", pid="p", mac="m", aeskey="k"))
+
+
+class TaskControl(unittest.TestCase):
+    def test_add_task_sends_dev_taskadd_with_ctrldata(self):
+        from datetime import datetime
+        from klimakontrol import tasks as T
+        c = _client()
+        cap = {}
+        c.sdk_control = lambda dev, payload: cap.update(payload=payload) or {}
+        task = T.Task(type=T.TYPE_PERIOD, time=datetime(2026, 8, 20, 7, 0),
+                      weekday=[0, 1], status={"pwr": 1})
+        c.add_task(_device(), task)
+        p = cap["payload"]
+        self.assertEqual(p["act"], "dev_taskadd")
+        self.assertEqual(p["type"], T.TYPE_PERIOD)
+        self.assertEqual(p["repeat"], [1, 2])                 # lista giorni, non bitmask
+        self.assertEqual(p["data"]["params"], ["pwr"])        # azione = comando di controllo
+
+    def test_list_tasks_parses_response(self):
+        c = _client()
+        c.sdk_control = lambda dev, payload: {"data": {
+            "timerlist": [{"index": 0, "time": "2026-08-21 04:00:00", "enable": 1}]}}
+        out = c.list_tasks(_device())
+        self.assertEqual(len(out), 1)
+        self.assertEqual(out[0].index, 0)
+
+    def test_delete_task_sends_type_and_index(self):
+        c = _client()
+        cap = {}
+        c.sdk_control = lambda dev, payload: cap.update(payload=payload) or {}
+        c.delete_task(_device(), 2, 3)
+        self.assertEqual(cap["payload"], {"act": "dev_taskdel", "type": 2, "index": 3})

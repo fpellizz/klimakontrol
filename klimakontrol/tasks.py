@@ -102,21 +102,31 @@ class Task:
     # -- serializzazione
 
     def to_wire(self, tz_offset: Optional[float] = None) -> Dict[str, Any]:
-        """Struttura da passare a `dev_taskadd`, con orari gia' convertiti."""
+        """Struttura (`ctrlData`) da passare a `dev_taskadd`, con orari gia' convertiti.
+
+        Ricavata dalla SDK JS ufficiale (`broadlink-jssdk/dna/adapter.js`): i giorni della
+        settimana sono una **lista `repeat`** di interi 1..7 (non un bitmask), e se la
+        conversione a UTC+8 sposta l'orario oltre la mezzanotte anche i giorni scalano di un
+        giorno (come `updateWeek` nella SDK). L'azione e' un normale comando di controllo
+        (`{params, vals}`, come `sdkcontrol`).
+        """
         from .local import build_params_vals
 
+        dev_time = to_device_time(self.time, tz_offset)
         fmt = time_format(self.type)
         out: Dict[str, Any] = {
             "type": self.type,
             "enable": self.enable,
-            "time": to_device_time(self.time, tz_offset).strftime(fmt),
+            "time": dev_time.strftime(fmt),
         }
         if self.index is not None:
             out["index"] = self.index
         if self.endtime is not None:
             out["endtime"] = to_device_time(self.endtime, tz_offset).strftime(fmt)
         if self.weekday:
-            out["week"] = sum(1 << d for d in self.weekday)
+            # scala i giorni se il +8 ha superato la mezzanotte (delta 0 o +1)
+            delta = (dev_time.date() - self.time.date()).days
+            out["repeat"] = sorted(((d + delta) % 7) + 1 for d in self.weekday)  # 1=lun..7=dom
         if self.status:
             out["data"] = build_params_vals(self.status)
         if self.status2:
@@ -141,14 +151,23 @@ class Task:
                 dt = dt.replace(year=today.year, month=today.month, day=today.day)
             return from_device_time(dt, tz_offset)
 
-        week = raw.get("week", 0) or 0
+        local_time = parse(raw.get("time")) or datetime.now()
+        # `repeat` = lista di giorni 1..7 (device/UTC+8); riportali a 0..6 locali, con lo
+        # shift inverso se la conversione dal fuso ha spostato l'orario di un giorno.
+        repeat = raw.get("repeat") or []
+        device_dt = parse(raw.get("time"))
+        delta = 0
+        if device_dt is not None:
+            dev_again = to_device_time(local_time, tz_offset)
+            delta = (dev_again.date() - local_time.date()).days
+        weekday = sorted(((int(d) - 1 - delta) % 7) for d in repeat) if repeat else []
         return cls(
             type=task_type,
-            time=parse(raw.get("time")) or datetime.now(),
+            time=local_time,
             enable=raw.get("enable", 1),
             index=raw.get("index"),
             endtime=parse(raw.get("endtime")),
-            weekday=[d for d in range(7) if week & (1 << d)],
+            weekday=weekday,
             status=flatten_params_vals(raw.get("data") or {}),
             status2=flatten_params_vals(raw.get("data2") or {}),
             raw=raw,

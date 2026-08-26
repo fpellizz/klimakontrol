@@ -41,15 +41,21 @@ class TestTimeFormat(unittest.TestCase):
 
 
 class TestTaskSerialisation(unittest.TestCase):
-    def test_weekday_bitmask(self):
+    def test_weekday_repeat_list(self):
+        # 07:00 +6h = 13:00 stesso giorno (nessuno shift). repeat = giorni 1..7 (lun..dom).
         task = T.Task(type=T.TYPE_PERIOD, time=datetime(2026, 8, 20, 7, 0),
                       weekday=[0, 1, 2, 3, 4])
-        self.assertEqual(task.to_wire(tz_offset=2)["week"], 0b0011111)
+        self.assertEqual(task.to_wire(tz_offset=2)["repeat"], [1, 2, 3, 4, 5])
 
-    def test_weekend_bitmask(self):
+    def test_weekend_repeat_list(self):
         task = T.Task(type=T.TYPE_PERIOD, time=datetime(2026, 8, 20, 7, 0),
                       weekday=[5, 6])
-        self.assertEqual(task.to_wire(tz_offset=2)["week"], 0b1100000)
+        self.assertEqual(task.to_wire(tz_offset=2)["repeat"], [6, 7])
+
+    def test_repeat_shifts_a_day_when_conversion_crosses_midnight(self):
+        # 22:00 +6h = 04:00 del giorno dopo: i giorni scalano di +1 (come updateWeek).
+        task = T.Task(type=T.TYPE_PERIOD, time=datetime(2026, 8, 20, 22, 0), weekday=[0])
+        self.assertEqual(task.to_wire(tz_offset=2)["repeat"], [2])   # lun locale -> mar device
 
     def test_status_is_encoded_in_dna_shape(self):
         task = T.Task(type=T.TYPE_ONCE, time=datetime(2026, 8, 20, 22, 0),
@@ -88,7 +94,7 @@ class TestTaskListParsing(unittest.TestCase):
         response = {"data": {
             "timerlist": [{"index": 0, "time": "2026-08-21 04:00:00", "enable": 1}],
             "delaylist": [],
-            "periodlist": [{"index": 1, "time": "04:00:00", "week": 3, "enable": 1}],
+            "periodlist": [{"index": 1, "time": "04:00:00", "repeat": [3], "enable": 1}],
             "cyclelist": [],
             "randomlist": [],
         }}
@@ -98,8 +104,9 @@ class TestTaskListParsing(unittest.TestCase):
         self.assertEqual(kinds, [T.TYPE_ONCE, T.TYPE_PERIOD])
 
     def test_periodic_time_is_converted_back_to_local(self):
+        # device: 04:00 mar (repeat [2]) -> locale 22:00 lun ([0]) con lo shift inverso
         response = {"data": {"periodlist": [{"index": 0, "time": "04:00:00",
-                                             "week": 1, "enable": 1}]}}
+                                             "repeat": [2], "enable": 1}]}}
         task = T.parse_task_list(response, tz_offset=2)[0]
         self.assertEqual(task.time.strftime("%H:%M"), "22:00")
         self.assertEqual(task.weekday, [0])
