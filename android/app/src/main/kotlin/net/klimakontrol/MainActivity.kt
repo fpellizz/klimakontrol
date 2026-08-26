@@ -138,6 +138,7 @@ private fun Connected(vm: KlimaViewModel, units: List<AcUnit>) {
     val vendorBusy by vm.vendorBusy.collectAsState()
     val onboarding by vm.onboarding.collectAsState()
     val timersState by vm.timers.collectAsState()
+    val refreshing by vm.refreshing.collectAsState()
     val ctx = LocalContext.current
     val c = Klima.colors
 
@@ -214,7 +215,8 @@ private fun Connected(vm: KlimaViewModel, units: List<AcUnit>) {
                 onTogglePower = { vm.togglePower(it.id) },
                 onPowerAllOff = { vm.powerAllOff() },
                 onRefreshHouse = { vm.refreshHouse() },
-                onRefresh = { vm.refresh() },
+                onRefresh = { vm.manualRefresh() },
+                refreshing = refreshing,
                 onSettings = { vm.clearSettingsMsg(); selected = SETTINGS },
                 onAddDevice = { vm.startOnboarding(); selected = ONBOARDING },
                 update = update,

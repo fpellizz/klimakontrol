@@ -389,6 +389,21 @@ class KlimaViewModel(app: Application) : AndroidViewModel(app) {
 
     fun refresh() = viewModelScope.launch { runCatching { _units.value = service.loadUnits() } }
 
+    private val _refreshing = MutableStateFlow(false)
+    val refreshing = _refreshing.asStateFlow()
+
+    /** Refresh manuale (tasto ⟳) con feedback visibile: ricarica lo stato reale dal cloud. */
+    fun manualRefresh() {
+        if (_refreshing.value) return
+        _refreshing.value = true
+        viewModelScope.launch {
+            val job = launch { runCatching { _units.value = service.loadUnits() } }
+            delay(500)          // garantisce che lo spinner sia percepibile
+            job.join()
+            _refreshing.value = false
+        }
+    }
+
     private suspend fun tryLoad(): Boolean = try {
         _units.value = service.loadUnits(); _phase.value = Phase.Connected; true
     } catch (e: Exception) {

@@ -32,6 +32,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Text
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
@@ -55,6 +56,7 @@ fun HomeScreen(
     onPowerAllOff: () -> Unit,
     onRefreshHouse: () -> Unit = {},
     onRefresh: () -> Unit = {},
+    refreshing: Boolean = false,
     onSettings: () -> Unit = {},
     onAddDevice: () -> Unit = {},
     update: UpdateStatus = UpdateStatus.Unknown,
@@ -91,7 +93,7 @@ fun HomeScreen(
             }
             RoundIcon("+", c.ink2, c.surface1, onAddDevice)
             Spacer(Modifier.width(8.dp))
-            RoundIcon("⟳", c.ink2, c.surface1, onRefresh)
+            RefreshIcon(refreshing, c.ink2, c.surface1, onRefresh)
             Spacer(Modifier.width(8.dp))
             RoundIcon("⚙", c.ink2, c.surface1, onSettings)
         }
@@ -319,6 +321,22 @@ private fun RoundIcon(glyph: String, fg: Color, bg: Color, onClick: () -> Unit) 
         Modifier.pressClickable(onClick).size(38.dp).clip(CircleShape).background(bg),
         contentAlignment = Alignment.Center,
     ) { Text(glyph, color = fg, style = QuadType.body) }
+}
+
+/** Come RoundIcon ma, mentre ricarica, mostra uno spinner (e non è più cliccabile). */
+@Composable
+private fun RefreshIcon(refreshing: Boolean, fg: Color, bg: Color, onClick: () -> Unit) {
+    Box(
+        Modifier.pressClickable(onClick = onClick, enabled = !refreshing)
+            .size(38.dp).clip(CircleShape).background(bg),
+        contentAlignment = Alignment.Center,
+    ) {
+        if (refreshing) {
+            CircularProgressIndicator(color = fg, strokeWidth = 2.dp, modifier = Modifier.size(18.dp))
+        } else {
+            Text("⟳", color = fg, style = QuadType.body)
+        }
+    }
 }
 
 @Composable
