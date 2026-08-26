@@ -215,6 +215,105 @@ def cmd_set(args) -> None:
     session.save(cli, devices)
 
 
+_TASK_TYPES = {
+    "once": 0, "una-volta": 0, "delay": 1, "ritardo": 1,
+    "period": 2, "ricorrente": 2, "cycle": 3, "ciclico": 3, "random": 4, "casuale": 4,
+}
+
+
+def _task_type(name: str) -> int:
+    from . import tasks
+    t = _TASK_TYPES.get(str(name).lower())
+    if t is None:
+        try:
+            t = int(name)
+        except (TypeError, ValueError):
+            sys.exit("Tipo sconosciuto: %r (once|delay|period|cycle|random o 0..4)" % name)
+    return t
+
+
+def _parse_task_time(value: str, task_type: int):
+    from datetime import datetime
+    from . import tasks
+    if task_type in (tasks.TYPE_ONCE, tasks.TYPE_DELAY):
+        for fmt in ("%Y-%m-%d %H:%M:%S", "%Y-%m-%d %H:%M"):
+            try:
+                return datetime.strptime(value, fmt)
+            except ValueError:
+                pass
+        sys.exit("Ora attesa 'AAAA-MM-GG HH:MM' per once/delay, ricevuto %r" % value)
+    # ricorrenti: solo l'ora, la data e' oggi
+    for fmt in ("%H:%M:%S", "%H:%M"):
+        try:
+            t = datetime.strptime(value, fmt)
+        except ValueError:
+            continue
+        now = datetime.now()
+        return now.replace(hour=t.hour, minute=t.minute, second=t.second, microsecond=0)
+    sys.exit("Ora attesa 'HH:MM' per i ricorrenti, ricevuto %r" % value)
+
+
+def _parse_days(value: str):
+    from . import tasks
+    idx = {name: i for i, name in enumerate(tasks.WEEKDAYS)}
+    out = []
+    for tok in value.split(","):
+        tok = tok.strip().lower()
+        if tok in idx:
+            out.append(idx[tok])
+        elif tok.isdigit() and 0 <= int(tok) <= 6:
+            out.append(int(tok))
+        else:
+            sys.exit("Giorno sconosciuto: %r (lun..dom o 0..6)" % tok)
+    return sorted(set(out))
+
+
+def cmd_task(args) -> None:
+    from . import tasks
+    cli, devices = session.load()
+    if cli is None:
+        sys.exit("Nessuna sessione: lancia `klimakontrol login`.")
+    dev = _pick(devices, args.device)
+
+    if args.action == "list":
+        found = cli.list_tasks(dev)
+        if not found:
+            print("Nessuna pianificazione.")
+        for t in found:
+            line = t.describe()
+            print("%s #%s  %s" % (t.type, t.index if t.index is not None else "?", line))
+        session.save(cli, devices)
+        return
+
+    if args.action == "del":
+        if args.index is None:
+            sys.exit("Serve --index per cancellare.")
+        cli.delete_task(dev, _task_type(args.type), args.index)
+        print("Pianificazione %s #%s cancellata." % (args.type, args.index))
+        session.save(cli, devices)
+        return
+
+    # add
+    if not args.time:
+        sys.exit("Serve --time.")
+    ttype = _task_type(args.type)
+    when = _parse_task_time(args.time, ttype)
+    weekday = _parse_days(args.days) if args.days else []
+    status: Dict[str, Any] = {}
+    for pair in (args.set or []):
+        key, _, val = pair.partition("=")
+        if not _:
+            sys.exit("Formato atteso chiave=valore, ricevuto %r" % pair)
+        p = PARAMS.get(key)
+        if p is None:
+            sys.exit("Parametro sconosciuto: %s" % key)
+        status[wire_key(key)] = p.encode(val if p.kind == "enum" else float(val))
+    task = tasks.Task(type=ttype, time=when, weekday=weekday, status=status, index=args.index)
+    cli.add_task(dev, task)
+    print("Pianificazione aggiunta: %s" % task.describe())
+    session.save(cli, devices)
+
+
 def cmd_online(args) -> None:
     cli, devices = session.load()
     print(json.dumps(session.mask(cli.query_state(devices)), indent=1, ensure_ascii=False))
@@ -315,6 +414,18 @@ def build_parser() -> argparse.ArgumentParser:
     sp.add_argument("--security", default="wpa2",
                     help="open|wep|wpa1|wpa2|wpa12 o un intero (default wpa2)")
     sp.set_defaults(func=cmd_provision)
+
+    sp = sub.add_parser("task", help="pianificazioni (timer) del modulo: list|add|del")
+    sp.add_argument("action", choices=("list", "add", "del"))
+    sp.add_argument("device", help="numero o nome dell'unita'")
+    sp.add_argument("--type", default="period",
+                    help="once|delay|period|cycle|random (default period; per add/del)")
+    sp.add_argument("--time", help="'AAAA-MM-GG HH:MM' (once/delay) o 'HH:MM' (ricorrenti)")
+    sp.add_argument("--days", help="giorni per i ricorrenti: es. lun,mar,ven (o 0..6)")
+    sp.add_argument("--index", type=int, help="indice della pianificazione (del; opz. per add)")
+    sp.add_argument("--set", action="append", metavar="chiave=valore",
+                    help="azione da applicare, ripetibile (es. --set pwr=on --set temp=23)")
+    sp.set_defaults(func=cmd_task)
 
     sub.add_parser("list", help="elenco unita'").set_defaults(func=cmd_list)
 
