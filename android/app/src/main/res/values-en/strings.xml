@@ -1,0 +1,189 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <!-- ==== Shared / common ==== -->
+    <string name="create_account">Create account</string>
+    <string name="email_or_phone_label">Email or phone</string>
+    <string name="password_label">Password</string>
+    <string name="add_ac">Add air conditioner</string>
+    <string name="manage_zones">Manage zones</string>
+    <string name="vendor_logo_desc">Manufacturer logo</string>
+    <string name="send_sending">sending…</string>
+    <string name="send_confirmed">✓ confirmed</string>
+    <string name="send_failed">command failed</string>
+    <string name="action_save">Save</string>
+    <string name="action_delete">Delete</string>
+    <string name="action_add">Add</string>
+
+    <!-- ==== Enum: mode ==== -->
+    <string name="mode_caldo">Heat</string>
+    <string name="mode_freddo">Cool</string>
+    <string name="mode_deumidifica">Dry</string>
+    <string name="mode_ventola">Fan</string>
+    <string name="mode_auto">Auto</string>
+
+    <!-- ==== Enum: fan ==== -->
+    <string name="fan_auto">auto</string>
+    <string name="fan_bassa">low</string>
+    <string name="fan_medio_bassa">medium-low</string>
+    <string name="fan_media">medium</string>
+    <string name="fan_medio_alta">medium-high</string>
+    <string name="fan_alta">high</string>
+
+    <!-- ==== ViewModel messages ==== -->
+    <string name="error_op_failed">Operation failed</string>
+    <string name="error_bad_credentials">Wrong email or password</string>
+    <string name="error_too_many_attempts">Too many attempts, try again in a few minutes</string>
+    <string name="error_already_registered">This account already exists: sign in instead of creating it</string>
+    <string name="error_bad_vcode">Verification code missing or wrong</string>
+    <string name="error_op_failed_code">Operation failed (error %1$s)</string>
+    <string name="error_op_generic">Operation failed</string>
+    <string name="login_no_units">Connected, but no units found</string>
+    <string name="settings_password_updated">Password updated ✓</string>
+    <string name="settings_name_updated">Name updated ✓</string>
+    <string name="onboarding_send_failed">Send failed. Are you connected to the air conditioner\'s «Broadlink_tcl_…» hotspot?</string>
+
+    <!-- ==== Login ==== -->
+    <string name="region_eu">Europe</string>
+    <string name="region_ab">Other</string>
+    <string name="region_cn">China</string>
+    <string name="region_ru">Russia</string>
+    <string name="region_heading">REGION</string>
+    <string name="password_show">Show</string>
+    <string name="password_hide">Hide</string>
+    <string name="login_lead">Sign in to your account to control your air conditioners.</string>
+    <string name="login_region_hint">Where the account lives (usually Europe). Change it only if you created it in another area.</string>
+    <string name="login_remember">Remember credentials</string>
+    <string name="login_button">Sign in</string>
+    <string name="login_remember_on">Credentials saved encrypted on the device (Keystore); you\'re signed back in automatically.</string>
+    <string name="login_remember_off">Only the session is kept; the password is not saved.</string>
+    <string name="login_no_account">Don\'t have an account?</string>
+
+    <!-- ==== Registration ==== -->
+    <string name="register_intro">Enter your email and region: we\'ll send you a verification code.</string>
+    <string name="register_send_code">Send code</string>
+    <string name="register_code_sent">We sent a code to %1$s (%2$s). Enter it and choose a password.</string>
+    <string name="register_code_label">Verification code</string>
+    <string name="register_password_new">Password (new)</string>
+    <string name="register_name_optional">Name (optional)</string>
+    <string name="register_no_code">Code didn\'t arrive?</string>
+    <string name="register_resend">Resend</string>
+    <string name="register_back_to_login">Back to sign in</string>
+
+    <!-- ==== Home ==== -->
+    <string name="home_title">Devices</string>
+    <string name="home_filter_all">All</string>
+    <string name="home_update_available">Update available · v%1$s</string>
+    <string name="home_update_open">Open</string>
+    <string name="home_empty_zone">No units in this zone.\nAssign them from Settings → Manage zones.</string>
+    <string name="home_empty">No air conditioners.\nAdd one to get started.</string>
+    <string name="home_refresh_house">Cool the house</string>
+    <string name="home_power_all_off">Turn all off</string>
+    <string name="unit_offline">offline</string>
+    <string name="unit_off">Off</string>
+    <string name="home_last_data">last data 3 min ago</string>
+    <string name="home_ambient">ambient %1$s°</string>
+    <plurals name="home_units_count">
+        <item quantity="one">%d unit</item>
+        <item quantity="other">%d units</item>
+    </plurals>
+    <plurals name="home_on_count">
+        <item quantity="one">%d on</item>
+        <item quantity="other">%d on</item>
+    </plurals>
+
+    <!-- ==== Detail ==== -->
+    <string name="detail_ambient">Ambient %1$s°</string>
+    <string name="detail_error_code">error %1$s</string>
+    <string name="detail_no_error">no error</string>
+    <string name="detail_section_mode">Mode</string>
+    <string name="detail_section_fan">Fan</string>
+    <string name="detail_fan_auto">Auto</string>
+    <string name="detail_section_swing">Swing</string>
+    <string name="swing_vertical">Vertical</string>
+    <string name="swing_horizontal">Horizontal</string>
+    <string name="detail_section_functions">Functions</string>
+    <string name="feature_eco">Eco</string>
+    <string name="feature_turbo">Turbo</string>
+    <string name="feature_night">Night</string>
+
+    <!-- ==== Zones (HomesScreen) ==== -->
+    <string name="homes_your_zones">Your zones</string>
+    <string name="homes_no_zones">No zones. Create one below (e.g. Ground floor, Night area…).</string>
+    <string name="homes_saved">Saved ✓</string>
+    <string name="homes_new_zone">New zone</string>
+    <string name="homes_assign_devices">Assign devices</string>
+    <string name="homes_no_devices">No devices.</string>
+    <string name="homes_unassigned">None</string>
+    <string name="homes_backup">Backup</string>
+    <string name="homes_export">Export configuration</string>
+    <string name="homes_export_subject">klimakontrol — zone configuration</string>
+    <string name="homes_import_hint">Paste a configuration here</string>
+    <string name="homes_import">Import</string>
+    <string name="homes_config_imported">Configuration imported ✓</string>
+    <string name="homes_config_invalid">Invalid configuration</string>
+
+    <!-- ==== Settings ==== -->
+    <string name="settings_title">Settings</string>
+    <string name="settings_section_account">Account</string>
+    <string name="settings_email_label">Email</string>
+    <string name="settings_new_name">New name</string>
+    <string name="settings_save_name">Save name</string>
+    <string name="settings_change_password">Change password</string>
+    <string name="settings_current_password">Current password</string>
+    <string name="settings_new_password">New password</string>
+    <string name="settings_section_app">App</string>
+    <string name="settings_version">Version</string>
+    <string name="settings_update_available">Update available: v%1$s</string>
+    <string name="settings_download_update">Download the update</string>
+    <string name="settings_up_to_date">You\'re on the latest version.</string>
+    <string name="settings_check_updates">Check for updates</string>
+    <string name="settings_section_devices">Devices</string>
+    <string name="settings_devices_desc">Add an air conditioner by connecting its WiFi module to your home network, without the official app.</string>
+    <string name="settings_section_zones">Zones</string>
+    <string name="settings_zones_desc">Group your air conditioners by zone (ground floor, night area…) and filter the Home screen. All stored locally.</string>
+    <string name="settings_section_hardware">Hardware</string>
+    <string name="settings_vendor_hint">Manufacturer code (from the QR or the box), e.g. WISNOW. The logo is downloaded from the manufacturer\'s cloud.</string>
+    <string name="settings_vendor_code_label">Manufacturer code</string>
+    <string name="settings_vendor_downloading">Downloading…</string>
+    <string name="settings_vendor_apply">Apply</string>
+    <string name="settings_section_timezone">Time zone</string>
+    <string name="settings_timezone_desc">Handled automatically. The modules think in UTC+8 and the conversion is done by the app using the phone\'s time zone: there\'s nothing to set.</string>
+    <string name="settings_section_session">Session</string>
+    <string name="settings_logout">Sign out</string>
+    <string name="settings_forget">Forget credentials</string>
+
+    <!-- ==== Onboarding (SoftAP config) ==== -->
+    <string name="onboarding_intro_lead">Let\'s connect the air conditioner\'s WiFi module to your home network — without the official app.</string>
+    <string name="onboarding_step1">Put the air conditioner into configuration mode</string>
+    <string name="onboarding_step2">Enter your WiFi password</string>
+    <string name="onboarding_step3">Connect your phone to the air conditioner\'s hotspot</string>
+    <string name="onboarding_step4">Send: the module joins your network</string>
+    <string name="onboarding_config_hint">For configuration mode use the same gesture as the official app: usually you hold a button until a WiFi network starting with «Broadlink_tcl_» appears.</string>
+    <string name="onboarding_start">Start</string>
+    <string name="onboarding_wifi_title">Your WiFi network</string>
+    <string name="onboarding_ssid_label">Network name (SSID)</string>
+    <string name="onboarding_wifi_password">WiFi password</string>
+    <string name="onboarding_wifi_hint">The module only connects to 2.4 GHz networks. Security is usually WPA2.</string>
+    <string name="onboarding_next">Next</string>
+    <string name="onboarding_connect_title">Connect your phone to the air conditioner</string>
+    <string name="onboarding_connect_desc">Open WiFi settings and connect to the air conditioner\'s «Broadlink_tcl_…» network. It\'s a network with no internet: that\'s fine. Then come back here and send.</string>
+    <string name="onboarding_open_wifi">Open WiFi settings</string>
+    <string name="onboarding_send">Send credentials</string>
+    <string name="onboarding_done_title">Credentials sent</string>
+    <string name="onboarding_done_responded">The air conditioner received the configuration and is connecting to your network.</string>
+    <string name="onboarding_done_no_response">We sent the credentials to the air conditioner (it usually doesn\'t reply: that\'s normal).</string>
+    <string name="onboarding_done_hint">Now reconnect your phone to your home WiFi. If the module joins the network and is already linked to this account, the unit will appear in the list shortly; a module this account has never seen may need one more step.</string>
+    <string name="onboarding_finish">Done</string>
+    <string name="security_open">Open</string>
+    <string name="security_wep">WEP</string>
+    <string name="security_wpa">WPA</string>
+    <string name="security_wpa2">WPA2</string>
+    <string name="security_wpa12">WPA1/2</string>
+    <string name="security_heading">SECURITY</string>
+    <!-- ==== Language (picker) ==== -->
+    <string name="settings_section_language">Language</string>
+    <string name="language_system">System</string>
+    <string name="language_it">Italiano</string>
+    <string name="language_en">English</string>
+</resources>

@@ -1,5 +1,7 @@
 package net.klimakontrol
 
+import android.app.Activity
+import android.content.Context
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -33,6 +35,7 @@ import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.viewmodel.compose.viewModel
 import kotlinx.coroutines.delay
 import net.klimakontrol.data.AcUnit
+import net.klimakontrol.data.settings.LocaleStore
 import net.klimakontrol.ui.DetailScreen
 import net.klimakontrol.ui.HomeScreen
 import net.klimakontrol.ui.KlimaViewModel
@@ -53,6 +56,10 @@ private const val HOMES = "__homes__"
 private const val ONBOARDING = "__onboarding__"
 
 class MainActivity : ComponentActivity() {
+    override fun attachBaseContext(newBase: Context) {
+        super.attachBaseContext(LocaleStore.wrap(newBase))
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         enableEdgeToEdge()
         super.onCreate(savedInstanceState)
@@ -128,6 +135,7 @@ private fun Connected(vm: KlimaViewModel, units: List<AcUnit>) {
     val vendorLogo by vm.vendorLogo.collectAsState()
     val vendorBusy by vm.vendorBusy.collectAsState()
     val onboarding by vm.onboarding.collectAsState()
+    val ctx = LocalContext.current
     val c = Klima.colors
 
     AnimatedContent(
@@ -158,6 +166,11 @@ private fun Connected(vm: KlimaViewModel, units: List<AcUnit>) {
                 onSetVendorCode = { vm.setVendorCode(it) },
                 onLogout = { vm.logout() },
                 onForget = { vm.forget() },
+                currentLanguage = LocaleStore(ctx).language(),
+                onSetLanguage = { lang ->
+                    LocaleStore(ctx).setLanguage(lang)
+                    (ctx as? Activity)?.recreate()   // riapplica la lingua (attachBaseContext)
+                },
                 onBack = { vm.clearSettingsMsg(); selected = null },
             )
         } else if (sel == HOMES) {

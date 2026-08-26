@@ -1,22 +1,25 @@
 package net.klimakontrol.data
 
-/** Le cinque modalità del climatizzatore (etichette italiane, come nell'app). */
-enum class Mode(val label: String) {
-    CALDO("Caldo"),
-    FREDDO("Freddo"),
-    DEUMIDIFICA("Deumidifica"),
-    VENTOLA("Ventola"),
-    AUTO("Auto"),
+import androidx.annotation.StringRes
+import net.klimakontrol.R
+
+/** Le cinque modalità del climatizzatore; l'etichetta è una risorsa (localizzata). */
+enum class Mode(@StringRes val labelRes: Int) {
+    CALDO(R.string.mode_caldo),
+    FREDDO(R.string.mode_freddo),
+    DEUMIDIFICA(R.string.mode_deumidifica),
+    VENTOLA(R.string.mode_ventola),
+    AUTO(R.string.mode_auto),
 }
 
 /** Velocità ventola: solo gli step che il modello dichiara vanno mostrati. */
-enum class FanSpeed(val label: String, val level: Int) {
-    AUTO("auto", 0),
-    BASSA("bassa", 1),
-    MEDIO_BASSA("medio-bassa", 2),
-    MEDIA("media", 3),
-    MEDIO_ALTA("medio-alta", 4),
-    ALTA("alta", 5),
+enum class FanSpeed(@StringRes val labelRes: Int, val level: Int) {
+    AUTO(R.string.fan_auto, 0),
+    BASSA(R.string.fan_bassa, 1),
+    MEDIO_BASSA(R.string.fan_medio_bassa, 2),
+    MEDIA(R.string.fan_media, 3),
+    MEDIO_ALTA(R.string.fan_medio_alta, 4),
+    ALTA(R.string.fan_alta, 5),
 }
 
 /** Stato di raggiungibilità dell'unità (il controllo passa dal cloud). */

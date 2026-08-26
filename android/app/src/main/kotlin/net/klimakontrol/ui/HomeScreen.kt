@@ -33,6 +33,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material3.Text
+import androidx.compose.ui.res.pluralStringResource
+import androidx.compose.ui.res.stringResource
+import net.klimakontrol.R
 import net.klimakontrol.data.AcUnit
 import net.klimakontrol.data.Home
 import net.klimakontrol.data.Mode
@@ -80,8 +83,10 @@ fun HomeScreen(
         ) {
             Column(Modifier.weight(1f)) {
                 val hn = homes.firstOrNull { it.id == selectedHome }?.name
-                Text(hn ?: "Dispositivi", style = QuadType.title, color = c.ink)
-                Text("${shown.size} unità · $onCount ${if (onCount == 1) "accesa" else "accese"}",
+                Text(hn ?: stringResource(R.string.home_title), style = QuadType.title, color = c.ink)
+                val units = pluralStringResource(R.plurals.home_units_count, shown.size, shown.size)
+                val on = pluralStringResource(R.plurals.home_on_count, onCount, onCount)
+                Text("$units · $on",
                     style = QuadType.body, color = c.ink2)
             }
             RoundIcon("+", c.ink2, c.surface1, onAddDevice)
@@ -98,7 +103,7 @@ fun HomeScreen(
                     .padding(start = 16.dp, end = 16.dp, bottom = 10.dp),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
             ) {
-                HomeChip("Tutte", selectedHome == null) { onSelectHome(null) }
+                HomeChip(stringResource(R.string.home_filter_all), selectedHome == null) { onSelectHome(null) }
                 homes.forEach { h -> HomeChip(h.name, selectedHome == h.id) { onSelectHome(h.id) } }
             }
         }
@@ -114,9 +119,9 @@ fun HomeScreen(
                     .padding(horizontal = 14.dp, vertical = 10.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                Text("Aggiornamento disponibile · v${avail.latest}",
+                Text(stringResource(R.string.home_update_available, avail.latest),
                     style = QuadType.body, color = cool.on, modifier = Modifier.weight(1f))
-                Text("Apri", style = QuadType.name.copy(fontWeight = FontWeight.SemiBold), color = cool.on)
+                Text(stringResource(R.string.home_update_open), style = QuadType.name.copy(fontWeight = FontWeight.SemiBold), color = cool.on)
             }
         }
 
@@ -132,8 +137,8 @@ fun HomeScreen(
                         horizontalAlignment = Alignment.CenterHorizontally,
                     ) {
                         Text(
-                            if (selectedHome != null) "Nessuna unità in questa zona.\nAssegnale da Impostazioni → Gestisci zone."
-                            else "Nessun climatizzatore.\nAggiungine uno per iniziare.",
+                            if (selectedHome != null) stringResource(R.string.home_empty_zone)
+                            else stringResource(R.string.home_empty),
                             style = QuadType.body, color = c.ink3, textAlign = TextAlign.Center,
                         )
                         if (selectedHome == null) {
@@ -148,7 +153,7 @@ fun HomeScreen(
                                 Text("+", color = Color(0xFF10161A),
                                     style = QuadType.name.copy(fontWeight = FontWeight.SemiBold))
                                 Spacer(Modifier.width(8.dp))
-                                Text("Aggiungi climatizzatore",
+                                Text(stringResource(R.string.add_ac),
                                     style = QuadType.name.copy(fontWeight = FontWeight.SemiBold),
                                     color = Color(0xFF10161A))
                             }
@@ -177,7 +182,7 @@ fun HomeScreen(
                 ) {
                     Text("❄", color = Color(0xFF10161A), style = QuadType.body)
                     Spacer(Modifier.width(8.dp))
-                    Text("Rinfresca casa", style = QuadType.name.copy(fontWeight = FontWeight.SemiBold),
+                    Text(stringResource(R.string.home_refresh_house), style = QuadType.name.copy(fontWeight = FontWeight.SemiBold),
                         color = Color(0xFF10161A))
                 }
                 // Spegni tutte (secondario): attivo solo se qualcosa è acceso
@@ -188,7 +193,7 @@ fun HomeScreen(
                 ) {
                     PowerGlyph(color = if (canPowerOff) c.ink else c.ink3, modifier = Modifier.size(20.dp))
                     Spacer(Modifier.width(8.dp))
-                    Text("Spegni tutte", style = QuadType.name.copy(fontWeight = FontWeight.SemiBold),
+                    Text(stringResource(R.string.home_power_all_off), style = QuadType.name.copy(fontWeight = FontWeight.SemiBold),
                         color = if (canPowerOff) c.ink else c.ink3)
                 }
             }
@@ -236,22 +241,22 @@ private fun UnitCard(u: AcUnit, send: SendState, onOpen: (AcUnit) -> Unit, onTog
             Text(u.name, style = QuadType.name, color = if (u.online) c.ink else c.offline)
             Spacer(Modifier.height(3.dp))
             when {
-                !u.online -> Text("offline", style = QuadType.micro, color = c.offline)
+                !u.online -> Text(stringResource(R.string.unit_offline), style = QuadType.micro, color = c.offline)
                 u.power -> Row(verticalAlignment = Alignment.CenterVertically) {
-                    Badge(u.mode.label, mode.container, mode.on)
+                    Badge(stringResource(u.mode.labelRes), mode.container, mode.on)
                     Spacer(Modifier.width(7.dp))
-                    Text("· ${u.fan.label}", style = QuadType.body, color = c.ink2)
+                    Text("· " + stringResource(u.fan.labelRes), style = QuadType.body, color = c.ink2)
                 }
-                else -> Text("Spenta", style = QuadType.body, color = c.ink2)
+                else -> Text(stringResource(R.string.unit_off), style = QuadType.body, color = c.ink2)
             }
             Spacer(Modifier.height(6.dp))
             when (send) {
-                SendState.Sending -> Text("invio…", style = QuadType.micro, color = mode.accent)
-                SendState.Ok -> Text("✓ confermato", style = QuadType.micro, color = c.ok)
-                SendState.Error -> Text("comando non riuscito", style = QuadType.micro, color = c.error)
+                SendState.Sending -> Text(stringResource(R.string.send_sending), style = QuadType.micro, color = mode.accent)
+                SendState.Ok -> Text(stringResource(R.string.send_confirmed), style = QuadType.micro, color = c.ok)
+                SendState.Error -> Text(stringResource(R.string.send_failed), style = QuadType.micro, color = c.error)
                 SendState.Idle -> Text(
-                    if (!u.online) "ultimo dato 3 min fa"
-                    else u.ambientTemp?.let { "ambiente ${fmt(it)}°" } ?: "",
+                    if (!u.online) stringResource(R.string.home_last_data)
+                    else u.ambientTemp?.let { stringResource(R.string.home_ambient, fmt(it)) } ?: "",
                     style = QuadType.micro, color = c.ink3,
                 )
             }

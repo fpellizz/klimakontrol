@@ -19,7 +19,9 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.material3.Text
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import net.klimakontrol.R
 import net.klimakontrol.ui.theme.Klima
 import net.klimakontrol.ui.theme.QuadType
 
@@ -36,7 +38,7 @@ fun SplashScreen(vendorLogo: ByteArray?) {
                 val bmp = remember(bytes) { BitmapFactory.decodeByteArray(bytes, 0, bytes.size)?.asImageBitmap() }
                 if (bmp != null) {
                     Box(Modifier.clip(RoundedCornerShape(22.dp)).background(Color.White).padding(30.dp)) {
-                        Image(bitmap = bmp, contentDescription = "Logo del produttore",
+                        Image(bitmap = bmp, contentDescription = stringResource(R.string.vendor_logo_desc),
                             modifier = Modifier.height(110.dp), contentScale = ContentScale.Fit)
                     }
                 }

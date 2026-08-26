@@ -10,7 +10,9 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import net.klimakontrol.BuildConfig
+import net.klimakontrol.R
 import net.klimakontrol.data.AcUnit
+import net.klimakontrol.data.settings.LocaleStore
 import net.klimakontrol.data.Home
 import net.klimakontrol.data.branding.VendorBranding
 import net.klimakontrol.data.homes.HomesStore
@@ -176,10 +178,10 @@ class KlimaViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     fun changePassword(old: String, new: String) =
-        settingsOp("Password aggiornata ✓") { service.changePassword(old, new) }
+        settingsOp(ctx().getString(R.string.settings_password_updated)) { service.changePassword(old, new) }
 
     fun changeNickname(nick: String) =
-        settingsOp("Nome aggiornato ✓") { service.changeNickname(nick) }
+        settingsOp(ctx().getString(R.string.settings_name_updated)) { service.changeNickname(nick) }
 
     private val tempJobs = mutableMapOf<String, Job>()      // debounce temperatura per unità
     private val burstBefore = mutableMapOf<String, AcUnit>() // snapshot per il roll-back del burst temp
@@ -252,7 +254,7 @@ class KlimaViewModel(app: Application) : AndroidViewModel(app) {
                 service.login(email, password, remember, region)
                 _phase.value = Phase.Loading
                 if (!tryLoad()) _phase.value =
-                    Phase.Login(email = email, region = region, error = "Connesso, ma nessuna unità trovata")
+                    Phase.Login(email = email, region = region, error = ctx().getString(R.string.login_no_units))
             } catch (e: Exception) {
                 _phase.value = Phase.Login(email = email, region = region, error = readable(e))
             }
@@ -312,7 +314,7 @@ class KlimaViewModel(app: Application) : AndroidViewModel(app) {
                 _onboarding.value = OnboardingState(sent = true, responded = resp != null)
             } catch (e: Exception) {
                 _onboarding.value = OnboardingState(
-                    error = "Invio non riuscito. Sei connesso all'hotspot «Broadlink_tcl_…» del climatizzatore?",
+                    error = ctx().getString(R.string.onboarding_send_failed),
                 )
             }
         }
@@ -430,16 +432,20 @@ class KlimaViewModel(app: Application) : AndroidViewModel(app) {
 
     private fun clampT(t: Float) = t.coerceIn(AcUnit.TEMP_MIN, AcUnit.TEMP_MAX)
 
+    /** Context con la lingua scelta dall'utente, per risolvere stringhe fuori da @Composable. */
+    private fun ctx() = LocaleStore.wrap(getApplication())
+
     private fun readable(e: Exception): String {
-        val m = e.message ?: return "Operazione fallita"
+        val c = ctx()
+        val m = e.message ?: return c.getString(R.string.error_op_failed)
         return when {
-            "-1006" in m || "-1008" in m -> "Email o password errati"
-            "-1036" in m -> "Troppi tentativi, riprova tra qualche minuto"
-            "has_been_registered" in m -> "Questo account è già registrato: accedi invece di crearlo"
-            "vcode" in m || "-3002" in m -> "Codice di verifica mancante o errato"
+            "-1006" in m || "-1008" in m -> c.getString(R.string.error_bad_credentials)
+            "-1036" in m -> c.getString(R.string.error_too_many_attempts)
+            "has_been_registered" in m -> c.getString(R.string.error_already_registered)
+            "vcode" in m || "-3002" in m -> c.getString(R.string.error_bad_vcode)
             // fallback: mai mostrare il messaggio cinese grezzo del server, solo il codice
-            else -> Regex("-?\\d{3,5}").find(m)?.let { "Operazione non riuscita (errore ${it.value})" }
-                ?: "Operazione non riuscita"
+            else -> Regex("-?\\d{3,5}").find(m)?.let { c.getString(R.string.error_op_failed_code, it.value) }
+                ?: c.getString(R.string.error_op_generic)
         }
     }
 }

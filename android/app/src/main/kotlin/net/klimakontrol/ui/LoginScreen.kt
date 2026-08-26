@@ -38,22 +38,25 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import net.klimakontrol.R
 import net.klimakontrol.data.cloud.REGIONS
 import net.klimakontrol.ui.theme.Klima
 import net.klimakontrol.ui.theme.QuadType
 
 // etichette brevi per il selettore regione/vendor (i codici sono le chiavi di REGIONS)
 private val REGION_ORDER = listOf("eu", "ab", "cn", "ru")
-private val REGION_SHORT = mapOf("eu" to "Europa", "ab" to "Altro", "cn" to "Cina", "ru" to "Russia")
+private val REGION_SHORT: Map<String, Int> =
+    mapOf("eu" to R.string.region_eu, "ab" to R.string.region_ab, "cn" to R.string.region_cn, "ru" to R.string.region_ru)
 
 /** Selettore regione/vendor a chip, condiviso da login e registrazione. */
 @Composable
 internal fun RegionChips(selected: String, onSelect: (String) -> Unit) {
     val c = Klima.colors
     val accentMode = c.mode(net.klimakontrol.data.Mode.FREDDO)
-    Text("REGIONE", style = QuadType.overline, color = c.ink3)
+    Text(stringResource(R.string.region_heading), style = QuadType.overline, color = c.ink3)
     Spacer(Modifier.height(6.dp))
     Row(horizontalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.fillMaxWidth()) {
         REGION_ORDER.filter { it in REGIONS }.forEach { code ->
@@ -64,7 +67,7 @@ internal fun RegionChips(selected: String, onSelect: (String) -> Unit) {
                 contentAlignment = Alignment.Center,
             ) {
                 Text(
-                    REGION_SHORT[code] ?: code.uppercase(),
+                    REGION_SHORT[code]?.let { stringResource(it) } ?: code.uppercase(),
                     style = QuadType.body, textAlign = TextAlign.Center,
                     color = if (sel) accentMode.on else c.ink2,
                 )
@@ -90,7 +93,7 @@ internal fun PasswordField(
         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
         trailingIcon = {
             Text(
-                if (visible) "Nascondi" else "Mostra",
+                if (visible) stringResource(R.string.password_hide) else stringResource(R.string.password_show),
                 style = QuadType.micro, color = c.ink2,
                 modifier = Modifier.clickable { visible = !visible }.padding(horizontal = 12.dp),
             )
@@ -122,22 +125,22 @@ fun LoginScreen(
             verticalArrangement = Arrangement.spacedBy(14.dp),
         ) {
             Text("KlimaKontrol", style = QuadType.wordmark, color = c.ink)
-            Text("Accedi al tuo account per controllare i climatizzatori.",
+            Text(stringResource(R.string.login_lead),
                 style = QuadType.body, color = c.ink2)
             Spacer(Modifier.height(6.dp))
 
             OutlinedTextField(
                 value = email, onValueChange = { email = it },
-                label = { Text("Email o telefono") }, singleLine = true,
+                label = { Text(stringResource(R.string.email_or_phone_label)) }, singleLine = true,
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
                 modifier = Modifier.fillMaxWidth(),
             )
-            PasswordField(password, { password = it }, "Password", Modifier.fillMaxWidth())
+            PasswordField(password, { password = it }, stringResource(R.string.password_label), Modifier.fillMaxWidth())
 
             // ---- regione / vendor (determina il lid dell'account) ----
             RegionChips(region) { region = it }
             Text(
-                "Dove vive l'account (di solito Europa). Cambiala solo se l'hai creato in un'altra area.",
+                stringResource(R.string.login_region_hint),
                 style = QuadType.micro, color = c.ink3,
             )
 
@@ -150,7 +153,7 @@ fun LoginScreen(
                     colors = CheckboxDefaults.colors(checkedColor = accent),
                 )
                 Spacer(Modifier.width(4.dp))
-                Text("Ricorda le credenziali", style = QuadType.body, color = c.ink2)
+                Text(stringResource(R.string.login_remember), style = QuadType.body, color = c.ink2)
             }
 
             state.error?.let {
@@ -168,21 +171,21 @@ fun LoginScreen(
                 modifier = Modifier.fillMaxWidth().height(52.dp),
             ) {
                 if (state.busy) CircularProgressIndicator(strokeWidth = 2.dp, modifier = Modifier.height(20.dp))
-                else Text("Accedi", style = QuadType.name)
+                else Text(stringResource(R.string.login_button), style = QuadType.name)
             }
 
             Text(
-                if (rememberCreds) "Credenziali salvate cifrate sul dispositivo (Keystore); rientri da solo."
-                else "Si conserva solo la sessione; la password non viene salvata.",
+                if (rememberCreds) stringResource(R.string.login_remember_on)
+                else stringResource(R.string.login_remember_off),
                 style = QuadType.micro, color = c.ink3,
             )
 
             Spacer(Modifier.height(2.dp))
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Text("Non hai un account?", style = QuadType.body, color = c.ink2)
+                Text(stringResource(R.string.login_no_account), style = QuadType.body, color = c.ink2)
                 Spacer(Modifier.width(6.dp))
                 Text(
-                    "Crea account",
+                    stringResource(R.string.create_account),
                     style = QuadType.name, color = accent,
                     modifier = Modifier.clickable { onCreateAccount() }.padding(vertical = 4.dp),
                 )

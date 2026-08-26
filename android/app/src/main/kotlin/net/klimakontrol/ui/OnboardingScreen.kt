@@ -40,8 +40,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import net.klimakontrol.R
 import net.klimakontrol.data.Mode
 import net.klimakontrol.ui.theme.Klima
 import net.klimakontrol.ui.theme.QuadType
@@ -82,7 +84,7 @@ fun OnboardingScreen(
         ) {
             BackButton(c.ink) { if (step in 1..2) step-- else onBack() }
             Spacer(Modifier.width(10.dp))
-            Text("Aggiungi climatizzatore", style = QuadType.title, color = c.ink)
+            Text(stringResource(R.string.add_ac), style = QuadType.title, color = c.ink)
         }
 
         Column(
@@ -115,23 +117,22 @@ fun OnboardingScreen(
 @Composable
 private fun IntroStep(accent: Color, onStart: () -> Unit) {
     val c = Klima.colors
-    Text("Colleghiamo il modulo WiFi del climatizzatore alla tua rete di casa — senza l'app ufficiale.",
+    Text(stringResource(R.string.onboarding_intro_lead),
         style = QuadType.body, color = c.ink2)
 
     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-        NumberedLine(1, "Metti il climatizzatore in modalità configurazione", accent)
-        NumberedLine(2, "Inserisci la password del tuo WiFi", accent)
-        NumberedLine(3, "Connetti il telefono all'hotspot del climatizzatore", accent)
-        NumberedLine(4, "Invio: il modulo entra nella tua rete", accent)
+        NumberedLine(1, stringResource(R.string.onboarding_step1), accent)
+        NumberedLine(2, stringResource(R.string.onboarding_step2), accent)
+        NumberedLine(3, stringResource(R.string.onboarding_step3), accent)
+        NumberedLine(4, stringResource(R.string.onboarding_step4), accent)
     }
 
     Box(Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).background(c.surface1).padding(14.dp)) {
-        Text("Per la modalità configurazione usa lo stesso gesto dell'app ufficiale: di solito si tiene " +
-            "premuto un tasto finché non compare una rete WiFi che inizia con «Broadlink_tcl_».",
+        Text(stringResource(R.string.onboarding_config_hint),
             style = QuadType.micro, color = c.ink3)
     }
 
-    PrimaryButton("Inizia", busy = false, enabled = true, accent = accent, onClick = onStart)
+    PrimaryButton(stringResource(R.string.onboarding_start), busy = false, enabled = true, accent = accent, onClick = onStart)
 }
 
 @Composable
@@ -142,29 +143,28 @@ private fun WifiStep(
     accent: Color, onNext: () -> Unit,
 ) {
     val c = Klima.colors
-    Text("La tua rete WiFi", style = QuadType.name, color = c.ink)
+    Text(stringResource(R.string.onboarding_wifi_title), style = QuadType.name, color = c.ink)
     OutlinedTextField(
         value = ssid, onValueChange = onSsid,
-        label = { Text("Nome rete (SSID)") }, singleLine = true,
+        label = { Text(stringResource(R.string.onboarding_ssid_label)) }, singleLine = true,
         modifier = Modifier.fillMaxWidth(),
     )
-    PasswordField(password, onPassword, "Password WiFi", Modifier.fillMaxWidth())
+    PasswordField(password, onPassword, stringResource(R.string.onboarding_wifi_password), Modifier.fillMaxWidth())
     SecurityChips(security, onSecurity)
-    Text("Il modulo si collega solo a reti a 2.4 GHz. Di solito la sicurezza è WPA2.",
+    Text(stringResource(R.string.onboarding_wifi_hint),
         style = QuadType.micro, color = c.ink3)
-    PrimaryButton("Avanti", busy = false, enabled = ssid.isNotBlank(), accent = accent, onClick = onNext)
+    PrimaryButton(stringResource(R.string.onboarding_next), busy = false, enabled = ssid.isNotBlank(), accent = accent, onClick = onNext)
 }
 
 @Composable
 private fun ConnectStep(state: OnboardingState, accent: Color, onSend: () -> Unit) {
     val c = Klima.colors
     val context = LocalContext.current
-    Text("Connetti il telefono al climatizzatore", style = QuadType.name, color = c.ink)
-    Text("Apri le impostazioni WiFi e connettiti alla rete «Broadlink_tcl_…» del climatizzatore. " +
-        "È una rete senza internet: va bene. Poi torna qui e invia.",
+    Text(stringResource(R.string.onboarding_connect_title), style = QuadType.name, color = c.ink)
+    Text(stringResource(R.string.onboarding_connect_desc),
         style = QuadType.body, color = c.ink2)
 
-    Text("Apri impostazioni WiFi", style = QuadType.name, color = accent,
+    Text(stringResource(R.string.onboarding_open_wifi), style = QuadType.name, color = accent,
         modifier = Modifier.clickable {
             context.startActivity(
                 Intent(Settings.ACTION_WIFI_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
@@ -173,44 +173,48 @@ private fun ConnectStep(state: OnboardingState, accent: Color, onSend: () -> Uni
 
     state.error?.let { Text(it, style = QuadType.micro, color = c.error) }
 
-    PrimaryButton("Invia credenziali", busy = state.busy, enabled = !state.busy,
+    PrimaryButton(stringResource(R.string.onboarding_send), busy = state.busy, enabled = !state.busy,
         accent = accent, onClick = onSend)
 }
 
 @Composable
 private fun DoneStep(state: OnboardingState, accent: Color, onFinish: () -> Unit) {
     val c = Klima.colors
-    Text("Credenziali inviate", style = QuadType.title, color = c.ink)
+    Text(stringResource(R.string.onboarding_done_title), style = QuadType.title, color = c.ink)
     Text(
         if (state.responded)
-            "Il climatizzatore ha ricevuto la configurazione e si sta connettendo alla tua rete."
+            stringResource(R.string.onboarding_done_responded)
         else
-            "Abbiamo mandato le credenziali al climatizzatore (di solito non risponde: è normale).",
+            stringResource(R.string.onboarding_done_no_response),
         style = QuadType.body, color = c.ink2,
     )
-    Text("Ora riconnetti il telefono al WiFi di casa. Se il modulo entra in rete ed è già associato " +
-        "a questo account, tra poco l'unità comparirà nell'elenco; un modulo mai visto da questo " +
-        "account potrebbe richiedere ancora un passaggio.",
+    Text(stringResource(R.string.onboarding_done_hint),
         style = QuadType.micro, color = c.ink3)
-    PrimaryButton("Fine", busy = false, enabled = true, accent = accent, onClick = onFinish)
+    PrimaryButton(stringResource(R.string.onboarding_finish), busy = false, enabled = true, accent = accent, onClick = onFinish)
 }
 
 // ---- pezzi riusabili locali (coerenti con Register/Settings) ----
 
-private val SECURITY_OPTIONS = listOf(0 to "Aperta", 1 to "WEP", 2 to "WPA", 3 to "WPA2", 4 to "WPA1/2")
+private val SECURITY_OPTIONS = listOf(
+    0 to R.string.security_open,
+    1 to R.string.security_wep,
+    2 to R.string.security_wpa,
+    3 to R.string.security_wpa2,
+    4 to R.string.security_wpa12,
+)
 
 @Composable
 private fun SecurityChips(selected: Int, onSelect: (Int) -> Unit) {
     val c = Klima.colors
     val accent = c.mode(Mode.FREDDO)
     Column {
-        Text("SICUREZZA", style = QuadType.overline, color = c.ink3)
+        Text(stringResource(R.string.security_heading), style = QuadType.overline, color = c.ink3)
         Spacer(Modifier.height(8.dp))
         Row(
             Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
             horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            SECURITY_OPTIONS.forEach { (value, label) ->
+            SECURITY_OPTIONS.forEach { (value, labelResId) ->
                 val sel = value == selected
                 Box(
                     Modifier.pressClickable(onClick = { onSelect(value) })
@@ -218,7 +222,7 @@ private fun SecurityChips(selected: Int, onSelect: (Int) -> Unit) {
                         .background(if (sel) accent.container else c.surface1)
                         .padding(horizontal = 14.dp, vertical = 8.dp),
                 ) {
-                    Text(label, style = QuadType.body, color = if (sel) accent.on else c.ink2)
+                    Text(stringResource(labelResId), style = QuadType.body, color = if (sel) accent.on else c.ink2)
                 }
             }
         }
