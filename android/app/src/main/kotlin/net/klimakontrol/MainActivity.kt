@@ -47,6 +47,7 @@ import net.klimakontrol.ui.OnboardingScreen
 import net.klimakontrol.ui.RegisterScreen
 import net.klimakontrol.ui.SettingsScreen
 import net.klimakontrol.ui.SplashScreen
+import net.klimakontrol.ui.TimerScreen
 import net.klimakontrol.ui.theme.Klima
 import net.klimakontrol.ui.theme.KlimaTheme
 
@@ -54,6 +55,7 @@ import net.klimakontrol.ui.theme.KlimaTheme
 private const val SETTINGS = "__settings__"
 private const val HOMES = "__homes__"
 private const val ONBOARDING = "__onboarding__"
+private const val TIMER_PREFIX = "__timer__:"   // seguito dall'id unità
 
 class MainActivity : ComponentActivity() {
     override fun attachBaseContext(newBase: Context) {
@@ -135,6 +137,7 @@ private fun Connected(vm: KlimaViewModel, units: List<AcUnit>) {
     val vendorLogo by vm.vendorLogo.collectAsState()
     val vendorBusy by vm.vendorBusy.collectAsState()
     val onboarding by vm.onboarding.collectAsState()
+    val timersState by vm.timers.collectAsState()
     val ctx = LocalContext.current
     val c = Klima.colors
 
@@ -193,6 +196,17 @@ private fun Connected(vm: KlimaViewModel, units: List<AcUnit>) {
                 onFinish = { vm.onboardingDone(); selected = null },
                 onBack = { selected = null },
             )
+        } else if (sel != null && sel.startsWith(TIMER_PREFIX)) {
+            val uid = sel.removePrefix(TIMER_PREFIX)
+            val u = units.firstOrNull { it.id == uid }
+            TimerScreen(
+                unitName = u?.name ?: uid,
+                state = timersState,
+                onLoad = { vm.loadTimers(uid) },
+                onAdd = { t -> vm.addTimer(uid, t) },
+                onDelete = { type, index -> vm.deleteTimer(uid, type, index) },
+                onBack = { selected = uid },
+            )
         } else if (sel == null || current == null) {
             HomeScreen(
                 units = units,
@@ -224,6 +238,7 @@ private fun Connected(vm: KlimaViewModel, units: List<AcUnit>) {
                 onToggleNight = { vm.toggleNight(current.id) },
                 onToggleSwingV = { vm.toggleSwingV(current.id) },
                 onToggleSwingH = { vm.toggleSwingH(current.id) },
+                onOpenTimer = { selected = TIMER_PREFIX + current.id },
                 send = send[current.id] ?: SendState.Idle,
             )
         }
