@@ -31,6 +31,7 @@ import net.klimakontrol.data.cloud.swingVWire
 import net.klimakontrol.data.cloud.targetWire
 import net.klimakontrol.data.cloud.turboWire
 import net.klimakontrol.data.softap.SoftApClient
+import net.klimakontrol.data.tasks.Timer
 
 sealed interface Phase {
     data object Loading : Phase
@@ -61,6 +62,13 @@ data class OnboardingState(
     val responded: Boolean = false,   // il modulo ha risposto (diagnostica)
 )
 
+/** Stato della schermata pianificazioni (timer) di un'unità. */
+data class TimersState(
+    val busy: Boolean = false,
+    val error: String? = null,
+    val timers: List<Timer> = emptyList(),
+)
+
 private const val DEBOUNCE_MS = 400L
 private const val OK_HOLD_MS = 900L
 private const val ERR_HOLD_MS = 1600L
@@ -82,6 +90,9 @@ class KlimaViewModel(app: Application) : AndroidViewModel(app) {
 
     private val _onboarding = MutableStateFlow(OnboardingState())
     val onboarding = _onboarding.asStateFlow()
+
+    private val _timers = MutableStateFlow(TimersState())
+    val timers = _timers.asStateFlow()
 
     private val _update = MutableStateFlow<UpdateStatus>(UpdateStatus.Unknown)
     val update = _update.asStateFlow()
@@ -324,6 +335,41 @@ class KlimaViewModel(app: Application) : AndroidViewModel(app) {
     fun onboardingDone() {
         _onboarding.value = OnboardingState()
         refresh()
+    }
+
+    // ---- pianificazioni (timer) ----
+    fun loadTimers(unitId: String) {
+        _timers.value = TimersState(busy = true)
+        viewModelScope.launch {
+            try {
+                _timers.value = TimersState(timers = service.listTimers(unitId))
+            } catch (e: Exception) {
+                _timers.value = TimersState(error = readable(e))
+            }
+        }
+    }
+
+    fun addTimer(unitId: String, timer: Timer) {
+        _timers.value = _timers.value.copy(busy = true, error = null)
+        viewModelScope.launch {
+            try {
+                service.addTimer(unitId, timer)
+                loadTimers(unitId)
+            } catch (e: Exception) {
+                _timers.value = _timers.value.copy(busy = false, error = readable(e))
+            }
+        }
+    }
+
+    fun deleteTimer(unitId: String, type: Int, index: Int) {
+        viewModelScope.launch {
+            try {
+                service.deleteTimer(unitId, type, index)
+                loadTimers(unitId)
+            } catch (e: Exception) {
+                _timers.value = _timers.value.copy(error = readable(e))
+            }
+        }
     }
 
     /** Esci mantenendo le credenziali salvate (rientro automatico al prossimo avvio). */

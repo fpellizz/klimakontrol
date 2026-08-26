@@ -118,4 +118,23 @@ class CloudService(context: Context) {
         client.setState(d, changes)
         Unit
     }
+
+    // ---- pianificazioni (timer) ----
+    suspend fun listTimers(unitId: String): List<net.klimakontrol.data.tasks.Timer> =
+        withContext(Dispatchers.IO) {
+            val d = deviceFor(unitId) ?: throw CloudException("unità sconosciuta: $unitId")
+            client.listTasks(d)
+        }
+
+    suspend fun addTimer(unitId: String, timer: net.klimakontrol.data.tasks.Timer) =
+        withContext(Dispatchers.IO) {
+            val d = deviceFor(unitId) ?: throw CloudException("unità sconosciuta: $unitId")
+            client.addTask(d, timer); Unit
+        }
+
+    suspend fun deleteTimer(unitId: String, type: Int, index: Int) =
+        withContext(Dispatchers.IO) {
+            val d = deviceFor(unitId) ?: throw CloudException("unità sconosciuta: $unitId")
+            client.deleteTask(d, type, index); Unit
+        }
 }

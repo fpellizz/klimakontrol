@@ -186,4 +186,24 @@
     <string name="language_system">System</string>
     <string name="language_it">Italiano</string>
     <string name="language_en">English</string>
+    <!-- ==== Schedules (timers) ==== -->
+    <string name="timer_title">Schedules</string>
+    <string name="timer_experimental">Experimental: schedules are reconstructed from the protocol but not yet tested on a real air conditioner.</string>
+    <string name="timer_none">No schedules.</string>
+    <string name="timer_new">New schedule</string>
+    <string name="timer_time_label">Time (HH:MM)</string>
+    <string name="timer_days">Days (empty = every day)</string>
+    <string name="timer_action">Action</string>
+    <string name="timer_action_on">Turn on</string>
+    <string name="timer_action_off">Turn off</string>
+    <string name="timer_temp_label">Temperature</string>
+    <string name="timer_add">Add schedule</string>
+    <string name="timer_every_day">every day</string>
+    <string name="wd_mon">Mon</string>
+    <string name="wd_tue">Tue</string>
+    <string name="wd_wed">Wed</string>
+    <string name="wd_thu">Thu</string>
+    <string name="wd_fri">Fri</string>
+    <string name="wd_sat">Sat</string>
+    <string name="wd_sun">Sun</string>
 </resources>

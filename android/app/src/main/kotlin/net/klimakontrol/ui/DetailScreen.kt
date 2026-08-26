@@ -99,6 +99,7 @@ fun DetailScreen(
     onToggleNight: () -> Unit,
     onToggleSwingV: () -> Unit,
     onToggleSwingH: () -> Unit,
+    onOpenTimer: () -> Unit = {},
     send: SendState = SendState.Idle,
 ) {
     val c = Klima.colors
@@ -131,6 +132,12 @@ fun DetailScreen(
                 BackButton(mode.on, onBack)
                 Spacer(Modifier.width(10.dp))
                 Text(unit.name, style = QuadType.unit, color = mode.on, modifier = Modifier.weight(1f))
+                Box(
+                    Modifier.pressClickable(onClick = onOpenTimer)
+                        .width(38.dp).height(38.dp).clip(RoundedCornerShape(19.dp))
+                        .background(mode.on.copy(alpha = 0.14f)),
+                    contentAlignment = Alignment.Center,
+                ) { Text("⏱", style = QuadType.body, color = mode.on) }
             }
             Spacer(Modifier.height(2.dp))
             val context = LocalContext.current

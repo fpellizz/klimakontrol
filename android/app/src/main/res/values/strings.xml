@@ -187,4 +187,24 @@
     <string name="language_system">Sistema</string>
     <string name="language_it">Italiano</string>
     <string name="language_en">English</string>
+    <!-- ==== Pianificazioni (timer) ==== -->
+    <string name="timer_title">Pianificazioni</string>
+    <string name="timer_experimental">Funzione in verifica: i timer sono ricostruiti dal protocollo ma non ancora provati su un climatizzatore reale.</string>
+    <string name="timer_none">Nessuna pianificazione.</string>
+    <string name="timer_new">Nuova pianificazione</string>
+    <string name="timer_time_label">Ora (HH:MM)</string>
+    <string name="timer_days">Giorni (vuoto = ogni giorno)</string>
+    <string name="timer_action">Azione</string>
+    <string name="timer_action_on">Accendi</string>
+    <string name="timer_action_off">Spegni</string>
+    <string name="timer_temp_label">Temperatura</string>
+    <string name="timer_add">Aggiungi pianificazione</string>
+    <string name="timer_every_day">ogni giorno</string>
+    <string name="wd_mon">Lun</string>
+    <string name="wd_tue">Mar</string>
+    <string name="wd_wed">Mer</string>
+    <string name="wd_thu">Gio</string>
+    <string name="wd_fri">Ven</string>
+    <string name="wd_sat">Sab</string>
+    <string name="wd_sun">Dom</string>
 </resources>
