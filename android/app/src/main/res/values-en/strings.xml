@@ -188,17 +188,26 @@
     <string name="language_en">English</string>
     <!-- ==== Schedules (timers) ==== -->
     <string name="timer_title">Schedules</string>
-    <string name="timer_experimental">Experimental: schedules are reconstructed from the protocol but not yet tested on a real air conditioner.</string>
+    <string name="timer_phone_note">Schedules are handled by the app: at the set time it sends the command to the air conditioner. Keep the app installed; they may not fire while the phone is off.</string>
     <string name="timer_none">No schedules.</string>
-    <string name="timer_new">New schedule</string>
+    <string name="timer_list_title">Active</string>
     <string name="timer_time_label">Time (HH:MM)</string>
     <string name="timer_days">Days (empty = every day)</string>
-    <string name="timer_action">Action</string>
     <string name="timer_action_on">Turn on</string>
     <string name="timer_action_off">Turn off</string>
     <string name="timer_temp_label">Temperature</string>
-    <string name="timer_add">Add schedule</string>
+    <string name="timer_add">Add recurring</string>
     <string name="timer_every_day">every day</string>
+    <string name="timer_once">once</string>
+    <string name="timer_quick_title">Quick timer</string>
+    <string name="timer_quick_start">Start</string>
+    <string name="timer_will_fire">fires at %1$s</string>
+    <string name="timer_recurring_title">Recurring</string>
+    <string name="timer_exact_warn">To fire timers at the exact time, allow Klimakontrol to set \"Alarms &amp; reminders\".</string>
+    <string name="timer_exact_enable">Enable exact timing</string>
+    <string name="timer_channel">Timers</string>
+    <string name="timer_notify_ok">Command sent.</string>
+    <string name="timer_notify_fail">Couldn\'t send the command.</string>
     <string name="wd_mon">Mon</string>
     <string name="wd_tue">Tue</string>
     <string name="wd_wed">Wed</string>

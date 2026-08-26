@@ -137,7 +137,7 @@ private fun Connected(vm: KlimaViewModel, units: List<AcUnit>) {
     val vendorLogo by vm.vendorLogo.collectAsState()
     val vendorBusy by vm.vendorBusy.collectAsState()
     val onboarding by vm.onboarding.collectAsState()
-    val timersState by vm.timers.collectAsState()
+    val schedulesState by vm.schedules.collectAsState()
     val refreshing by vm.refreshing.collectAsState()
     val ctx = LocalContext.current
     val c = Klima.colors
@@ -202,10 +202,12 @@ private fun Connected(vm: KlimaViewModel, units: List<AcUnit>) {
             val u = units.firstOrNull { it.id == uid }
             TimerScreen(
                 unitName = u?.name ?: uid,
-                state = timersState,
-                onLoad = { vm.loadTimers(uid) },
-                onAdd = { t -> vm.addTimer(uid, t) },
-                onDelete = { type, index -> vm.deleteTimer(uid, type, index) },
+                state = schedulesState,
+                onLoad = { vm.loadSchedules(uid) },
+                onAddQuick = { delay, on, temp -> vm.addQuickTimer(uid, delay, on, temp) },
+                onAddWeekly = { h, m, days, on, temp -> vm.addWeeklyTimer(uid, h, m, days, on, temp) },
+                onToggle = { id -> vm.toggleSchedule(uid, id) },
+                onDelete = { id -> vm.deleteSchedule(uid, id) },
                 onBack = { selected = uid },
             )
         } else if (sel == null || current == null) {
