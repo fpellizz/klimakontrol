@@ -31,7 +31,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import net.klimakontrol.R
 import net.klimakontrol.data.AcUnit
 import net.klimakontrol.data.Home
 import net.klimakontrol.data.Mode
@@ -62,7 +64,7 @@ fun HomesScreen(
         Row(Modifier.fillMaxWidth().padding(20.dp, 10.dp, 20.dp, 8.dp), verticalAlignment = Alignment.CenterVertically) {
             BackButton(c.ink, onBack)
             Spacer(Modifier.width(10.dp))
-            Text("Gestisci zone", style = QuadType.title, color = c.ink)
+            Text(stringResource(R.string.manage_zones), style = QuadType.title, color = c.ink)
         }
 
         Column(
@@ -72,8 +74,8 @@ fun HomesScreen(
             note?.let { Text(it, style = QuadType.body, color = if (it.endsWith("✓")) c.ok else c.error) }
 
             // ---- crea / rinomina / elimina zone ----
-            Section("Le tue zone") {
-                if (homes.isEmpty()) Text("Nessuna zona. Creane una qui sotto (es. Piano terra, Zona notte…).",
+            Section(stringResource(R.string.homes_your_zones)) {
+                if (homes.isEmpty()) Text(stringResource(R.string.homes_no_zones),
                     style = QuadType.body, color = c.ink3)
                 homes.forEach { h ->
                     var name by remember(h.id) { mutableStateOf(h.name) }
@@ -83,29 +85,29 @@ fun HomesScreen(
                             modifier = Modifier.weight(1f),
                         )
                         Spacer(Modifier.width(8.dp))
-                        MiniButton("Salva", accent, enabled = name.isNotBlank() && name != h.name) {
-                            onRenameHome(h.id, name); note = "Salvato ✓"
+                        MiniButton(stringResource(R.string.action_save), accent, enabled = name.isNotBlank() && name != h.name) {
+                            onRenameHome(h.id, name); note = context.getString(R.string.homes_saved)
                         }
                         Spacer(Modifier.width(6.dp))
-                        MiniButton("Elimina", c.error, enabled = true) { onDeleteHome(h.id) }
+                        MiniButton(stringResource(R.string.action_delete), c.error, enabled = true) { onDeleteHome(h.id) }
                     }
                 }
                 Spacer(Modifier.height(10.dp))
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     OutlinedTextField(
                         value = newHome, onValueChange = { newHome = it }, singleLine = true,
-                        label = { Text("Nuova zona") }, modifier = Modifier.weight(1f),
+                        label = { Text(stringResource(R.string.homes_new_zone)) }, modifier = Modifier.weight(1f),
                     )
                     Spacer(Modifier.width(8.dp))
-                    MiniButton("Aggiungi", accent, enabled = newHome.isNotBlank()) {
+                    MiniButton(stringResource(R.string.action_add), accent, enabled = newHome.isNotBlank()) {
                         onAddHome(newHome); newHome = ""
                     }
                 }
             }
 
             // ---- assegna dispositivi alle case ----
-            Section("Assegna dispositivi") {
-                if (units.isEmpty()) Text("Nessun dispositivo.", style = QuadType.body, color = c.ink3)
+            Section(stringResource(R.string.homes_assign_devices)) {
+                if (units.isEmpty()) Text(stringResource(R.string.homes_no_devices), style = QuadType.body, color = c.ink3)
                 units.forEach { u ->
                     Text(u.name, style = QuadType.name, color = c.ink, modifier = Modifier.padding(top = 8.dp))
                     Spacer(Modifier.height(4.dp))
@@ -114,32 +116,32 @@ fun HomesScreen(
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
                     ) {
                         val cur = assignments[u.id]
-                        HomeChip("Nessuna", cur == null) { onAssign(u.id, null) }
+                        HomeChip(stringResource(R.string.homes_unassigned), cur == null) { onAssign(u.id, null) }
                         homes.forEach { h -> HomeChip(h.name, cur == h.id) { onAssign(u.id, h.id) } }
                     }
                 }
             }
 
             // ---- backup / esporta / importa ----
-            Section("Backup") {
-                MiniButton("Esporta configurazione", accent, enabled = true, fill = true) {
+            Section(stringResource(R.string.homes_backup)) {
+                MiniButton(stringResource(R.string.homes_export), accent, enabled = true, fill = true) {
                     val json = onExport()
                     val intent = Intent(Intent.ACTION_SEND).apply {
                         type = "text/plain"
-                        putExtra(Intent.EXTRA_SUBJECT, "klimakontrol — configurazione zone")
+                        putExtra(Intent.EXTRA_SUBJECT, context.getString(R.string.homes_export_subject))
                         putExtra(Intent.EXTRA_TEXT, json)
                     }
-                    context.startActivity(Intent.createChooser(intent, "Esporta configurazione"))
+                    context.startActivity(Intent.createChooser(intent, context.getString(R.string.homes_export)))
                 }
                 Spacer(Modifier.height(10.dp))
                 OutlinedTextField(
                     value = importText, onValueChange = { importText = it },
-                    label = { Text("Incolla qui una configurazione") }, modifier = Modifier.fillMaxWidth(),
+                    label = { Text(stringResource(R.string.homes_import_hint)) }, modifier = Modifier.fillMaxWidth(),
                 )
                 Spacer(Modifier.height(8.dp))
-                MiniButton("Importa", accent, enabled = importText.isNotBlank(), fill = true) {
-                    note = if (onImport(importText)) { importText = ""; "Configurazione importata ✓" }
-                           else "Configurazione non valida"
+                MiniButton(stringResource(R.string.homes_import), accent, enabled = importText.isNotBlank(), fill = true) {
+                    note = if (onImport(importText)) { importText = ""; context.getString(R.string.homes_config_imported) }
+                           else context.getString(R.string.homes_config_invalid)
                 }
             }
 

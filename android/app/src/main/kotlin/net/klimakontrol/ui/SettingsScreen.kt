@@ -33,7 +33,9 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalUriHandler
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import net.klimakontrol.R
 import net.klimakontrol.data.Mode
 import net.klimakontrol.data.update.UpdateStatus
 import net.klimakontrol.ui.theme.Klima
@@ -57,6 +59,8 @@ fun SettingsScreen(
     onSetVendorCode: (String) -> Unit,
     onLogout: () -> Unit,
     onForget: () -> Unit,
+    currentLanguage: String,
+    onSetLanguage: (String) -> Unit,
     onBack: () -> Unit,
 ) {
     val c = Klima.colors
@@ -73,7 +77,7 @@ fun SettingsScreen(
         ) {
             BackButton(c.ink, onBack)
             Spacer(Modifier.width(10.dp))
-            Text("Impostazioni", style = QuadType.title, color = c.ink)
+            Text(stringResource(R.string.settings_title), style = QuadType.title, color = c.ink)
         }
 
         Column(
@@ -92,107 +96,114 @@ fun SettingsScreen(
             }
 
             // ---- account ----
-            Section("Account") {
-                Info("Email", email.ifBlank { "—" })
+            Section(stringResource(R.string.settings_section_account)) {
+                Info(stringResource(R.string.settings_email_label), email.ifBlank { "—" })
                 Spacer(Modifier.height(12.dp))
                 OutlinedTextField(
                     value = nickname, onValueChange = { nickname = it },
-                    label = { Text("Nuovo nome") }, singleLine = true,
+                    label = { Text(stringResource(R.string.settings_new_name)) }, singleLine = true,
                     modifier = Modifier.fillMaxWidth(),
                 )
                 Spacer(Modifier.height(8.dp))
-                Action("Salva nome", enabled = !busy && nickname.isNotBlank(), accent = accent) {
+                Action(stringResource(R.string.settings_save_name), enabled = !busy && nickname.isNotBlank(), accent = accent) {
                     onChangeNickname(nickname.trim())
                 }
 
                 Spacer(Modifier.height(16.dp))
-                Text("Cambia password", style = QuadType.name, color = c.ink)
+                Text(stringResource(R.string.settings_change_password), style = QuadType.name, color = c.ink)
                 Spacer(Modifier.height(8.dp))
-                PasswordField(oldPw, { oldPw = it }, "Password attuale", Modifier.fillMaxWidth())
+                PasswordField(oldPw, { oldPw = it }, stringResource(R.string.settings_current_password), Modifier.fillMaxWidth())
                 Spacer(Modifier.height(8.dp))
-                PasswordField(newPw, { newPw = it }, "Nuova password", Modifier.fillMaxWidth())
+                PasswordField(newPw, { newPw = it }, stringResource(R.string.settings_new_password), Modifier.fillMaxWidth())
                 Spacer(Modifier.height(8.dp))
-                Action("Cambia password",
+                Action(stringResource(R.string.settings_change_password),
                     enabled = !busy && oldPw.isNotBlank() && newPw.length >= 6, accent = accent) {
                     onChangePassword(oldPw, newPw); oldPw = ""; newPw = ""
                 }
             }
 
             // ---- app / aggiornamenti ----
-            Section("App") {
-                Info("Versione", version)
+            Section(stringResource(R.string.settings_section_app)) {
+                Info(stringResource(R.string.settings_version), version)
                 Spacer(Modifier.height(6.dp))
                 val uriHandler = LocalUriHandler.current
                 when (val u = update) {
                     is UpdateStatus.Available -> {
-                        Text("Aggiornamento disponibile: v${u.latest}", style = QuadType.body, color = accent)
+                        Text(stringResource(R.string.settings_update_available, u.latest), style = QuadType.body, color = accent)
                         Spacer(Modifier.height(8.dp))
-                        Action("Scarica l'aggiornamento", enabled = true, accent = accent) {
+                        Action(stringResource(R.string.settings_download_update), enabled = true, accent = accent) {
                             uriHandler.openUri(u.htmlUrl)
                         }
                     }
-                    is UpdateStatus.UpToDate -> Text("Sei all'ultima versione.", style = QuadType.body, color = c.ink2)
+                    is UpdateStatus.UpToDate -> Text(stringResource(R.string.settings_up_to_date), style = QuadType.body, color = c.ink2)
                     is UpdateStatus.Unknown -> {
-                        Action("Controlla aggiornamenti", enabled = !busy, accent = c.surface2, textColor = c.ink) {
+                        Action(stringResource(R.string.settings_check_updates), enabled = !busy, accent = c.surface2, textColor = c.ink) {
                             onCheckUpdate()
                         }
                     }
                 }
             }
 
+            // ---- lingua (selettore: sistema / italiano / inglese) ----
+            Section(stringResource(R.string.settings_section_language)) {
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    HomeChip(stringResource(R.string.language_system), currentLanguage == "system") { onSetLanguage("system") }
+                    HomeChip(stringResource(R.string.language_it), currentLanguage == "it") { onSetLanguage("it") }
+                    HomeChip(stringResource(R.string.language_en), currentLanguage == "en") { onSetLanguage("en") }
+                }
+            }
+
             // ---- dispositivi: aggiungi un modulo vergine (config SoftAP) ----
-            Section("Dispositivi") {
-                Text("Aggiungi un climatizzatore collegando il suo modulo WiFi alla rete di casa, " +
-                    "senza l'app ufficiale.", style = QuadType.body, color = c.ink2)
+            Section(stringResource(R.string.settings_section_devices)) {
+                Text(stringResource(R.string.settings_devices_desc), style = QuadType.body, color = c.ink2)
                 Spacer(Modifier.height(10.dp))
-                Action("Aggiungi climatizzatore", enabled = true, accent = accent) { onAddDevice() }
+                Action(stringResource(R.string.add_ac), enabled = true, accent = accent) { onAddDevice() }
             }
 
             // ---- zone (gestione locale: gruppi/filtri definiti dall'utente) ----
-            Section("Zone") {
-                Text("Raggruppa i climatizzatori per zona (piano terra, zona notte…) e filtra la Home. Tutto in locale.",
+            Section(stringResource(R.string.settings_section_zones)) {
+                Text(stringResource(R.string.settings_zones_desc),
                     style = QuadType.body, color = c.ink2)
                 Spacer(Modifier.height(10.dp))
-                Action("Gestisci zone", enabled = true, accent = c.surface2, textColor = c.ink) { onManageHomes() }
+                Action(stringResource(R.string.manage_zones), enabled = true, accent = c.surface2, textColor = c.ink) { onManageHomes() }
             }
 
             // ---- hardware / branding produttore (logo scaricato a runtime dal cloud del produttore) ----
-            Section("Hardware") {
+            Section(stringResource(R.string.settings_section_hardware)) {
                 vendorLogo?.let { bytes ->
                     val bmp = remember(bytes) { BitmapFactory.decodeByteArray(bytes, 0, bytes.size)?.asImageBitmap() }
                     if (bmp != null) {
                         Box(Modifier.fillMaxWidth().height(110.dp).clip(RoundedCornerShape(12.dp))
                             .background(Color.White).padding(14.dp), contentAlignment = Alignment.Center) {
-                            Image(bitmap = bmp, contentDescription = "Logo del produttore",
+                            Image(bitmap = bmp, contentDescription = stringResource(R.string.vendor_logo_desc),
                                 modifier = Modifier.fillMaxSize(), contentScale = ContentScale.Fit)
                         }
                         Spacer(Modifier.height(10.dp))
                     }
                 }
-                Text("Codice del costruttore (dal QR o dalla confezione), es. WISNOW. Il logo viene scaricato dal cloud del produttore.",
+                Text(stringResource(R.string.settings_vendor_hint),
                     style = QuadType.micro, color = c.ink3)
                 Spacer(Modifier.height(8.dp))
                 var code by remember(vendorCode) { mutableStateOf(vendorCode) }
                 OutlinedTextField(value = code, onValueChange = { code = it }, singleLine = true,
-                    label = { Text("Codice costruttore") }, modifier = Modifier.fillMaxWidth())
+                    label = { Text(stringResource(R.string.settings_vendor_code_label)) }, modifier = Modifier.fillMaxWidth())
                 Spacer(Modifier.height(8.dp))
-                Action(if (vendorBusy) "Scarico…" else "Applica", enabled = !vendorBusy, accent = accent) {
+                Action(if (vendorBusy) stringResource(R.string.settings_vendor_downloading) else stringResource(R.string.settings_vendor_apply), enabled = !vendorBusy, accent = accent) {
                     onSetVendorCode(code)
                 }
             }
 
             // ---- fuso orario (informativo: nessuna impostazione server) ----
-            Section("Fuso orario") {
-                Text("Gestito automaticamente. I moduli ragionano in UTC+8 e la conversione è fatta " +
-                    "dall'app col fuso del telefono: non c'è nulla da impostare.",
+            Section(stringResource(R.string.settings_section_timezone)) {
+                Text(stringResource(R.string.settings_timezone_desc),
                     style = QuadType.body, color = c.ink2)
             }
 
             // ---- sessione ----
-            Section("Sessione") {
-                Action("Esci", enabled = true, accent = c.surface2, textColor = c.ink) { onLogout() }
+            Section(stringResource(R.string.settings_section_session)) {
+                Action(stringResource(R.string.settings_logout), enabled = true, accent = c.surface2, textColor = c.ink) { onLogout() }
                 Spacer(Modifier.height(8.dp))
-                Action("Dimentica credenziali", enabled = true, accent = c.surface1, textColor = c.error) { onForget() }
+                Action(stringResource(R.string.settings_forget), enabled = true, accent = c.surface1, textColor = c.error) { onForget() }
             }
 
             Spacer(Modifier.height(24.dp))

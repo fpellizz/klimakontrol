@@ -32,8 +32,10 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
+import net.klimakontrol.R
 import net.klimakontrol.data.Mode
 import net.klimakontrol.ui.theme.Klima
 import net.klimakontrol.ui.theme.QuadType
@@ -67,15 +69,15 @@ fun RegisterScreen(
             horizontalAlignment = Alignment.Start,
             verticalArrangement = Arrangement.spacedBy(14.dp),
         ) {
-            Text("Crea account", style = QuadType.title, color = c.ink)
+            Text(stringResource(R.string.create_account), style = QuadType.title, color = c.ink)
 
             if (!state.codeSent) {
-                Text("Inserisci email e regione: ti mandiamo un codice di verifica.",
+                Text(stringResource(R.string.register_intro),
                     style = QuadType.body, color = c.ink2)
                 Spacer(Modifier.height(2.dp))
                 OutlinedTextField(
                     value = email, onValueChange = { email = it },
-                    label = { Text("Email o telefono") }, singleLine = true,
+                    label = { Text(stringResource(R.string.email_or_phone_label)) }, singleLine = true,
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
                     modifier = Modifier.fillMaxWidth(),
                 )
@@ -84,45 +86,45 @@ fun RegisterScreen(
                 state.error?.let { Text(it, style = QuadType.micro, color = c.error) }
 
                 Spacer(Modifier.height(4.dp))
-                PrimaryButton("Invia codice", busy = state.busy,
+                PrimaryButton(stringResource(R.string.register_send_code), busy = state.busy,
                     enabled = !state.busy && email.isNotBlank(), accent = accent) {
                     onSendCode(email.trim(), region)
                 }
             } else {
-                Text("Codice inviato a ${email.trim()} (${region.uppercase()}). Inseriscilo e scegli una password.",
+                Text(stringResource(R.string.register_code_sent, email.trim(), region.uppercase()),
                     style = QuadType.body, color = c.ink2)
                 Spacer(Modifier.height(2.dp))
                 OutlinedTextField(
                     value = code, onValueChange = { code = it },
-                    label = { Text("Codice di verifica") }, singleLine = true,
+                    label = { Text(stringResource(R.string.register_code_label)) }, singleLine = true,
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                     modifier = Modifier.fillMaxWidth(),
                 )
-                PasswordField(password, { password = it }, "Password (nuova)", Modifier.fillMaxWidth())
+                PasswordField(password, { password = it }, stringResource(R.string.register_password_new), Modifier.fillMaxWidth())
                 OutlinedTextField(
                     value = nickname, onValueChange = { nickname = it },
-                    label = { Text("Nome (facoltativo)") }, singleLine = true,
+                    label = { Text(stringResource(R.string.register_name_optional)) }, singleLine = true,
                     modifier = Modifier.fillMaxWidth(),
                 )
 
                 state.error?.let { Text(it, style = QuadType.micro, color = c.error) }
 
                 Spacer(Modifier.height(4.dp))
-                PrimaryButton("Crea account", busy = state.busy,
+                PrimaryButton(stringResource(R.string.create_account), busy = state.busy,
                     enabled = !state.busy && code.isNotBlank() && password.isNotBlank(), accent = accent) {
                     onRegister(email.trim(), password, code.trim(), region, nickname)
                 }
 
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text("Codice non arrivato?", style = QuadType.body, color = c.ink2)
+                    Text(stringResource(R.string.register_no_code), style = QuadType.body, color = c.ink2)
                     Spacer(Modifier.width(6.dp))
-                    Text("Rimanda", style = QuadType.name, color = accent,
+                    Text(stringResource(R.string.register_resend), style = QuadType.name, color = accent,
                         modifier = Modifier.clickable(enabled = !state.busy) { onSendCode(email.trim(), region) }
                             .padding(vertical = 4.dp))
                 }
             }
 
-            Text("Torna al login", style = QuadType.body, color = c.ink3,
+            Text(stringResource(R.string.register_back_to_login), style = QuadType.body, color = c.ink3,
                 modifier = Modifier.clickable { onBack() }.padding(vertical = 4.dp))
         }
     }

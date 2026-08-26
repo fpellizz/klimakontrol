@@ -1,4 +1,190 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">KlimaKontrol</string>
+
+    <!-- ==== Comuni / condivise ==== -->
+    <string name="create_account">Crea account</string>
+    <string name="email_or_phone_label">Email o telefono</string>
+    <string name="password_label">Password</string>
+    <string name="add_ac">Aggiungi climatizzatore</string>
+    <string name="manage_zones">Gestisci zone</string>
+    <string name="vendor_logo_desc">Logo del produttore</string>
+    <string name="send_sending">invio…</string>
+    <string name="send_confirmed">✓ confermato</string>
+    <string name="send_failed">comando non riuscito</string>
+    <string name="action_save">Salva</string>
+    <string name="action_delete">Elimina</string>
+    <string name="action_add">Aggiungi</string>
+
+    <!-- ==== Enum: modalità ==== -->
+    <string name="mode_caldo">Caldo</string>
+    <string name="mode_freddo">Freddo</string>
+    <string name="mode_deumidifica">Deumidifica</string>
+    <string name="mode_ventola">Ventola</string>
+    <string name="mode_auto">Auto</string>
+
+    <!-- ==== Enum: ventola ==== -->
+    <string name="fan_auto">auto</string>
+    <string name="fan_bassa">bassa</string>
+    <string name="fan_medio_bassa">medio-bassa</string>
+    <string name="fan_media">media</string>
+    <string name="fan_medio_alta">medio-alta</string>
+    <string name="fan_alta">alta</string>
+
+    <!-- ==== Messaggi ViewModel ==== -->
+    <string name="error_op_failed">Operazione fallita</string>
+    <string name="error_bad_credentials">Email o password errati</string>
+    <string name="error_too_many_attempts">Troppi tentativi, riprova tra qualche minuto</string>
+    <string name="error_already_registered">Questo account è già registrato: accedi invece di crearlo</string>
+    <string name="error_bad_vcode">Codice di verifica mancante o errato</string>
+    <string name="error_op_failed_code">Operazione non riuscita (errore %1$s)</string>
+    <string name="error_op_generic">Operazione non riuscita</string>
+    <string name="login_no_units">Connesso, ma nessuna unità trovata</string>
+    <string name="settings_password_updated">Password aggiornata ✓</string>
+    <string name="settings_name_updated">Nome aggiornato ✓</string>
+    <string name="onboarding_send_failed">Invio non riuscito. Sei connesso all\'hotspot «Broadlink_tcl_…» del climatizzatore?</string>
+
+    <!-- ==== Login ==== -->
+    <string name="region_eu">Europa</string>
+    <string name="region_ab">Altro</string>
+    <string name="region_cn">Cina</string>
+    <string name="region_ru">Russia</string>
+    <string name="region_heading">REGIONE</string>
+    <string name="password_show">Mostra</string>
+    <string name="password_hide">Nascondi</string>
+    <string name="login_lead">Accedi al tuo account per controllare i climatizzatori.</string>
+    <string name="login_region_hint">Dove vive l\'account (di solito Europa). Cambiala solo se l\'hai creato in un\'altra area.</string>
+    <string name="login_remember">Ricorda le credenziali</string>
+    <string name="login_button">Accedi</string>
+    <string name="login_remember_on">Credenziali salvate cifrate sul dispositivo (Keystore); rientri da solo.</string>
+    <string name="login_remember_off">Si conserva solo la sessione; la password non viene salvata.</string>
+    <string name="login_no_account">Non hai un account?</string>
+
+    <!-- ==== Registrazione ==== -->
+    <string name="register_intro">Inserisci email e regione: ti mandiamo un codice di verifica.</string>
+    <string name="register_send_code">Invia codice</string>
+    <string name="register_code_sent">Codice inviato a %1$s (%2$s). Inseriscilo e scegli una password.</string>
+    <string name="register_code_label">Codice di verifica</string>
+    <string name="register_password_new">Password (nuova)</string>
+    <string name="register_name_optional">Nome (facoltativo)</string>
+    <string name="register_no_code">Codice non arrivato?</string>
+    <string name="register_resend">Rimanda</string>
+    <string name="register_back_to_login">Torna al login</string>
+
+    <!-- ==== Home ==== -->
+    <string name="home_title">Dispositivi</string>
+    <string name="home_filter_all">Tutte</string>
+    <string name="home_update_available">Aggiornamento disponibile · v%1$s</string>
+    <string name="home_update_open">Apri</string>
+    <string name="home_empty_zone">Nessuna unità in questa zona.\nAssegnale da Impostazioni → Gestisci zone.</string>
+    <string name="home_empty">Nessun climatizzatore.\nAggiungine uno per iniziare.</string>
+    <string name="home_refresh_house">Rinfresca casa</string>
+    <string name="home_power_all_off">Spegni tutte</string>
+    <string name="unit_offline">offline</string>
+    <string name="unit_off">Spenta</string>
+    <string name="home_last_data">ultimo dato 3 min fa</string>
+    <string name="home_ambient">ambiente %1$s°</string>
+    <plurals name="home_units_count">
+        <item quantity="one">%d unità</item>
+        <item quantity="other">%d unità</item>
+    </plurals>
+    <plurals name="home_on_count">
+        <item quantity="one">%d accesa</item>
+        <item quantity="other">%d accese</item>
+    </plurals>
+
+    <!-- ==== Dettaglio ==== -->
+    <string name="detail_ambient">Ambiente %1$s°</string>
+    <string name="detail_error_code">errore %1$s</string>
+    <string name="detail_no_error">nessun errore</string>
+    <string name="detail_section_mode">Modalità</string>
+    <string name="detail_section_fan">Ventola</string>
+    <string name="detail_fan_auto">Auto</string>
+    <string name="detail_section_swing">Oscillazione</string>
+    <string name="swing_vertical">Verticale</string>
+    <string name="swing_horizontal">Orizzontale</string>
+    <string name="detail_section_functions">Funzioni</string>
+    <string name="feature_eco">Eco</string>
+    <string name="feature_turbo">Turbo</string>
+    <string name="feature_night">Notte</string>
+
+    <!-- ==== Zone (HomesScreen) ==== -->
+    <string name="homes_your_zones">Le tue zone</string>
+    <string name="homes_no_zones">Nessuna zona. Creane una qui sotto (es. Piano terra, Zona notte…).</string>
+    <string name="homes_saved">Salvato ✓</string>
+    <string name="homes_new_zone">Nuova zona</string>
+    <string name="homes_assign_devices">Assegna dispositivi</string>
+    <string name="homes_no_devices">Nessun dispositivo.</string>
+    <string name="homes_unassigned">Nessuna</string>
+    <string name="homes_backup">Backup</string>
+    <string name="homes_export">Esporta configurazione</string>
+    <string name="homes_export_subject">klimakontrol — configurazione zone</string>
+    <string name="homes_import_hint">Incolla qui una configurazione</string>
+    <string name="homes_import">Importa</string>
+    <string name="homes_config_imported">Configurazione importata ✓</string>
+    <string name="homes_config_invalid">Configurazione non valida</string>
+
+    <!-- ==== Impostazioni ==== -->
+    <string name="settings_title">Impostazioni</string>
+    <string name="settings_section_account">Account</string>
+    <string name="settings_email_label">Email</string>
+    <string name="settings_new_name">Nuovo nome</string>
+    <string name="settings_save_name">Salva nome</string>
+    <string name="settings_change_password">Cambia password</string>
+    <string name="settings_current_password">Password attuale</string>
+    <string name="settings_new_password">Nuova password</string>
+    <string name="settings_section_app">App</string>
+    <string name="settings_version">Versione</string>
+    <string name="settings_update_available">Aggiornamento disponibile: v%1$s</string>
+    <string name="settings_download_update">Scarica l\'aggiornamento</string>
+    <string name="settings_up_to_date">Sei all\'ultima versione.</string>
+    <string name="settings_check_updates">Controlla aggiornamenti</string>
+    <string name="settings_section_devices">Dispositivi</string>
+    <string name="settings_devices_desc">Aggiungi un climatizzatore collegando il suo modulo WiFi alla rete di casa, senza l\'app ufficiale.</string>
+    <string name="settings_section_zones">Zone</string>
+    <string name="settings_zones_desc">Raggruppa i climatizzatori per zona (piano terra, zona notte…) e filtra la Home. Tutto in locale.</string>
+    <string name="settings_section_hardware">Hardware</string>
+    <string name="settings_vendor_hint">Codice del costruttore (dal QR o dalla confezione), es. WISNOW. Il logo viene scaricato dal cloud del produttore.</string>
+    <string name="settings_vendor_code_label">Codice costruttore</string>
+    <string name="settings_vendor_downloading">Scarico…</string>
+    <string name="settings_vendor_apply">Applica</string>
+    <string name="settings_section_timezone">Fuso orario</string>
+    <string name="settings_timezone_desc">Gestito automaticamente. I moduli ragionano in UTC+8 e la conversione è fatta dall\'app col fuso del telefono: non c\'è nulla da impostare.</string>
+    <string name="settings_section_session">Sessione</string>
+    <string name="settings_logout">Esci</string>
+    <string name="settings_forget">Dimentica credenziali</string>
+
+    <!-- ==== Onboarding (config SoftAP) ==== -->
+    <string name="onboarding_intro_lead">Colleghiamo il modulo WiFi del climatizzatore alla tua rete di casa — senza l\'app ufficiale.</string>
+    <string name="onboarding_step1">Metti il climatizzatore in modalità configurazione</string>
+    <string name="onboarding_step2">Inserisci la password del tuo WiFi</string>
+    <string name="onboarding_step3">Connetti il telefono all\'hotspot del climatizzatore</string>
+    <string name="onboarding_step4">Invio: il modulo entra nella tua rete</string>
+    <string name="onboarding_config_hint">Per la modalità configurazione usa lo stesso gesto dell\'app ufficiale: di solito si tiene premuto un tasto finché non compare una rete WiFi che inizia con «Broadlink_tcl_».</string>
+    <string name="onboarding_start">Inizia</string>
+    <string name="onboarding_wifi_title">La tua rete WiFi</string>
+    <string name="onboarding_ssid_label">Nome rete (SSID)</string>
+    <string name="onboarding_wifi_password">Password WiFi</string>
+    <string name="onboarding_wifi_hint">Il modulo si collega solo a reti a 2.4 GHz. Di solito la sicurezza è WPA2.</string>
+    <string name="onboarding_next">Avanti</string>
+    <string name="onboarding_connect_title">Connetti il telefono al climatizzatore</string>
+    <string name="onboarding_connect_desc">Apri le impostazioni WiFi e connettiti alla rete «Broadlink_tcl_…» del climatizzatore. È una rete senza internet: va bene. Poi torna qui e invia.</string>
+    <string name="onboarding_open_wifi">Apri impostazioni WiFi</string>
+    <string name="onboarding_send">Invia credenziali</string>
+    <string name="onboarding_done_title">Credenziali inviate</string>
+    <string name="onboarding_done_responded">Il climatizzatore ha ricevuto la configurazione e si sta connettendo alla tua rete.</string>
+    <string name="onboarding_done_no_response">Abbiamo mandato le credenziali al climatizzatore (di solito non risponde: è normale).</string>
+    <string name="onboarding_done_hint">Ora riconnetti il telefono al WiFi di casa. Se il modulo entra in rete ed è già associato a questo account, tra poco l\'unità comparirà nell\'elenco; un modulo mai visto da questo account potrebbe richiedere ancora un passaggio.</string>
+    <string name="onboarding_finish">Fine</string>
+    <string name="security_open">Aperta</string>
+    <string name="security_wep">WEP</string>
+    <string name="security_wpa">WPA</string>
+    <string name="security_wpa2">WPA2</string>
+    <string name="security_wpa12">WPA1/2</string>
+    <string name="security_heading">SICUREZZA</string>
+    <!-- ==== Lingua (selettore) ==== -->
+    <string name="settings_section_language">Lingua</string>
+    <string name="language_system">Sistema</string>
+    <string name="language_it">Italiano</string>
+    <string name="language_en">English</string>
 </resources>

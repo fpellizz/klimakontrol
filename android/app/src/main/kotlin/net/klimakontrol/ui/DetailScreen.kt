@@ -39,6 +39,8 @@ import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.IntSize
@@ -48,6 +50,7 @@ import kotlin.math.atan2
 import kotlin.math.min
 import kotlin.math.roundToInt
 import androidx.compose.material3.Text
+import net.klimakontrol.R
 import net.klimakontrol.data.AcUnit
 import net.klimakontrol.data.FanSpeed
 import net.klimakontrol.data.Mode
@@ -130,10 +133,12 @@ fun DetailScreen(
                 Text(unit.name, style = QuadType.unit, color = mode.on, modifier = Modifier.weight(1f))
             }
             Spacer(Modifier.height(2.dp))
+            val context = LocalContext.current
             Text(
                 buildString {
-                    unit.ambientTemp?.let { append("Ambiente ${fmt(it)}°  ·  ") }
-                    append(unit.errorCode?.let { "errore $it" } ?: "nessun errore")
+                    unit.ambientTemp?.let { append(context.getString(R.string.detail_ambient, fmt(it)) + "  ·  ") }
+                    append(unit.errorCode?.let { context.getString(R.string.detail_error_code, it) }
+                        ?: context.getString(R.string.detail_no_error))
                 },
                 style = QuadType.micro, color = mode.on.copy(alpha = 0.78f),
             )
@@ -173,12 +178,12 @@ fun DetailScreen(
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Text(modeGlyph(unit.mode), color = c.ink2, style = QuadType.body)
                         Spacer(Modifier.width(6.dp))
-                        Text(unit.mode.label, style = QuadType.body, color = c.ink2)
+                        Text(stringResource(unit.mode.labelRes), style = QuadType.body, color = c.ink2)
                     }
                     val sendText = when (send) {
-                        SendState.Sending -> "invio…"
-                        SendState.Ok -> "✓ confermato"
-                        SendState.Error -> "comando non riuscito"
+                        SendState.Sending -> stringResource(R.string.send_sending)
+                        SendState.Ok -> stringResource(R.string.send_confirmed)
+                        SendState.Error -> stringResource(R.string.send_failed)
                         SendState.Idle -> ""
                     }
                     val sendColor = when (send) {
@@ -209,7 +214,7 @@ fun DetailScreen(
                 .padding(horizontal = 18.dp, vertical = 4.dp),
             verticalArrangement = Arrangement.spacedBy(sectionGap),
         ) {
-            Section("Modalità") {
+            Section(stringResource(R.string.detail_section_mode)) {
                 Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                     Mode.entries.forEach { m ->
                         val sel = m == unit.mode
@@ -223,14 +228,14 @@ fun DetailScreen(
                         ) {
                             Text(modeGlyph(m), color = if (sel) mc.on else c.ink2, style = QuadType.name)
                             Spacer(Modifier.height(3.dp))
-                            Text(m.label, style = QuadType.badge,
+                            Text(stringResource(m.labelRes), style = QuadType.badge,
                                 color = if (sel) mc.on else c.ink2, textAlign = TextAlign.Center)
                         }
                     }
                 }
             }
 
-            Section("Ventola") {
+            Section(stringResource(R.string.detail_section_fan)) {
                 // tutto su una riga: Auto + slider (tocca/trascina) + livello corrente
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     val autoSel = unit.fan == FanSpeed.AUTO
@@ -239,29 +244,29 @@ fun DetailScreen(
                             .clip(RoundedCornerShape(12.dp))
                             .background(if (autoSel) mode.container else c.surface1)
                             .padding(horizontal = 14.dp, vertical = 8.dp),
-                    ) { Text("Auto", style = QuadType.body, color = if (autoSel) mode.on else c.ink2) }
+                    ) { Text(stringResource(R.string.detail_fan_auto), style = QuadType.body, color = if (autoSel) mode.on else c.ink2) }
                     Spacer(Modifier.width(12.dp))
                     FanSlider(unit.fan, mode.accent, onSetFan, Modifier.weight(1f))
                     Spacer(Modifier.width(12.dp))
-                    Text(unit.fan.label, style = QuadType.body, color = c.ink2)
+                    Text(stringResource(unit.fan.labelRes), style = QuadType.body, color = c.ink2)
                 }
             }
 
             // Oscillazione: il modulo la gestisce (ac_vdir/ac_hdir, visti nel set fisso).
             // I controlli non gestiti (silenzioso, salute, display) sono stati tolti perché
             // non compaiono nel set che l'unità ritorna. Vedi docs/open-questions.md §4.
-            Section("Oscillazione") {
+            Section(stringResource(R.string.detail_section_swing)) {
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    SwingTile("Verticale", "↕", unit.swingV, mode.accent, Modifier.weight(1f), onToggleSwingV)
-                    SwingTile("Orizzontale", "↔", unit.swingH, mode.accent, Modifier.weight(1f), onToggleSwingH)
+                    SwingTile(stringResource(R.string.swing_vertical), "↕", unit.swingV, mode.accent, Modifier.weight(1f), onToggleSwingV)
+                    SwingTile(stringResource(R.string.swing_horizontal), "↔", unit.swingH, mode.accent, Modifier.weight(1f), onToggleSwingH)
                 }
             }
 
-            Section("Funzioni") {
+            Section(stringResource(R.string.detail_section_functions)) {
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    FeatureTile("Eco", unit.eco, c.eco, Modifier.weight(1f), onToggleEco)
-                    FeatureTile("Turbo", unit.turbo, c.turbo, Modifier.weight(1f), onToggleTurbo)
-                    FeatureTile("Notte", unit.night, c.night, Modifier.weight(1f), onToggleNight)
+                    FeatureTile(stringResource(R.string.feature_eco), unit.eco, c.eco, Modifier.weight(1f), onToggleEco)
+                    FeatureTile(stringResource(R.string.feature_turbo), unit.turbo, c.turbo, Modifier.weight(1f), onToggleTurbo)
+                    FeatureTile(stringResource(R.string.feature_night), unit.night, c.night, Modifier.weight(1f), onToggleNight)
                 }
             }
         }
