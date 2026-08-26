@@ -9,6 +9,8 @@ on:
     paths:
       - 'android/**'
   workflow_dispatch:
+  release:
+    types: [published]
 
 jobs:
   build:
@@ -40,3 +42,40 @@ jobs:
           name: klimakontrol-debug-apk
           path: android/app/build/outputs/apk/debug/*.apk
           if-no-files-found: error
+
+  # Quando pubblichi una Release su GitHub, costruisce l'APK debug della versione taggata
+  # e lo allega alla release, così chi scarica trova il pacchetto (non solo il sorgente).
+  attach-apk:
+    if: github.event_name == 'release'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    defaults:
+      run:
+        working-directory: android
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.release.tag_name }}
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.9'
+
+      - name: Build debug APK
+        run: gradle assembleDebug --no-daemon --stacktrace
+
+      - name: Allega l'APK alla release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.event.release.tag_name }}
+        run: |
+          cp app/build/outputs/apk/debug/*.apk "klimakontrol-${TAG}.apk"
+          gh release upload "${TAG}" "klimakontrol-${TAG}.apk" --clobber
