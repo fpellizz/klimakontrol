@@ -49,6 +49,15 @@ private val WD_RES = listOf(
     R.string.wd_fri, R.string.wd_sat, R.string.wd_sun,
 )
 
+/** I 7 nomi brevi dei giorni, risolti in contesto @Composable (non nei lambda). */
+@Composable
+private fun weekdayNames(): List<String> = listOf(
+    stringResource(R.string.wd_mon), stringResource(R.string.wd_tue),
+    stringResource(R.string.wd_wed), stringResource(R.string.wd_thu),
+    stringResource(R.string.wd_fri), stringResource(R.string.wd_sat),
+    stringResource(R.string.wd_sun),
+)
+
 /**
  * Pianificazioni (timer) di un'unità: elenco + aggiunta di un timer ricorrente on/off.
  * MVP dei tipi ricorrenti; il formato del task e' ricostruito ma da confermare su HW.
@@ -117,8 +126,9 @@ private fun TimerRow(t: Timer, onDelete: (Int, Int) -> Unit) {
     val c = Klima.colors
     val on = (t.action["pwr"] ?: 0) != 0
     val temp = t.action["save_temp"]
+    val names = weekdayNames()
     val days = if (t.weekday.isEmpty()) stringResource(R.string.timer_every_day)
-    else t.weekday.joinToString(" ") { stringResource(WD_RES[it]) }
+    else t.weekday.joinToString(" ") { names[it] }
     Row(
         Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp)).background(c.surface1)
             .padding(16.dp),
