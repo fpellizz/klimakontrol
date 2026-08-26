@@ -35,6 +35,7 @@ import net.klimakontrol.data.schedule.Schedule
 import net.klimakontrol.data.schedule.ScheduleStore
 import net.klimakontrol.data.schedule.Scheduler
 import java.util.UUID
+import kotlin.math.roundToInt
 
 sealed interface Phase {
     data object Loading : Phase
