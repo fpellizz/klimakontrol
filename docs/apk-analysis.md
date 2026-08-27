@@ -1,20 +1,20 @@
-# Analizzare l'APK: procedura completa
+# Analyzing the APK: the complete procedure
 
-Come rifare da zero l'analisi che ha prodotto `docs/protocol.md`. Serve se esce una versione
-nuova dell'app, se un pezzo del protocollo cambia, o per verificare che qui non ci sia niente di
-inventato.
+How to redo from scratch the analysis that produced `docs/protocol.md`. Useful if a new version
+of the app comes out, if a piece of the protocol changes, or to verify that there is nothing
+made up here.
 
-Il materiale d'analisi (APK, dex, .so, assets) **non va committato**: `.gitignore` li esclude.
-Lavora in una cartella `apk/` locale.
+The analysis material (APK, dex, .so, assets) **must not be committed**: `.gitignore` excludes them.
+Work in a local `apk/` folder.
 
 ---
 
-## 0. Procurarsi l'APK
+## 0. Obtaining the APK
 
-L'app è installata come *split APK*: il pacchetto base contiene codice e assets, le librerie
-native stanno in un pacchetto separato per architettura. Servono entrambi.
+The app is installed as a *split APK*: the base package contains code and assets, the native
+libraries are in a separate package per architecture. Both are needed.
 
-Con il telefono collegato e il debug USB attivo:
+With the phone connected and USB debugging enabled:
 
 ```bash
 mkdir -p apk && cd apk
@@ -23,10 +23,10 @@ adb shell pm path com.ab.smartDevice | sed 's/^package://' | tr -d '\r' | \
   while read -r p; do adb pull "$p" . ; done
 ```
 
-Senza PC: un estrattore APK dal telefono (App Manager, APK Extractor) esportando **anche** le
-divisioni.
+Without a PC: an APK extractor on the phone (App Manager, APK Extractor) exporting **also** the
+splits.
 
-Cosa c'è dentro:
+What is inside:
 
 ```bash
 unzip -l base.apk | grep -E 'assets/|classes.*dex' | head -30
@@ -35,54 +35,54 @@ for a in *.apk; do echo "== $a"; unzip -l "$a" | grep '\.so$'; done
 
 ---
 
-## 1. Gli assets: il codice sorgente dei pannelli
+## 1. The assets: the source code of the panels
 
-Questa è la miniera. L'app è una WebView Cordova; ogni famiglia di climatizzatori ha il suo
-pannello React in `assets/default*.zip`, e **le source map sono incluse**.
+This is the goldmine. The app is a Cordova WebView; each air conditioner family has its
+React panel in `assets/default*.zip`, and **the source maps are included**.
 
 ```bash
 unzip -o base.apk 'assets/*' -d .
-python3 ../tools/dump_sourcemaps.py assets/default.zip ricostruito/
+python3 ../tools/dump_sourcemaps.py assets/default.zip reconstructed/
 ```
 
-Da guardare, in ordine:
+To look at, in order:
 
-| File | Cosa dà |
+| File | What it gives |
 | --- | --- |
-| `src/panel/data.js` | il dizionario dei parametri, con titoli e tipi |
-| `src/panel/data.js` (`mainModeControlButtons`, `mainFanControlButtons`) | i valori di modalità e ventola |
-| `~/broadlink-jssdk/dna/adapter.js` | il ponte verso il nativo, i comandi, i timeout |
-| `~/broadlink-jssdk/dna/time-zone.js` | la conversione UTC+8 |
-| `src/panel/Electricity.js` | l'API dei consumi (`dataservice`, i nomi dei report) |
-| `src/panel/Timer.js`, `src/components/dna/SDKTimer/` | l'interfaccia delle pianificazioni |
-| `src/panel/More.js`, `SaveEnergy.js` | funzioni secondarie e storico di stato |
+| `src/panel/data.js` | the parameter dictionary, with titles and types |
+| `src/panel/data.js` (`mainModeControlButtons`, `mainFanControlButtons`) | the mode and fan values |
+| `~/broadlink-jssdk/dna/adapter.js` | the bridge to the native layer, the commands, the timeouts |
+| `~/broadlink-jssdk/dna/time-zone.js` | the UTC+8 conversion |
+| `src/panel/Electricity.js` | the energy usage API (`dataservice`, the report names) |
+| `src/panel/Timer.js`, `src/components/dna/SDKTimer/` | the schedule interface |
+| `src/panel/More.js`, `SaveEnergy.js` | secondary functions and state history |
 
-Corrispondenza `pid` → bundle: leggi `desc.json` dentro ogni zip. I `.script` accanto (uno per
-`pid`) sono le definizioni di modello usate dall'SDK nativo: cifrati, vedi
+`pid` → bundle mapping: read `desc.json` inside each zip. The adjacent `.script` files (one per
+`pid`) are the model definitions used by the native SDK: encrypted, see
 `docs/open-questions.md` §4.
 
 ---
 
-## 2. Il dex: l'SDK BroadLink
+## 2. The dex: the BroadLink SDK
 
-Il JavaScript si fermava qui:
+The JavaScript stopped here:
 
 ```js
 cordova.exec(ok, err, "BLNativeBridge", "devicecontrol",
              [deviceID, subDeviceID, {act, params, vals}, "dev_ctrl", timeouts])
 ```
 
-Il resto è Java. Prima passata, senza strumenti:
+The rest is Java. First pass, without tools:
 
 ```bash
 unzip -o base.apk 'classes*.dex' -d .
 strings -n 6 classes.dex | grep -E 'ibroadlink|/device/control|/dataservice|/ec4|/appfront'
 ```
 
-È così che sono venuti fuori `/device/control/v2/sdkcontrol`, `querystate`,
-`dataservice/v1/device/stats` e gli endpoint di `docs/open-questions.md` §6.
+This is how `/device/control/v2/sdkcontrol`, `querystate`,
+`dataservice/v1/device/stats` and the endpoints of `docs/open-questions.md` §6 came out.
 
-Seconda passata, con androguard:
+Second pass, with androguard:
 
 ```bash
 pip install androguard
@@ -90,57 +90,57 @@ python3 ../tools/dex_inspect.py xref classes.dex '/device/control/v2/sdkcontrol'
 python3 ../tools/dex_inspect.py decompile classes.dex 'cn/com/broadlink/sdk/b' > sdk_b.txt
 ```
 
-Le classi che contano:
+The classes that matter:
 
-| Classe | Contenuto |
+| Class | Content |
 | --- | --- |
-| `com.tcl.smartdevice.AirApplication` (`initData`) | le quattro licenze BroadLink in chiaro, i `pid` per regione |
-| `cn.com.broadlink.base.BLApiUrls` | costruzione degli URL per regione |
-| `cn.com.broadlink.sdk.b` | direttive di controllo, querystate, orario del dispositivo |
-| `a.a.a.account.a.c` | corpo del login |
-| `a.a.a.account.a.b` | firma e cifratura delle chiamate account |
+| `com.tcl.smartdevice.AirApplication` (`initData`) | the four BroadLink licenses in cleartext, the per-region `pid`s |
+| `cn.com.broadlink.base.BLApiUrls` | building the URLs per region |
+| `cn.com.broadlink.sdk.b` | control directives, querystate, device time |
+| `a.a.a.account.a.c` | the login body |
+| `a.a.a.account.a.b` | signature and encryption of the account calls |
 | `cn.com.broadlink.base.BLCommonTools` | `aesNoPadding` (mode, IV), `parseStringToByte`, hash |
-| `cn.com.broadlink.account.BLAccountEncryptAPI` | le tre funzioni native dei sali |
+| `cn.com.broadlink.account.BLAccountEncryptAPI` | the three native salt functions |
 
-Attenzione a un'insidia di metodo: se una stringa esiste nel pool del dex ma `xref` non trova
-nessun riferimento, **quella costante non è usata dal codice Java**. È il segnale che vive in una
-libreria nativa — ed è esattamente come si è scoperto il problema dei sali. Non dare per buona
-una costante solo perché la stringa compare nel file.
+Watch out for a method pitfall: if a string exists in the dex pool but `xref` finds
+no reference, **that constant is not used by the Java code**. It is the signal that it lives in a native
+library — and it is exactly how the salts problem was discovered. Do not take
+a constant for granted just because the string appears in the file.
 
 ---
 
-## 3. Le librerie native
+## 3. The native libraries
 
 ```bash
 for a in *.apk; do unzip -o -j "$a" 'lib/*/*.so' -d lib/ 2>/dev/null; done
 ls -la lib/
 ```
 
-Quelle che contano:
+The ones that matter:
 
-| Libreria | Ruolo |
+| Library | Role |
 | --- | --- |
-| `libBLAccountEncryptAPI.so` | i tre sali dell'autenticazione (stringhe in chiaro) |
-| `libNetworkAPI.so` | il protocollo DNA vero: pacchetti, LAN e relay cloud, esecuzione degli `.script` |
+| `libBLAccountEncryptAPI.so` | the three authentication salts (cleartext strings) |
+| `libNetworkAPI.so` | the real DNA protocol: packets, LAN and cloud relay, execution of the `.script`s |
 
-Per i sali: `python3 ../tools/extract_salts.py lib/libBLAccountEncryptAPI.so`.
+For the salts: `python3 ../tools/extract_salts.py lib/libBLAccountEncryptAPI.so`.
 
-`libNetworkAPI.so` è il posto dove guardare per la codifica dei comandi delle pianificazioni,
-ma è molto più semplice catturare un pacchetto UDP e decifrarlo: la chiave è nota
+`libNetworkAPI.so` is the place to look for the encoding of the schedule commands,
+but it is much simpler to capture a UDP packet and decrypt it: the key is known
 (`docs/open-questions.md` §2).
 
 ---
 
-## 4. Verificare invece di credere
+## 4. Verify instead of believe
 
-Il criterio adottato: ogni cosa scritta in `docs/protocol.md` è stata letta dal codice
-dell'app, non dedotta. E c'è una verifica indipendente: il payload di `set temp 23.0` prodotto
-da questa libreria è identico byte per byte a quello osservato sul filo, checksum interno
-compreso.
+The criterion adopted: everything written in `docs/protocol.md` was read from the app's
+code, not inferred. And there is an independent verification: the payload of `set temp 23.0` produced
+by this library is identical byte for byte to the one observed on the wire, internal checksum
+included.
 
 ```
 1800 a5a55a5a 87c4 020b 0c000000 7b2274656d70223a3233307d 000000000000
 ```
 
-È il test `tests/test_local.py::test_matches_documented_golden_packet`. Quando aggiungi un pezzo
-di protocollo, cerca il modo di ancorarlo a un dato osservato allo stesso modo.
+It is the test `tests/test_local.py::test_matches_documented_golden_packet`. When you add a piece
+of protocol, look for a way to anchor it to an observed datum in the same way.

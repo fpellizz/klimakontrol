@@ -1,32 +1,32 @@
-# Come sono state ricavate le specifiche
+# How the specifications were derived
 
-Cronaca del lavoro, così che chiunque possa rifarlo o verificarlo.
+A chronicle of the work, so that anyone can redo it or verify it.
 
-## 1. Identificare la piattaforma
+## 1. Identifying the platform
 
-L'app sul Play Store è `com.ab.smartDevice`, "Intelligent AC", editore ACSmart, con
-indirizzi di supporto `@tcl.com`. Non è software Wisnow: è l'app OEM che TCL fornisce ai
-marchi che rivendono i suoi split. Wisnow è uno di questi.
+The app on the Play Store is `com.ab.smartDevice`, "Intelligent AC", publisher ACSmart, with
+`@tcl.com` support addresses. It is not Wisnow software: it is the OEM app that TCL provides to the
+brands that resell its splits. Wisnow is one of them.
 
-Il modulo WiFi installato è un **BroadLink DNA** (device type `0x507A`/`0x507C`), e il cloud
-non è TCL ma BroadLink app-service (`*.ibroadlink.com`).
+The installed WiFi module is a **BroadLink DNA** (device type `0x507A`/`0x507C`), and the cloud
+is not TCL but BroadLink app-service (`*.ibroadlink.com`).
 
-## 2. Gli assets dell'APK: le source map
+## 2. The APK assets: the source maps
 
-L'app è una WebView Cordova. Il pannello di controllo di ogni famiglia di climatizzatori è
-un bundle React dentro `assets/default*.zip`. In quei bundle **sono state incluse le source
-map** (`main.*.js.map`, fino a 21 MB): contengono `sourcesContent`, cioè il **codice
-sorgente originale** non minificato, con i nomi dei file e i commenti degli sviluppatori.
+The app is a Cordova WebView. The control panel of each air conditioner family is
+a React bundle inside `assets/default*.zip`. In those bundles **the source
+maps were included** (`main.*.js.map`, up to 21 MB): they contain `sourcesContent`, that is the **original
+source code** un-minified, with the file names and the developers' comments.
 
-Da lì vengono:
+From there come:
 
-* il dizionario dei parametri (`src/panel/data.js`) — 84 voci con titoli e tipi
-* le mappature dei valori di modalità e ventola (`mainModeControlButtons`, `mainFanControlButtons`)
-* l'interfaccia verso il livello nativo (`~/broadlink-jssdk/dna/adapter.js`)
-* i comandi delle pianificazioni e la conversione di fuso orario
-* l'API dei consumi (`src/panel/Electricity.js`)
+* the parameter dictionary (`src/panel/data.js`) — 84 entries with titles and types
+* the mode and fan value mappings (`mainModeControlButtons`, `mainFanControlButtons`)
+* the interface to the native layer (`~/broadlink-jssdk/dna/adapter.js`)
+* the schedule commands and the timezone conversion
+* the energy usage API (`src/panel/Electricity.js`)
 
-Ricostruzione:
+Reconstruction:
 
 ```bash
 unzip -o assets/default.zip -d bundle 'zh-cn/main.*.js.map'
@@ -42,112 +42,112 @@ for src, content in zip(m['sources'], m['sourcesContent'] or []):
 PY
 ```
 
-## 3. Il dex: il controllo remoto
+## 3. The dex: remote control
 
-Il JavaScript si fermava al confine nativo:
+The JavaScript stopped at the native boundary:
 
 ```
 cordova.exec(ok, err, "BLNativeBridge", "devicecontrol",
              [deviceID, subDeviceID, {act, params, vals}, "dev_ctrl", timeouts])
 ```
 
-Il resto è nell'SDK Java. `classes.dex`, letto con androguard, ha dato:
+The rest is in the Java SDK. `classes.dex`, read with androguard, gave:
 
-* `cn.com.broadlink.base.BLApiUrls` — costruzione degli URL per regione
-* `cn.com.broadlink.sdk.b` — i metodi che compongono le direttive di controllo
+* `cn.com.broadlink.base.BLApiUrls` — building the URLs per region
+* `cn.com.broadlink.sdk.b` — the methods that compose the control directives
 
-Le stringhe utili si trovano anche senza decompilare:
+The useful strings can also be found without decompiling:
 
 ```bash
 strings -n 6 classes.dex | grep -E "ibroadlink|/device/control|/dataservice"
 ```
 
-Da qui: `/device/control/v2/sdkcontrol`, `/device/control/v3/sdkcontrol`,
+From here: `/device/control/v2/sdkcontrol`, `/device/control/v3/sdkcontrol`,
 `/device/control/v2/querystate`, `/dataservice/v1/device/stats`,
 `/appfront/v1/timertask/*`.
 
-Poi la decompilazione dei metodi che usano quelle stringhe ha dato la forma esatta delle
-direttive, incluso il campo `cookie` che porta al cloud la chiave AES del dispositivo, e il
-typo `timstamp` nell'header — replicato di proposito nel nostro codice, perché è quello che
-il server si aspetta.
+Then decompiling the methods that use those strings gave the exact shape of the
+directives, including the `cookie` field that carries the device's AES key to the cloud, and the
+`timstamp` typo in the header — replicated on purpose in our code, because it is what
+the server expects.
 
-## 4. Le licenze, e due costanti sbagliate che girano in rete
+## 4. The licenses, and two wrong constants circulating online
 
-`com.tcl.smartdevice.AirApplication.initData` contiene le quattro licenze BroadLink dell'app,
-una per regione (`ab`, `cn`, `eu`, `ru`), come blob Base64. Il blob **non è cifrato**: i primi
-16 byte sono il `licenseId`, i 16 successivi il `companyid`.
+`com.tcl.smartdevice.AirApplication.initData` contains the app's four BroadLink licenses,
+one per region (`ab`, `cn`, `eu`, `ru`), as Base64 blobs. The blob **is not encrypted**: the first
+16 bytes are the `licenseId`, the next 16 the `companyid`.
 
 ```python
 raw = base64.b64decode(blob)
 license_id, company_id = raw[0:16].hex(), raw[16:32].hex()
 ```
 
-Due conseguenze:
+Two consequences:
 
-1. Il valore `8503b08fa57729df9faa45e4c978852c`, che nei progetti open source compare come
-   *company id* della regione internazionale, compare identico in tutte e quattro le licenze:
-   è una costante globale, non un companyid. Quello vero è
+1. The value `8503b08fa57729df9faa45e4c978852c`, which in open source projects appears as
+   the *company id* of the international region, appears identically in all four licenses:
+   it is a global constant, not a companyid. The real one is
    `a8452a8f48ae707edc12e9c52e21f00f`.
-2. Per non ripetere l'errore, `cloud.py` tiene i blob e ne deriva gli identificativi a ogni
-   avvio, invece di ricopiarli.
+2. To avoid repeating the error, `cloud.py` keeps the blobs and derives the identifiers at each
+   startup, instead of copying them by hand.
 
-Sempre da `initData`: i `pid` dei tre tipi di macchina (split, portatile, finestra) cambiano per
-regione — per la regione internazionale lo split è `0x507c`, per l'Europa `0x507a`.
+Also from `initData`: the `pid`s of the three machine types (split, portable, window) change per
+region — for the international region the split is `0x507c`, for Europe `0x507a`.
 
-## 5. I sali dell'autenticazione: nel nativo, non nel dex
+## 5. The authentication salts: in the native layer, not in the dex
 
-Il login usa tre costanti che l'app chiede a `libBLAccountEncryptAPI.so`:
+The login uses three constants that the app asks of `libBLAccountEncryptAPI.so`:
 
-| Funzione nativa | Uso | Valore |
+| Native function | Use | Value |
 | --- | --- | --- |
-| `blAccountPasswordEncrypt()` | `SHA1(password + sale)` | `4969fj#k23#` |
-| `blAccountTokenEncrypt()` | `md5(timestamp + sale)` → chiave AES | `kdixkdqp54545^#*` |
-| `blAccountBodyEncrypt()` | `md5(corpo + sale)` → header `token` | `xgx3d*fe3478$ukx` |
+| `blAccountPasswordEncrypt()` | `SHA1(password + salt)` | `4969fj#k23#` |
+| `blAccountTokenEncrypt()` | `md5(timestamp + salt)` → AES key | `kdixkdqp54545^#*` |
+| `blAccountBodyEncrypt()` | `md5(body + salt)` → `token` header | `xgx3d*fe3478$ukx` |
 
-Nel dex compare solo il terzo (lo usano anche `/ec4` e `dataservice`). Gli altri due si leggono
-dalla libreria nativa, dove sono stringhe in chiaro:
+In the dex only the third appears (it is also used by `/ec4` and `dataservice`). The other two are read
+from the native library, where they are cleartext strings:
 `python3 tools/extract_salts.py libBLAccountEncryptAPI.so`.
 
-Lezione di metodo: se `dex_inspect.py xref` non trova riferimenti a una stringa presente nel
-pool, quella costante **non è usata dal codice Java**. È il segnale che vive nel nativo, e non
-va data per buona solo perché la stringa c'è.
+Method lesson: if `dex_inspect.py xref` finds no references to a string present in the
+pool, that constant **is not used by the Java code**. It is the signal that it lives in the native layer, and
+must not be taken for granted just because the string is there.
 
-## 6. Il resto della catena del login
+## 6. The rest of the login chain
 
-* host: `https://<licenseId>appservice.ibroadlink.com`. L'app inizializza l'SDK con
-  `APP_SERVICE_ENABLE=1`, e `BLApiUrls.setAppServiceHost` sovrascrive tutti gli host `biz*`
-  (`bizaccount`, `bizihcv0`, `bizpd`, …) con quello singolo. Gli host `biz*` valgono solo con
-  quel flag a zero.
-* corpo: `{email|phone, password, companyid, lid}` (`a.a.a.account.a.c`)
-* firma e cifratura: `a.a.a.account.a.b` — `AES/CBC/ZeroBytePadding`, IV
-  `eaaaaa3abb5862a21918b5771d1615aa`, chiave da `md5(timestamp + sale)` letta come esadecimale
+* host: `https://<licenseId>appservice.ibroadlink.com`. The app initializes the SDK with
+  `APP_SERVICE_ENABLE=1`, and `BLApiUrls.setAppServiceHost` overrides all `biz*` hosts
+  (`bizaccount`, `bizihcv0`, `bizpd`, …) with the single one. The `biz*` hosts apply only with
+  that flag at zero.
+* body: `{email|phone, password, companyid, lid}` (`a.a.a.account.a.c`)
+* signature and encryption: `a.a.a.account.a.b` — `AES/CBC/ZeroBytePadding`, IV
+  `eaaaaa3abb5862a21918b5771d1615aa`, key from `md5(timestamp + salt)` read as hexadecimal
   (`BLCommonTools.aesNoPadding`, `parseStringToByte`)
-* la password arriva grezza dall'interfaccia: `LoginActivity$LoginTask.doInBackground` →
-  `BLAccount.login(utente, password)`, nessun hash intermedio.
+* the password arrives raw from the interface: `LoginActivity$LoginTask.doInBackground` →
+  `BLAccount.login(user, password)`, no intermediate hash.
 
-Nonostante tutto questo combaci, il login viene ancora rifiutato con `-1008`: vedi
+Despite all of this matching, the login is still rejected with `-1008`: see
 `docs/open-questions.md` §1.
 
-## 7. Cosa resta nel nativo
+## 7. What remains in the native layer
 
-Le pianificazioni (`dev_taskadd`, `dev_tasklist`, `dev_taskdata`, `dev_taskdel`) non passano
-per una direttiva dedicata: finiscono in `BLControllerDescParam.setCommand(...)` e da lì nel
-livello nativo, che costruisce il pacchetto usando i file `.script` cifrati negli assets.
+The schedules (`dev_taskadd`, `dev_tasklist`, `dev_taskdata`, `dev_taskdel`) do not go
+through a dedicated directive: they end up in `BLControllerDescParam.setCommand(...)` and from there into the
+native layer, which builds the packet using the encrypted `.script` files in the assets.
 
-Due modi per chiudere il buco:
+Two ways to close the gap:
 
-1. catturare il pacchetto UDP locale mentre l'app ufficiale crea un timer — bastano pochi
-   pacchetti, la chiave AES è nota quindi si decifra;
-2. usare l'API cloud `/appfront/v1/timertask/{add,query,modify,delete}`, che pianifica lato
-   server invece che nel modulo.
+1. capture the local UDP packet while the official app creates a timer — a few
+   packets are enough, the AES key is known so it can be decrypted;
+2. use the cloud API `/appfront/v1/timertask/{add,query,modify,delete}`, which schedules
+   server-side instead of in the module.
 
-## 8. Verifica indipendente
+## 8. Independent verification
 
-Il payload di `set temp 23.0` prodotto da questo codice è identico byte per byte a quello
-osservato sul filo, checksum interno compreso:
+The payload of `set temp 23.0` produced by this code is identical byte for byte to the one
+observed on the wire, internal checksum included:
 
 ```
 1800 a5a55a5a 87c4 020b 0c000000 7b2274656d70223a3233307d 000000000000
 ```
 
-È il test `test_matches_documented_golden_packet` in `tests/test_local.py`.
+It is the test `test_matches_documented_golden_packet` in `tests/test_local.py`.

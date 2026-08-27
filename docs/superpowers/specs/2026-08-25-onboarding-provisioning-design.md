@@ -1,140 +1,141 @@
-# Design — Onboarding di un modulo da zero (WiFi + bind account)
+# Design — Onboarding a module from scratch (WiFi + account bind)
 
-Data: 2026-08-25 · Stato: **proposta, da approvare**
+Date: 2026-08-25 · Status: **proposal, to be approved**
 
-Obiettivo: rendere l'app **autosufficiente**. Un utente deve poter prendere un climatizzatore
-mai configurato (o resettato di fabbrica), collegarlo al WiFi di casa e registrarlo al proprio
-account — **senza mai aprire l'app ufficiale**. È il passo che trasforma il progetto in un MVP.
+Goal: make the app **self-sufficient**. A user must be able to take an air conditioner (AC unit)
+that has never been configured (or has been factory-reset), connect it to the home WiFi and register
+it to their own account — **without ever opening the official app**. It is the step that turns the
+project into an MVP.
 
-Questo documento nasce dallo spike del 2026-08-25 (analisi statica dell'APK in `./apk/`), che ha
-dato **verdetto: fattibile** — il provisioning NON è bloccato dal cifrario nativo `tfb` come i timer.
-Vedi `docs/open-questions.md` §2 per il contrasto.
+This document arises from the 2026-08-25 spike (static analysis of the APK in `./apk/`), which
+delivered a **verdict: feasible** — provisioning is NOT blocked by the native `tfb` cipher like the timers.
+See `docs/open-questions.md` §2 for the contrast.
 
 ---
 
-## 1. Il modello di dominio: un flusso, tre fasi
+## 1. The domain model: one flow, three phases
 
-L'onboarding è una catena di tre chiamate, poi la verifica:
+Onboarding is a chain of three calls, then the verification:
 
 ```
-  [FASE A] SoftAP config            [FASE B] Bind cloud           [FASE C] Verifica
-  telefono→hotspot modulo           POST /appsync/.../add          getallinfo elenca
-  invia SSID+pw casa        ──▶      {familyId, endpoints:[{        ──▶  la nuova unità ──▶ controllo
-  modulo entra in WiFi              pid,did,mac,name,cookie}]}     (già implementato)
-  ⤺ ritorna {did,pid,mac,devkey}    ⤺ ok
+  [PHASE A] SoftAP config           [PHASE B] Cloud bind          [PHASE C] Verify
+  phone→module hotspot              POST /appsync/.../add          getallinfo lists
+  send home SSID+pw         ──▶      {familyId, endpoints:[{        ──▶  the new unit ──▶ control
+  module joins WiFi                 pid,did,mac,name,cookie}]}     (already implemented)
+  ⤺ returns {did,pid,mac,devkey}    ⤺ ok
 ```
 
-Dato saliente emerso dallo spike: **la FASE A restituisce già la chiave AES** del dispositivo
-(`BLAPConfigResult.devkey`). Quindi la chiave non va cercata altrove: la produce la config stessa,
-e la si riusa sia per il bind (campo `cookie`) sia per il controllo immediato.
+Salient fact that emerged from the spike: **PHASE A already returns the device's AES key**
+(`BLAPConfigResult.devkey`). So the key must not be sought elsewhere: the config itself produces it,
+and it is reused both for the bind (`cookie` field) and for immediate control.
 
-Come per il resto del progetto: **un solo modello di dominio, due trasporti**. La FASE A è locale
-(UDP alla porta 80 sull'hotspot del modulo, come `local.py`); la FASE B è cloud (POST JSON cifrato,
-come `cloud.py`). Nessun nuovo paradigma.
+As with the rest of the project: **one domain model, two transports**. PHASE A is local
+(UDP to port 80 on the module's hotspot, like `local.py`); PHASE B is cloud (encrypted JSON POST,
+like `cloud.py`). No new paradigm.
 
-### Riscontri dall'APK (classi chiave)
+### Findings from the APK (key classes)
 
-| Ruolo | Classe / simbolo |
+| Role | Class / symbol |
 | --- | --- |
-| Input config | `cn.com.broadlink.sdk.param.controller.BLDeviceConfigParam` → `ssid`, `password`, `gatewayaddr`, `version` |
-| Output config | `cn.com.broadlink.sdk.result.controller.BLAPConfigResult` → `did`, `pid`, `mac`, `devkey`, `ssid` |
-| UI ufficiale | `com.tcl.smartdevice.activity.DeviceAPConfigureActivity` (SoftAP), `DeviceConfigureGuideActivity` |
-| Costruzione pacchetto | nativo `libNetworkAPI.so` (presente in `apk/split_config.arm64_v8a.apk`) |
+| Config input | `cn.com.broadlink.sdk.param.controller.BLDeviceConfigParam` → `ssid`, `password`, `gatewayaddr`, `version` |
+| Config output | `cn.com.broadlink.sdk.result.controller.BLAPConfigResult` → `did`, `pid`, `mac`, `devkey`, `ssid` |
+| Official UI | `com.tcl.smartdevice.activity.DeviceAPConfigureActivity` (SoftAP), `DeviceConfigureGuideActivity` |
+| Packet construction | native `libNetworkAPI.so` (present in `apk/split_config.arm64_v8a.apk`) |
 | Bind | `BLFamilyManager.addEndpoint` → `POST BLApiUrls.BASE_URL + /appsync/group/dev/manage?operation=add` |
-| Corpo bind | `{familyId, endpoints:[BLEndpointInfo…]}`; la chiave va nel campo **`cookie`** (Base64), come in `sdkcontrol` |
-| SSID hotspot | prefisso `Broadlink_tcl_…` (visto nelle stringhe) |
-| Tipo sicurezza | `wificonfigtype` (open / WPA / WPA2 → byte nel pacchetto) |
+| Bind body | `{familyId, endpoints:[BLEndpointInfo…]}`; the key goes in the **`cookie`** field (Base64), as in `sdkcontrol` |
+| Hotspot SSID | prefix `Broadlink_tcl_…` (seen in the strings) |
+| Security type | `wificonfigtype` (open / WPA / WPA2 → byte in the packet) |
 
 ---
 
-## 2. Vincoli (dai principi del progetto — CLAUDE.md)
+## 2. Constraints (from the project principles — CLAUDE.md)
 
-- **Zero dipendenze a runtime** nella libreria: solo stdlib. L'AES è già in `klimakontrol/aes.py`.
-- **I test non toccano la rete.** Si verificano costruzione pacchetti, firme, parsing. Le risposte
-  del server si simulano sostituendo `_request`.
-- **Niente costanti ricopiate a mano** da progetti community: il pacchetto SoftAP va **derivato
-  dall'APK** (`libNetworkAPI.so`) e coperto da un **test dorato**, esattamente come il pacchetto
-  locale documentato.
-- **I segreti non finiscono nei log**: `devkey` è una chiave AES → passa da `session.mask()` in ogni
-  stampa. Il `devkey` NON va nei log di debug in chiaro.
-- Commenti/doc in **italiano**, identificatori in **inglese**.
+- **Zero runtime dependencies** in the library: stdlib only. AES is already in `klimakontrol/aes.py`.
+- **The tests do not touch the network.** They verify packet construction, signatures, parsing. Server
+  responses are simulated by replacing `_request`.
+- **No constants copied by hand** from community projects: the SoftAP packet must be **derived
+  from the APK** (`libNetworkAPI.so`) and covered by a **golden test**, exactly like the documented
+  local packet.
+- **Secrets do not end up in the logs**: `devkey` is an AES key → run it through `session.mask()` in every
+  print. The `devkey` must NOT go into the debug logs in cleartext.
+- Comments/docs in **Italian**, identifiers in **English**.
 
 ---
 
-## 3. Punto 1 — Bind cloud (libreria + CLI + test offline) — *rischio zero*
+## 3. Step 1 — Bind cloud (library + CLI + offline tests) — *zero risk*
 
-Si parte da qui perché è interamente ricostruibile dal dex e testabile **senza HW e senza rete**.
+We start here because it is entirely reconstructable from the dex and testable **without HW and without network**.
 
-### Cosa fa
-Dato un dispositivo appena configurato (`did`, `pid`, `mac`, `devkey`, + nome scelto dall'utente),
-lo associa alla "famiglia" (casa cloud) dell'account.
+### What it does
+Given a device that has just been configured (`did`, `pid`, `mac`, `devkey`, + a name chosen by the user),
+it associates it with the account's "family" (cloud home).
 
-### Protocollo
-- **URL**: `<host>/appsync/group/dev/manage?operation=add`. `<host>` = `BLApiUrls.BASE_URL`, con
-  ogni probabilità lo stesso `https://<lid>appservice.ibroadlink.com` già usato da `_ec4`
-  (da confermare al primo task d'implementazione decompilando `BLApiUrls`).
-- **Corpo** (JSON):
+### Protocol
+- **URL**: `<host>/appsync/group/dev/manage?operation=add`. `<host>` = `BLApiUrls.BASE_URL`, in
+  all likelihood the same `https://<lid>appservice.ibroadlink.com` already used by `_ec4`
+  (to be confirmed at the first implementation task by decompiling `BLApiUrls`).
+- **Body** (JSON):
   ```json
   {
-    "familyId": "<id famiglia>",
+    "familyId": "<family id>",
     "endpoints": [
       { "productId": "<pid>", "endpointId": "<did>", "mac": "<mac>",
-        "friendlyName": "<nome scelto>", "cookie": "<Base64 della chiave, come build_cookie>",
+        "friendlyName": "<chosen name>", "cookie": "<Base64 of the key, like build_cookie>",
         "roomId": "", "order": 0 }
     ]
   }
   ```
-  Campi da `com.tcl.smartdevice.data.BLEndpointInfo`. Il set minimo va ristretto in
-  implementazione provando la risposta reale; `cookie` riusa **`Cloud.build_cookie`** già esistente.
-- **Cifratura/headers**: come le altre chiamate autenticate — `_common_headers` +
-  (`userid`, `loginsession`, `licenseid`/`lid`). Se `BLHttpPostAccessor` cifra il corpo in AES come
-  `_ec4`, si riusa lo stesso percorso; primo task d'implementazione: decompilare `BLHttpPostAccessor`
-  per confermare se il body è AES o testo con soli header.
-- **`familyId`**: già disponibile via `Cloud.family_ids()` (`/ec4/v1/user/getfamilyid`). MVP: bind
-  alla prima famiglia; nessuna gestione stanze/famiglie multiple (YAGNI).
+  Fields from `com.tcl.smartdevice.data.BLEndpointInfo`. The minimal set must be narrowed down in
+  implementation by trying the real response; `cookie` reuses the already-existing **`Cloud.build_cookie`**.
+- **Encryption/headers**: like the other authenticated calls — `_common_headers` +
+  (`userid`, `loginsession`, `licenseid`/`lid`). If `BLHttpPostAccessor` encrypts the body in AES like
+  `_ec4`, the same path is reused; first implementation task: decompile `BLHttpPostAccessor`
+  to confirm whether the body is AES or text with only headers.
+- **`familyId`**: already available via `Cloud.family_ids()` (`/ec4/v1/user/getfamilyid`). MVP: bind
+  to the first family; no rooms/multiple-families handling (YAGNI).
 
-### Superficie in libreria
+### Library surface
 `cloud.py`:
 ```python
 def bind_device(self, did, pid, mac, aeskey, name="", family_id=None, room_id="") -> Dict
 ```
-- costruisce l'endpoint, cifra col percorso esistente, chiama `_request`, ritorna la risposta
-  passata da `_ensure_ok`.
+- builds the endpoint, encrypts via the existing path, calls `_request`, returns the response
+  run through `_ensure_ok`.
 
 ### CLI
 `klimakontrol bind --did … --pid … --mac … --key … [--name …] [--family …]`
-- stampa la risposta **mascherata** (`session.mask`).
+- prints the **masked** response (`session.mask`).
 
-### Test (offline)
-- `test_cloud.py`: `bind_device` costruisce il corpo atteso (endpoint, cookie, familyId), header
-  corretti, con `_request` sostituito. Nessuna rete.
+### Tests (offline)
+- `test_cloud.py`: `bind_device` builds the expected body (endpoint, cookie, familyId), correct
+  headers, with `_request` replaced. No network.
 
-**Fatto quando** i test passano e il corpo generato combacia con quello ricostruito dal dex.
+**Done when** the tests pass and the generated body matches the one reconstructed from the dex.
 
 ---
 
-## 4. Punto 2 — SoftAP config (libreria + test dorato) — *ricostruzione dal nativo*
+## 4. Step 2 — SoftAP config (library + golden test) — *reconstruction from the native*
 
-### Cosa fa
-Manda al modulo (in modalità configurazione, che espone il proprio hotspot `Broadlink_tcl_…`) le
-credenziali del WiFi di casa. Il modulo si connette e risponde con `did`/`pid`/`mac`/`devkey`.
+### What it does
+Sends the home WiFi credentials to the module (in configuration mode, which exposes its own
+`Broadlink_tcl_…` hotspot). The module connects and responds with `did`/`pid`/`mac`/`devkey`.
 
-### Modalità: **SoftAP**, non SmartConfig
-Confermato dallo spike (`DeviceAPConfigureActivity`, connessione all'hotspot del device). Il telefono
-si unisce alla rete del modulo (gateway tipo `192.168.10.1`); l'app invia un pacchetto UDP di setup
-alla porta 80 di quel gateway.
+### Mode: **SoftAP**, not SmartConfig
+Confirmed by the spike (`DeviceAPConfigureActivity`, connection to the device's hotspot). The phone
+joins the module's network (gateway like `192.168.10.1`); the app sends a UDP setup packet
+to port 80 of that gateway.
 
-### Il pacchetto (da derivare, non da indovinare)
-Formato SoftAP BroadLink **noto** (SSID/password a offset fissi + checksum per la v1; variante v2
-cifrata AES con chiave fissa nota) — selezionato da `version`/`wificonfigtype`. Diversamente dai
-timer, **l'algoritmo esiste**; va solo confermato per questo modello `0x4e2e`.
+### The packet (to be derived, not guessed)
+**Known** BroadLink SoftAP format (SSID/password at fixed offsets + checksum for v1; v2 variant
+AES-encrypted with a known fixed key) — selected by `version`/`wificonfigtype`. Unlike the
+timers, **the algorithm exists**; it only needs to be confirmed for this `0x4e2e` model.
 
-Decisione di metodo (vedi §7, Decisione 1): **disassemblare `libNetworkAPI.so`** (in locale) per
-ricavare offset, versione e checksum reali → costruire un **test dorato** byte-per-byte, come
-`test_local.py::test_matches_documented_golden_packet`. Nessuna cattura HW necessaria per il formato.
+Method decision (see §7, Decision 1): **disassemble `libNetworkAPI.so`** (locally) to
+derive the real offsets, version and checksum → build a byte-for-byte **golden test**, like
+`test_local.py::test_matches_documented_golden_packet`. No HW capture is necessary for the format.
 
-### Superficie in libreria
-Nuovo modulo `klimakontrol/provision.py` (o estensione di `local.py`):
+### Library surface
+New module `klimakontrol/provision.py` (or an extension of `local.py`):
 ```python
 def build_softap_packet(ssid, password, security, version) -> bytes   # coperto da golden test
 def softap_config(ssid, password, security=..., timeout=...) -> ApConfigResult  # invio UDP + attesa
@@ -143,120 +144,120 @@ def softap_config(ssid, password, security=..., timeout=...) -> ApConfigResult  
 
 ### CLI
 `klimakontrol provision --ssid … --password … [--security wpa2]`
-- esegue la config, stampa `did/pid/mac` (chiave **mascherata**), e suggerisce il comando `bind`.
-- opzione `--and-bind` per concatenare Punto 1 quando la sessione cloud è presente.
+- runs the config, prints `did/pid/mac` (key **masked**), and suggests the `bind` command.
+- `--and-bind` option to chain Step 1 when the cloud session is present.
 
-### Test (offline)
-- **Golden test** del pacchetto: `build_softap_packet("<ssid noto>", …)` == byte attesi (dal
-  disassembly). Immutabile come l'altro golden.
-- Parsing della risposta del modulo in `ApConfigResult` con un campione simulato.
+### Tests (offline)
+- **Golden test** of the packet: `build_softap_packet("<ssid noto>", …)` == expected bytes (from
+  the disassembly). Immutable like the other golden.
+- Parsing of the module's response into `ApConfigResult` with a simulated sample.
 
-**Fatto quando** il golden passa e `softap_config` è testato con risposta simulata.
-
----
-
-## 5. Punto 3 — Prova su hardware — *il test invasivo*
-
-Prima prova end-to-end. Ordine (niente HW finché Punti 1 e 2 non sono verdi offline):
-
-1. **Backup mentale**: annota did/pid/mac attuali del modulo che resetti (da `list`), così sai cosa
-   riaggiungere in caso.
-2. **Reset di fabbrica** del modulo → entra in modalità configurazione (hotspot `Broadlink_tcl_…`).
-3. Da un ambiente con Python (telefono in Termux, o PC che si unisce all'hotspot):
-   `klimakontrol provision --ssid CASA --password … --and-bind` → verifica did/pid/mac/devkey.
-4. `klimakontrol list` / `status` → la nuova unità compare e **si controlla** (on/off, setpoint).
-5. Aggiorna la tabella di stato in `CLAUDE.md` e aggiungi la risposta reale (mascherata) come fixture.
-
-**Rischi e recupero**
-- Se la nostra config fallisce, il modulo resta configurabile: lo si recupera con l'app ufficiale.
-  Danno = un climatizzatore senza cloud per il tempo del test. **Nessun brick.**
-- Fare il test su **una** unità, non su tutte.
-
-**Fatto quando** un modulo resettato torna online e controllabile passando solo dai nostri comandi.
+**Done when** the golden passes and `softap_config` is tested with a simulated response.
 
 ---
 
-## 6. Punto 4 — Wizard di onboarding nell'app (Compose)
+## 5. Step 3 — Test on real hardware — *the invasive test*
 
-Solo dopo che 1–3 funzionano. Nuova schermata a passi, raggiungibile da Home ("+ Aggiungi
-climatizzatore") e da Impostazioni.
+First end-to-end test. Order (no HW until Steps 1 and 2 are green offline):
 
-### Flusso schermate
-1. **Istruzioni**: "Tieni premuto … sul climatizzatore finché lampeggia" (entra in config).
-2. **WiFi di casa**: campo SSID (precompilato con la rete corrente se leggibile) + password
-   (con il toggle Mostra/Nascondi già esistente, `PasswordField`).
-3. **Connessione all'hotspot del modulo** (vedi Decisione 2).
-4. **Progresso**: "Configuro… / Registro all'account… / Fatto ✓" con stati ed errori chiari
-   (riusa il vocabolario `invio…/✓/errore` già in app).
-5. **Nome**: l'utente dà un nome all'unità (→ `friendlyName` del bind); poi torna in Home dove la
-   nuova unità appare (il polling la prende, o `refresh()` immediato).
+1. **Mental backup**: note the current did/pid/mac of the module you reset (from `list`), so you know what
+   to re-add if needed.
+2. **Factory reset** of the module → it enters configuration mode (hotspot `Broadlink_tcl_…`).
+3. From an environment with Python (phone in Termux, or a PC that joins the hotspot):
+   `klimakontrol provision --ssid CASA --password … --and-bind` → verify did/pid/mac/devkey.
+4. `klimakontrol list` / `status` → the new unit appears and **can be controlled** (on/off, setpoint).
+5. Update the status table in `CLAUDE.md` and add the real (masked) response as a fixture.
 
-### Integrazione VM
-- `KlimaViewModel`: nuovo stato `OnboardingState` (Idle → JoiningAp → Configuring → Binding →
-  Done/Error) e funzioni `startOnboarding`, `submitWifi`, `cancelOnboarding`.
-- Riusa `CloudService` per il bind e un nuovo `ProvisionClient` Kotlin per la FASE A (UDP), speculare
-  a `provision.py`. La logica delicata (pacchetto) è coperta dai test Python; il Kotlin la replica
-  con gli stessi vettori.
+**Risks and recovery**
+- If our config fails, the module remains configurable: it is recovered with the official app.
+  Damage = one air conditioner without cloud for the duration of the test. **No brick.**
+- Do the test on **one** unit, not on all of them.
 
-### Portata (MVP, YAGNI)
-- Bind alla **famiglia predefinita**, stanza vuota. Niente gestione famiglie/stanze cloud.
-- Le "Zone" locali (feature esistente) restano il modo di raggruppare in app.
-
-**Fatto quando** dall'app, su un modulo resettato, in ≤5 tocchi l'unità è aggiunta e controllabile.
+**Done when** a reset module comes back online and controllable going only through our commands.
 
 ---
 
-## 7. Decisioni aperte (raccomandazione inclusa)
+## 6. Step 4 — Onboarding wizard in the app (Compose)
 
-**Decisione 1 — come ricavare il pacchetto SoftAP.**
-- **(A) Disassemblare `libNetworkAPI.so`** (in locale) → golden byte-esatto. Rigoroso, rispetta
-  "niente costanti ricopiate". Più lavoro. **← raccomandata.**
-- (B) Riusare il formato pubblico `python-broadlink` e confermarlo con una cattura. Più veloce ma
-  va comunque verificato sull'APK, e la cattura richiede il reset invasivo solo per il campione.
-- (C) Catturare dal traffico dell'app ufficiale. Richiede HW già in fase di ricostruzione.
+Only after 1–3 work. A new step-based screen, reachable from Home ("+ Add
+air conditioner") and from Settings.
 
-**Decisione 2 — come l'app si unisce all'hotspot del modulo.**
-- **(A) Connessione manuale (MVP)**: l'app dice all'utente di scegliere l'hotspot `Broadlink_tcl_…`
-  nelle impostazioni WiFi, poi manda l'UDP. Semplice, robusta su ogni versione Android. **← raccomandata
-  per l'MVP.**
-- (B) `WifiNetworkSpecifier` (API 29+) per agganciarsi in-app, con `bindProcessToNetwork` per
-  mandare UDP sulla rete senza internet. Più fluida ma fragile (permessi, rete "senza connettività",
-  fallback per API 26–28). Rimandabile a una rifinitura.
+### Screen flow
+1. **Instructions**: "Hold down … on the air conditioner until it flashes" (it enters config).
+2. **Home WiFi**: SSID field (prefilled with the current network if readable) + password
+   (with the already-existing Show/Hide toggle, `PasswordField`).
+3. **Connection to the module's hotspot** (see Decision 2).
+4. **Progress**: "Configuring… / Registering to the account… / Done ✓" with clear states and errors
+   (reuses the `invio…/✓/errore` vocabulary already in the app).
+5. **Name**: the user gives the unit a name (→ `friendlyName` of the bind); then returns to Home where the
+   new unit appears (the polling picks it up, or an immediate `refresh()`).
 
-**Decisione 3 — forma dei comandi CLI.** `provision` e `bind` **separati** (bind testabile offline
-da solo), con `provision --and-bind` per l'end-to-end. **← raccomandata.**
+### VM integration
+- `KlimaViewModel`: new state `OnboardingState` (Idle → JoiningAp → Configuring → Binding →
+  Done/Error) and functions `startOnboarding`, `submitWifi`, `cancelOnboarding`.
+- Reuses `CloudService` for the bind and a new Kotlin `ProvisionClient` for PHASE A (UDP), mirroring
+  `provision.py`. The delicate logic (packet) is covered by the Python tests; the Kotlin replicates it
+  with the same vectors.
+
+### Scope (MVP, YAGNI)
+- Bind to the **default family**, empty room. No cloud families/rooms handling.
+- The local "Zones" (existing feature) remain the way to group in the app.
+
+**Done when** from the app, on a reset module, the unit is added and controllable in ≤5 taps.
 
 ---
 
-## 8. Sequenza di lavoro e definizione di "fatto"
+## 7. Open decisions (recommendation included)
 
-| # | Milestone | Rete/HW | Fatto quando |
+**Decision 1 — how to derive the SoftAP packet.**
+- **(A) Disassemble `libNetworkAPI.so`** (locally) → byte-exact golden. Rigorous, respects
+  "no constants copied". More work. **← recommended.**
+- (B) Reuse the public `python-broadlink` format and confirm it with a capture. Faster but
+  it must still be verified against the APK, and the capture requires the invasive reset just for the sample.
+- (C) Capture from the official app's traffic. Requires HW already in the reconstruction phase.
+
+**Decision 2 — how the app joins the module's hotspot.**
+- **(A) Manual connection (MVP)**: the app tells the user to select the `Broadlink_tcl_…` hotspot
+  in the WiFi settings, then sends the UDP. Simple, robust on every Android version. **← recommended
+  for the MVP.**
+- (B) `WifiNetworkSpecifier` (API 29+) to attach in-app, with `bindProcessToNetwork` to
+  send UDP over the network without internet. Smoother but fragile (permissions, a "no connectivity"
+  network, fallback for API 26–28). Can be deferred to a refinement.
+
+**Decision 3 — form of the CLI commands.** `provision` and `bind` **separate** (bind testable offline
+on its own), with `provision --and-bind` for the end-to-end. **← recommended.**
+
+---
+
+## 8. Work sequence and definition of "done"
+
+| # | Milestone | Network/HW | Done when |
 | --- | --- | --- | --- |
-| 1 | Bind cloud (lib+CLI+test) | offline | test verdi, corpo == dex |
-| 2 | SoftAP config (lib+golden) | offline | golden verde |
-| 3 | Prova su HW | HW | modulo resettato torna controllabile dai nostri comandi |
-| 4 | Wizard app | HW | ≤5 tocchi per aggiungere un'unità |
+| 1 | Bind cloud (lib+CLI+tests) | offline | tests green, body == dex |
+| 2 | SoftAP config (lib+golden) | offline | golden green |
+| 3 | Test on HW | HW | reset module becomes controllable again from our commands |
+| 4 | App wizard | HW | ≤5 taps to add a unit |
 
-Ogni milestone aggiorna la tabella di stato in `CLAUDE.md`.
+Every milestone updates the status table in `CLAUDE.md`.
 
 ---
 
-## 9. Rischi e mitigazioni
+## 9. Risks and mitigations
 
-| Rischio | Mitigazione |
+| Risk | Mitigation |
 | --- | --- |
-| Byte del pacchetto SoftAP diversi dal formato pubblico | Derivarli dal disassembly (Decisione 1A) + golden test |
-| `BLHttpPostAccessor` cifra il body diversamente da `_ec4` | Primo task del Punto 1: decompilarlo e confermare |
-| Campi `BLEndpointInfo` sbagliati → bind rifiutato | Ridurre al set minimo provando la risposta reale; log del messaggio server (`KLIMAKONTROL_DEBUG=1`) |
-| Test HW: modulo senza cloud durante la prova | Recuperabile con app ufficiale; provare su una sola unità |
-| Android WiFi API fragile | MVP con connessione manuale (Decisione 2A) |
-| `devkey` nei log | `session.mask()` obbligatorio su ogni stampa |
+| SoftAP packet bytes different from the public format | Derive them from the disassembly (Decision 1A) + golden test |
+| `BLHttpPostAccessor` encrypts the body differently from `_ec4` | First task of Step 1: decompile it and confirm |
+| Wrong `BLEndpointInfo` fields → bind rejected | Reduce to the minimal set by trying the real response; log the server message (`KLIMAKONTROL_DEBUG=1`) |
+| HW test: module without cloud during the test | Recoverable with the official app; test on a single unit |
+| Fragile Android WiFi API | MVP with manual connection (Decision 2A) |
+| `devkey` in the logs | `session.mask()` mandatory on every print |
 
 ---
 
-## 10. Fuori portata (esplicito)
+## 10. Out of scope (explicit)
 
-- Gestione famiglie/stanze cloud, condivisione dispositivi, rinomina lato cloud.
-- SmartConfig/EasyConfig (usiamo SoftAP).
-- Aggancio automatico all'hotspot su tutte le versioni Android (rifinitura post-MVP).
-- Pianificazioni/timer (progetto a parte, gated dal `tfb`).
+- Cloud families/rooms handling, device sharing, cloud-side renaming.
+- SmartConfig/EasyConfig (we use SoftAP).
+- Automatic hotspot attach on all Android versions (post-MVP refinement).
+- Schedules/timers (a separate project, gated by `tfb`).

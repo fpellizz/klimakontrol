@@ -1,11 +1,11 @@
-# Ricette: ADB, log, WebView, cattura del traffico
+# Recipes: ADB, logs, WebView, traffic capture
 
-Procedure pronte. Presuppongono telefono collegato via USB con il debug USB attivo
-(`adb devices` deve elencarlo).
+Ready-to-use procedures. They assume a phone connected via USB with USB debugging enabled
+(`adb devices` must list it).
 
 ---
 
-## 1. Estrarre le librerie native (per i sali)
+## 1. Extract the native libraries (for the salts)
 
 ```bash
 mkdir -p apk && cd apk
@@ -15,7 +15,7 @@ for a in *.apk; do unzip -o -j "$a" 'lib/*/libBLAccountEncryptAPI.so' -d . 2>/de
 python3 ../tools/extract_salts.py libBLAccountEncryptAPI.so
 ```
 
-Se non trova la libreria, guarda cosa c'è:
+If it does not find the library, look at what is there:
 
 ```bash
 for a in *.apk; do echo "== $a"; unzip -l "$a" | grep '\.so$'; done
@@ -23,21 +23,21 @@ for a in *.apk; do echo "== $a"; unzip -l "$a" | grep '\.so$'; done
 
 ---
 
-## 2. Log dell'app
+## 2. App logs
 
-L'SDK BroadLink logga i corpi delle richieste con il prefisso `Json Param:` e le direttive di
-controllo con `BLCommonTools.debug`. L'app imposta `CONTROLLER_LOG_LEVEL=0`, quindi potrebbe
-essere muto: si scopre in dieci secondi.
+The BroadLink SDK logs the request bodies with the prefix `Json Param:` and the control
+directives with `BLCommonTools.debug`. The app sets `CONTROLLER_LOG_LEVEL=0`, so it might
+be silent: you find out in ten seconds.
 
 ```bash
 adb logcat -c
 adb logcat | grep -iE 'Json Param|BroadLink|BLLet|dna|sdkcontrol|directive'
 ```
 
-Mentre gira, fai dall'app ufficiale l'operazione che ti interessa (login, accensione, creazione
-di un timer).
+While it runs, perform in the official app the operation you are interested in (login, power on,
+creating a timer).
 
-Se serve tutto il rumore di quel processo:
+If you need all the noise from that process:
 
 ```bash
 pid=$(adb shell pidof com.ab.smartDevice | tr -d '\r')
@@ -46,44 +46,44 @@ adb logcat --pid="$pid"
 
 ---
 
-## 3. Ispezionare la WebView dell'app
+## 3. Inspect the app's WebView
 
-Il pannello di controllo è una WebView Cordova, e nelle build di questa app risulta
-ispezionabile. Con il telefono collegato, apri `chrome://inspect` su Chrome nel PC: dovresti
-vedere la pagina del climatizzatore mentre è aperta nell'app.
+The control panel is a Cordova WebView, and in this app's builds it turns out to be
+inspectable. With the phone connected, open `chrome://inspect` in Chrome on the PC: you should
+see the air conditioner page while it is open in the app.
 
-Dalla console JavaScript si può chiamare direttamente il ponte nativo, cioè **far fare all'app
-il comando che vuoi** e guardare cosa risponde:
+From the JavaScript console you can call the native bridge directly, that is, **make the app
+run the command you want** and watch what it responds:
 
 ```js
-// stato completo
+// full state
 cordova.exec(console.log, console.error, "BLNativeBridge", "devicecontrol",
   [DEVICE_ID, null, {act: "get", params: [], vals: []}, "dev_ctrl",
    {localTimeout: 3000, remoteTimeout: 5000, sendCount: 3}]);
 
-// elenco pianificazioni: e' il comando la cui codifica sul filo ci manca
+// schedule list: the command whose on-the-wire encoding we're missing
 cordova.exec(console.log, console.error, "BLNativeBridge", "devicecontrol",
   [DEVICE_ID, null, {}, "dev_tasklist",
    {localTimeout: 3000, remoteTimeout: 5000, sendCount: 3}]);
 ```
 
-`DEVICE_ID` lo dà `cordova.exec(console.log, console.error, "BLNativeBridge", "deviceinfo", [])`.
+`DEVICE_ID` is given by `cordova.exec(console.log, console.error, "BLNativeBridge", "deviceinfo", [])`.
 
-È il modo più diretto per vedere la forma delle risposte reali senza dipendere dal login.
+It is the most direct way to see the shape of the real responses without depending on login.
 
 ---
 
-## 4. Catturare il traffico UDP locale (per le pianificazioni)
+## 4. Capture the local UDP traffic (for the schedules)
 
-Il pezzo che manca sulle pianificazioni si chiude con **un** pacchetto. Telefono e PC sulla
-stessa rete WiFi dei climatizzatori:
+The missing piece on the schedules closes with **one** packet. Phone and PC on the same
+WiFi network as the air conditioners:
 
 ```bash
 sudo tcpdump -i any -w timer.pcap 'udp port 80'
 ```
 
-Mentre gira, crea un timer dall'app ufficiale. Poi decifra: la chiave AES del dispositivo la hai
-(dal cloud o dall'autenticazione LAN).
+While it runs, create a timer from the official app. Then decrypt: you have the device's AES key
+(from the cloud or from LAN authentication).
 
 ```python
 from klimakontrol.local import parse_packet, decode_inner
@@ -93,31 +93,30 @@ print("azione:", payload[0x08])       # 1 = get, 2 = set, ? = dev_taskadd
 print(decode_inner(payload))
 ```
 
-Il byte all'offset `0x08` del payload interno è il codice dell'azione: è quello che stiamo
-cercando.
+The byte at offset `0x08` of the inner payload is the action code: that is what we are
+looking for.
 
-Nota: il PC vede il traffico UDP solo se passa da lui. Su WiFi normalmente non è così — usa la
-condivisione della connessione dal PC verso il telefono, oppure il mirroring sulla porta dello
-switch, oppure `tcpdump` direttamente sul telefono con PCAPdroid (che salva un `.pcap`
-esportabile).
-
----
-
-## 5. Catturare il traffico HTTPS verso il cloud
-
-Solo dal telefono: **PCAPdroid** più l'addon **PCAPdroid mitm**, filtrando per l'app Intelligent
-AC e attivando la decrittazione TLS. Da PC: mitmproxy con il telefono che ci passa attraverso e
-il certificato installato.
-
-Attenzione: la cattura decifrata contiene la sessione di login (token e hash della password).
-Trattala come materiale sensibile e cambia la password dell'account quando hai finito.
+Note: the PC sees the UDP traffic only if it passes through it. On WiFi that is normally not the
+case — use connection sharing from the PC to the phone, or port mirroring on the switch, or
+`tcpdump` directly on the phone with PCAPdroid (which saves an exportable `.pcap`).
 
 ---
 
-## 6. Hook a runtime con Frida (ultima spiaggia per i sali)
+## 5. Capture the HTTPS traffic to the cloud
 
-Se il `.so` non contiene i sali come stringhe, si leggono mentre l'app li usa. Serve
-frida-server sul telefono (richiede root o un APK ripacchettizzato con il gadget).
+From the phone only: **PCAPdroid** plus the **PCAPdroid mitm** addon, filtering for the Intelligent
+AC app and enabling TLS decryption. From the PC: mitmproxy with the phone passing through it and
+the certificate installed.
+
+Warning: the decrypted capture contains the login session (token and password hash). Treat it
+as sensitive material and change the account password when you are done.
+
+---
+
+## 6. Runtime hooks with Frida (last resort for the salts)
+
+If the `.so` does not contain the salts as strings, they are read while the app uses them. You
+need frida-server on the phone (requires root or an APK repackaged with the gadget).
 
 ```bash
 frida -U -n "Intelligent AC" -e '

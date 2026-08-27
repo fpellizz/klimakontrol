@@ -1,39 +1,39 @@
-# Onboarding Punto 2 — Config SoftAP — Implementation Plan
+# Onboarding Point 2 — SoftAP config — Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Dare a un modulo vergine (in modalità SoftAP) le credenziali WiFi di casa, costruendo e inviando il pacchetto di setup BroadLink ricostruito da `libNetworkAPI.so`.
+**Goal:** Give a virgin module (in SoftAP mode) the home WiFi credentials, by building and sending the BroadLink setup packet reconstructed from `libNetworkAPI.so`.
 
-**Architecture:** Un nuovo modulo `klimakontrol/provision.py` con due funzioni pure/semplici: `build_softap_packet()` (costruisce i 136 byte, coperto da **test dorato** byte-esatto) e `softap_config()` (invia via UDP a `192.168.10.1:80`, ripetuto). Più un comando CLI `provision`. Riusa `checksum`/`PORT`/`LocalError` da `local.py`. Tutto testato offline (socket sostituito).
+**Architecture:** A new module `klimakontrol/provision.py` with two pure/simple functions: `build_softap_packet()` (builds the 136 bytes, covered by a byte-exact **golden test**) and `softap_config()` (sends over UDP to `192.168.10.1:80`, repeated). Plus a `provision` CLI command. Reuses `checksum`/`PORT`/`LocalError` from `local.py`. All tested offline (socket replaced).
 
-**Tech Stack:** Python 3.8+ stdlib soltanto. `unittest`.
+**Tech Stack:** Python 3.8+ stdlib only. `unittest`.
 
-**Spec:** `docs/softap-apconfig.md` (pacchetto ricostruito) e `docs/superpowers/specs/2026-08-25-onboarding-provisioning-design.md` (§4, Punto 2).
+**Spec:** `docs/softap-apconfig.md` (reconstructed packet) and `docs/superpowers/specs/2026-08-25-onboarding-provisioning-design.md` (§4, Point 2).
 
 ## Global Constraints
 
-- **Zero dipendenze a runtime**: solo stdlib. Vietato `requests`/`cryptography`/`pycryptodome`.
-- **I test non toccano la rete**: mai. Il socket si sostituisce con un fake che cattura `sendto`. `python3 -m unittest discover -s tests -q` deve restare tutto verde.
-- **Test dorato immutabile**: `build_softap_packet(b"TestNet", b"secret12", 0)` deve uscire **identico** ai 136 byte documentati (checksum `0xC482`). È l'unica prova che il pacchetto combacia col nativo. Non indebolirlo mai.
-- **I segreti non nei log**: la **password WiFi è un segreto** → nel comando CLI si accetta anche via `getpass` (mai forzata su argv), come `bind`/`login`. Non stampare la password.
-- **Lingua**: commenti/messaggi in **italiano**; identificatori in **inglese**.
-- **Fatti del pacchetto** (da `docs/softap-apconfig.md`): 136 byte; comando `0x14` @`0x26`; SSID @`0x44` (32B); password @`0x64` (32B); `ssid_len` @`0x84`; `password_len` @`0x85`; `security` @`0x86`; checksum seed `0xBEAF` @`0x20` (LE) con `[0x20:0x22]` a zero durante il calcolo. Destinazione UDP `192.168.10.1:80`.
+- **Zero runtime dependencies**: stdlib only. `requests`/`cryptography`/`pycryptodome` forbidden.
+- **Tests never touch the network**: ever. The socket is replaced with a fake that captures `sendto`. `python3 -m unittest discover -s tests -q` must stay all green.
+- **Immutable golden test**: `build_softap_packet(b"TestNet", b"secret12", 0)` must come out **identical** to the documented 136 bytes (checksum `0xC482`). It is the only proof that the packet matches the native code. Never weaken it.
+- **Secrets not in logs**: the **WiFi password is a secret** → in the CLI command it is also accepted via `getpass` (never forced onto argv), like `bind`/`login`. Do not print the password.
+- **Language**: comments/messages in **Italian**; identifiers in **English**.
+- **Packet facts** (from `docs/softap-apconfig.md`): 136 bytes; command `0x14` @`0x26`; SSID @`0x44` (32B); password @`0x64` (32B); `ssid_len` @`0x84`; `password_len` @`0x85`; `security` @`0x86`; checksum seed `0xBEAF` @`0x20` (LE) with `[0x20:0x22]` at zero during the computation. UDP destination `192.168.10.1:80`.
 
 ---
 
-### Task 1: `build_softap_packet` + test dorato
+### Task 1: `build_softap_packet` + golden test
 
 **Files:**
 - Create: `klimakontrol/provision.py`
 - Test: `tests/test_provision.py`
 
 **Interfaces:**
-- Consumes (da `klimakontrol/local.py`): `checksum(data: bytes, seed: int = 0xBEAF) -> int`.
-- Produces: `build_softap_packet(ssid: bytes, password: bytes, security: int = 0) -> bytes` (accetta anche `str`, che codifica in ascii/utf-8).
+- Consumes (from `klimakontrol/local.py`): `checksum(data: bytes, seed: int = 0xBEAF) -> int`.
+- Produces: `build_softap_packet(ssid: bytes, password: bytes, security: int = 0) -> bytes` (also accepts `str`, which it encodes in ascii/utf-8).
 
 - [ ] **Step 1: Write the failing test (golden + edge)**
 
-Crea `tests/test_provision.py`:
+Create `tests/test_provision.py`:
 
 ```python
 import unittest
@@ -92,7 +92,7 @@ Expected: FAIL — `ModuleNotFoundError: No module named 'klimakontrol.provision
 
 - [ ] **Step 3: Write minimal implementation**
 
-Crea `klimakontrol/provision.py`:
+Create `klimakontrol/provision.py`:
 
 ```python
 """Config SoftAP di un modulo vergine: pacchetto di setup BroadLink.
@@ -138,12 +138,12 @@ def build_softap_packet(ssid, password, security: int = 0) -> bytes:
 - [ ] **Step 4: Run test to verify it passes**
 
 Run: `python3 -m unittest tests.test_provision -q`
-Expected: PASS (5 test verdi).
+Expected: PASS (5 tests green).
 
 - [ ] **Step 5: Run the full suite**
 
 Run: `python3 -m unittest discover -s tests -q`
-Expected: tutti verdi.
+Expected: all green.
 
 - [ ] **Step 6: Commit**
 
@@ -157,7 +157,7 @@ comando 0x14, checksum 0xBEAF. Test dorato byte-esatto (TestNet/secret12 -> 0xC4
 
 ---
 
-### Task 2: `softap_config` — invio UDP
+### Task 2: `softap_config` — UDP send
 
 **Files:**
 - Modify: `klimakontrol/provision.py`
@@ -165,11 +165,11 @@ comando 0x14, checksum 0xBEAF. Test dorato byte-esatto (TestNet/secret12 -> 0xC4
 
 **Interfaces:**
 - Consumes: `build_softap_packet` (Task 1); `SOFTAP_GATEWAY`, `SOFTAP_PORT`.
-- Produces: `softap_config(ssid, password, security=0, gateway=SOFTAP_GATEWAY, port=SOFTAP_PORT, tries=3, recv_timeout=2.0) -> Optional[bytes]` — invia il pacchetto `tries` volte via UDP al gateway; prova a leggere una risposta breve; ritorna i byte grezzi della risposta o `None`.
+- Produces: `softap_config(ssid, password, security=0, gateway=SOFTAP_GATEWAY, port=SOFTAP_PORT, tries=3, recv_timeout=2.0) -> Optional[bytes]` — sends the packet `tries` times over UDP to the gateway; tries to read a short response; returns the raw response bytes or `None`.
 
 - [ ] **Step 1: Write the failing test**
 
-Aggiungi a `tests/test_provision.py`:
+Add to `tests/test_provision.py`:
 
 ```python
 class SoftApConfig(unittest.TestCase):
@@ -228,7 +228,7 @@ Expected: FAIL — `AttributeError: module 'klimakontrol.provision' has no attri
 
 - [ ] **Step 3: Write minimal implementation**
 
-Aggiungi in `klimakontrol/provision.py` (e l'import `socket`/`time`/`Optional` in cima):
+Add to `klimakontrol/provision.py` (and the `socket`/`time`/`Optional` import at the top):
 
 ```python
 import socket
@@ -267,7 +267,7 @@ Expected: PASS.
 - [ ] **Step 5: Run the full suite**
 
 Run: `python3 -m unittest discover -s tests -q`
-Expected: tutti verdi.
+Expected: all green.
 
 - [ ] **Step 6: Commit**
 
@@ -280,19 +280,19 @@ Invio ripetuto come il nativo; ritorna la risposta grezza (forma da confermare s
 
 ---
 
-### Task 3: comando CLI `provision`
+### Task 3: `provision` CLI command
 
 **Files:**
 - Modify: `klimakontrol/cli.py`
 - Test: `tests/test_cli.py`
 
 **Interfaces:**
-- Consumes: `provision.softap_config`; `getpass`; `session.mask` (non serve qui, ma non stampare la password).
-- Produces: subcomando `klimakontrol provision --ssid … [--password …] [--security open|wep|wpa1|wpa2|wpa12|<int>]`.
+- Consumes: `provision.softap_config`; `getpass`; `session.mask` (not needed here, but do not print the password).
+- Produces: subcommand `klimakontrol provision --ssid … [--password …] [--security open|wep|wpa1|wpa2|wpa12|<int>]`.
 
 - [ ] **Step 1: Write the failing test**
 
-Aggiungi a `tests/test_cli.py`:
+Add to `tests/test_cli.py`:
 
 ```python
 class ProvisionCommand(unittest.TestCase):
@@ -343,7 +343,7 @@ Expected: FAIL — `AttributeError: module 'klimakontrol.cli' has no attribute '
 
 - [ ] **Step 3: Write minimal implementation**
 
-In `klimakontrol/cli.py` aggiungi l'import del modulo (`from . import provision` o `from .provision import softap_config`) e la mappa sicurezza + il comando:
+In `klimakontrol/cli.py` add the module import (`from . import provision` or `from .provision import softap_config`) and the security map + the command:
 
 ```python
 _SECURITY = {"open": 0, "wep": 1, "wpa1": 2, "wpa2": 3, "wpa12": 4}
@@ -368,7 +368,7 @@ def cmd_provision(args) -> None:
     print("Poi: riconnetti il telefono al WiFi di casa e lancia `klimakontrol discover`.")
 ```
 
-E registra il subcomando (dopo `bind`, ~riga 273):
+And register the subcommand (after `bind`, ~line 273):
 
 ```python
     sp = sub.add_parser("provision", help="configura un modulo vergine in SoftAP (credenziali WiFi)")
@@ -386,8 +386,8 @@ Expected: PASS.
 
 - [ ] **Step 5: Run the full suite + smoke**
 
-Run: `python3 -m unittest discover -s tests -q` → tutti verdi.
-Run: `python3 -m klimakontrol provision --help` → mostra le opzioni.
+Run: `python3 -m unittest discover -s tests -q` → all green.
+Run: `python3 -m klimakontrol provision --help` → shows the options.
 
 - [ ] **Step 6: Commit**
 
@@ -401,11 +401,11 @@ il modulo entra in rete; poi discover+bind. Conferma HW al Punto 3."
 
 ---
 
-## Note per l'esecutore
+## Notes for the executor
 
-- Il **test dorato** (Task 1) è la prova che il pacchetto combacia col nativo. Se si rompe, hai
-  cambiato il pacchetto, non il test.
-- La destinazione `192.168.10.1:80` e il comando `0x14` vengono da `docs/softap-apconfig.md`
-  (disassembly). La **conferma end-to-end** (il modulo entra davvero in rete) è HW → Punto 3.
-- Fuori portata qui: ottenere `did/pid/mac/devkey` dopo la config (si fa con `discover`+auth di
-  `local.py` o via cloud) e le varianti cifrate `protocol=1/2` (muro `tfb`).
+- The **golden test** (Task 1) is the proof that the packet matches the native code. If it breaks, you
+  changed the packet, not the test.
+- The destination `192.168.10.1:80` and the command `0x14` come from `docs/softap-apconfig.md`
+  (disassembly). The **end-to-end confirmation** (the module actually joins the network) is real hardware → Point 3.
+- Out of scope here: obtaining `did/pid/mac/devkey` after the config (done with `discover`+auth from
+  `local.py` or via cloud) and the encrypted `protocol=1/2` variants (`tfb` wall).
