@@ -330,6 +330,35 @@ class CloudClient(val region: Region = REGIONS.getValue("eu")) {
         return out
     }
 
+    // ---------------- bind di un modulo nuovo (onboarding) ----------------
+    /**
+     * Registra un modulo appena configurato nella famiglia (casa cloud) dell'account.
+     * Ricostruito da `BLFamilyManager.addEndpoint` (come `cloud.py::bind_device`): POST a
+     * `/appsync/group/dev/manage?operation=add`, corpo JSON **in chiaro** (`text/plain`, NON AES),
+     * chiave AES del modulo nel campo `cookie` (Base64). `did`/`pid` in forma cloud (32 hex).
+     * Ritorna l'id della famiglia usata. Forma della risposta da confermare su HW.
+     */
+    fun bindDevice(pid: String, did: String, mac: String, aeskey: String, name: String): String {
+        check(loggedIn) { "sessione assente" }
+        val family = familyIds().firstOrNull()
+            ?: throw CloudException("bind: nessuna famiglia disponibile per l'account")
+        val cookieDev = CloudDevice(did = did, mac = mac, aeskey = aeskey, pid = pid,
+            name = name, lanaddr = null, devtype = 0)
+        val endpoint = JSONObject()
+            .put("productId", pid).put("endpointId", did).put("mac", mac)
+            .put("friendlyName", name.ifEmpty { did }).put("cookie", buildCookie(cookieDev))
+            .put("roomId", "").put("order", 0)
+        val body = JSONObject().put("familyId", family).put("endpoints", JSONArray().put(endpoint))
+        val headers = mapOf(
+            "userid" to userid!!, "loginsession" to loginSession!!,
+            "licenseid" to region.licenseId, "lid" to region.licenseId,
+            "Content-type" to "text/plain;charset=utf-8",
+        )
+        val url = "${region.baseUrl}/appsync/group/dev/manage?operation=add"
+        ensureOk(request(url, headers, body.toString().toByteArray()), "bind dispositivo")
+        return family
+    }
+
     // ---------------- trasporto ----------------
     private fun request(urlStr: String, headers: Map<String, String>, body: ByteArray): JSONObject {
         val url = URL(urlStr)

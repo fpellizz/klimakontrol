@@ -119,6 +119,38 @@ class CloudService(context: Context) {
         Unit
     }
 
+    // ---- onboarding: aggiungi un modulo nuovo (LAN discovery+auth → bind cloud) ----
+    /**
+     * Trova sulla WiFi di casa il modulo appena configurato (quello non ancora nell'account),
+     * ne ricava la chiave AES via auth in LAN, e lo registra nell'account (bind). Ritorna il
+     * nome assegnato. Va usato dopo la config SoftAP, con il telefono tornato sulla WiFi di casa.
+     */
+    suspend fun addNewModule(context: android.content.Context, name: String): String =
+        withContext(Dispatchers.IO) {
+            if (!client.loggedIn && !restore() && !autoLogin())
+                throw CloudException("nessuna sessione salvata")
+            if (devices.isEmpty()) runCatching { devices = client.devices() }
+            val known = devices.map { normMac(it.mac) }.toSet()
+            val candidate = net.klimakontrol.data.onboarding.LanProbe.discover(context)
+                .firstOrNull { normMac(it.mac) !in known }
+                ?: throw CloudException("nessun nuovo modulo trovato sulla rete WiFi")
+            val authed = net.klimakontrol.data.onboarding.LanProbe.authenticate(context, candidate)
+            val friendly = name.ifBlank { candidate.name }
+            client.bindDevice(derivePid(authed.devtype), deriveDid(authed.mac),
+                authed.mac, authed.key, friendly)
+            friendly.ifBlank { authed.mac }
+        }
+
+    private fun normMac(m: String) = m.replace(":", "").replace("-", "").lowercase()
+
+    /** `did` cloud = 10 byte zero + MAC (32 hex). Osservato sui device reali di questo account
+     *  (`endpointId` = `00000000000000000000<mac>`); da confermare su un modulo vergine. */
+    private fun deriveDid(mac: String): String = "0".repeat(20) + normMac(mac)
+
+    /** `pid` cloud = 24 zeri + devtype little-endian (2 byte) + `0000`. Osservato: 0x4e2e → `…2e4e0000`. */
+    private fun derivePid(devtype: Int): String =
+        "0".repeat(24) + "%02x%02x".format(devtype and 0xFF, (devtype ushr 8) and 0xFF) + "0000"
+
     /**
      * Esegue un'azione pianificata dal telefono (timer): assicura la sessione (riusa quella
      * salvata o rientra con le credenziali), carica le unità e invia il comando. Usato dal
