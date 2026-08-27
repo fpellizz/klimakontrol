@@ -22,8 +22,12 @@ docs/samples/*.json
 androguard.db
 # firma app e artefatti di release (MAI nel repo)
 *.jks
+*.jks.b64
+*.b64
 *.keystore
+keystore*
 keystore.properties
+marketplace/
 *.aab
 
 # Appunti di lavoro delle sessioni (scratch, non parte del repo)
