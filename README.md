@@ -4,8 +4,9 @@ Control of **Wisnow / TCL** air conditioners with the **BroadLink DNA** WiFi mod
 the official app.
 
 The commercial app (`com.ab.smartDevice`, "Intelligent AC") is slow, loses commands and
-gets timers wrong. This project talks directly to the air conditioners: at home via UDP
-on the local network, away from home through the same cloud the app uses.
+gets timers wrong. This project talks directly to the air conditioners: through the same cloud the app uses (the
+only path the owner's `0x4e2e` modules accept), and — for modules that allow it — at home via UDP
+on the local network.
 
 The protocol was reconstructed from the official APK — which by mistake includes the source maps
 of the control panel, and therefore its source code. The complete specifications are in
@@ -19,16 +20,19 @@ for the open work and [`docs/roadmap.md`](docs/roadmap.md) for the order.
 
 | | |
 | --- | --- |
-| Local control | UDP port 80, AES-128-CBC. Response in milliseconds, works without internet |
-| Remote control | HTTPS to `appservice.ibroadlink.com`, from any network |
+| Remote control | HTTPS to `appservice.ibroadlink.com`, from any network — verified on real hardware |
+| Local control | UDP port 80, AES-128-CBC, byte-verified — but the owner's `0x4e2e` modules reject it (cloud-only), see *Limitations* |
 | Automatic transport | tries the local network, falls back to the cloud |
 | Data model | 79 documented parameters: control, sensors, comfort, diagnostics, energy |
-| Energy usage history | hourly, daily and monthly reports, with operating hours |
-| Schedules | complete model and timezone conversion (see *Limitations*) |
+| Energy usage history | endpoint implemented, but these modules do not measure energy (returns empty) |
+| Schedules (timers) | phone-side in the Android app; these modules have no native scheduler (see *Limitations*) |
 | Operational security | maskable output, session saved with 0600 permissions, password never written |
 
 No external dependencies: only Python 3.8+. AES is implemented in the package and verified
 against the FIPS-197 vectors, so the code runs even where nothing can be compiled.
+
+There is also an **Android app** (Kotlin / Jetpack Compose) built on top of this library and
+compiled in CI — see [`android/README.md`](android/README.md).
 
 ## Installation
 
@@ -95,39 +99,41 @@ klimakontrol/
   cli.py       command-line interface
 docs/
   protocol.md  the complete protocol specifications
-tests/         88 tests, all offline
+tests/         136 tests, all offline
 ```
 
 ## Current limitations, stated plainly
 
-1. **Not yet tested on a real system.** Every byte is verified against the specifications and
-   against the documented packets (the payload of `set temp 23.0` comes out identical, checksum
-   included), but the field test is the next step.
-2. **Schedules can be read and modeled, but not yet written.** The commands
-   `dev_taskadd` / `dev_tasklist` go through the native layer of the SDK (`libNetworkAPI.so`),
-   which builds the packet using the encrypted `.script` files inside the APK. Two ways to
-   close the gap: capture a UDP packet while the official app creates a timer, or
-   use the cloud API `/appfront/v1/timertask/*`. The data model and the timezone conversion
-   are already ready.
-3. **`if_function`** is the bitmask of the functions the individual model actually
-   supports. The value can be read; the bit → function correspondence still has to be derived.
-4. **`devicetypeflag`** is passed as 0 if the cloud does not provide it. To be confirmed in the
-   field.
+1. **Local control is not supported by these modules.** The library implements it (UDP:80, AES)
+   and it is byte-verified against the documented packet, but the owner's `0x4e2e` modules answer
+   `-5` to local control and are driven only through the cloud — the official app does the same
+   (on the LAN it only does discovery). Remote control over the cloud is tested and works.
+2. **These modules have no native scheduler.** Tested on real hardware: device-side tasks
+   (`dev_taskadd`/`dev_tasklist`) return the current state, not the tasks (the model's Lua script
+   has the timer commands removed); the cloud timer API `/appfront/v1/timertask/*` is dead code in
+   the app; and the parameter-based "reservation" is not in this model's profile. So schedules are
+   handled **phone-side by the Android app** (`AlarmManager` sends the command at the set time).
+   See `docs/open-questions.md` §2. The Python library keeps a device-side schedule model for
+   reference, but it does not work on this hardware.
+3. **Energy usage is not measured by these modules.** The `dataservice` endpoint answers `ok` but
+   empty — these units have no power metering.
+4. **`if_function`** is the bitmask of the functions the individual model actually
+   supports. The value can be read; the bit → function correspondence still has to be derived
+   (on these modules it is not even reported — see `docs/open-questions.md` §4).
+5. **`devicetypeflag`** is passed as 0 if the cloud does not provide it.
 
-### The authentication salts: the piece that really is missing
+### The authentication salts
 
-The login sends `password = SHA1(password + sale)`, signs the body with a second salt and
-encrypts it with a key derived from a third. The app does not keep these three values in the Java code:
-it asks three native functions of `libBLAccountEncryptAPI.so`, which do nothing but
-return a constant.
+The login sends `password = SHA1(password + salt)`, signs the body with a second salt and
+encrypts it with a key derived from a third. The app does not keep these three values in the Java
+code: it asks three native functions of `libBLAccountEncryptAPI.so`, which do nothing but return a
+constant.
 
-Of the three, **only one is verified**: the one for the body signature (`xgx3d*fe3478$ukx`), which
-appears in the dex because the `/ec4` and `dataservice` calls also use it. The other two are
-the values that circulate in open source projects, and **do not appear in this APK**: they come
-from another build of the SDK.
-
-With a wrong salt the cloud responds `-1008` — again "wrong credentials" to correct
-credentials. That is why the three salts are replaceable without touching the code:
+All three are **verified**, extracted from the native library with `tools/extract_salts.py` (only
+the body-signature salt `xgx3d*fe3478$ukx` also appears in the dex, because `/ec4` and
+`dataservice` use it too). The salts were never the problem: the `-1008` at login was the wrong
+**companyid** (see below, and `docs/open-questions.md` §1). They stay replaceable without touching
+the code, in case they ever change:
 
 ```bash
 export KLIMAKONTROL_SALT_PASSWORD='...'
@@ -146,22 +152,23 @@ of the base APK: that is why the `lib` folder is not in the base APK.
 
 ### A note on the region identifiers
 
-The existing open source projects use `8503b08fa57729df9faa45e4c978852c` as the *company id*
-of the international region. It is not: that value appears identical in all four
-BroadLink licenses of the app, it is a global constant. The real company id of the
-international region is `a8452a8f48ae707edc12e9c52e21f00f`.
+`8503b08fa57729df9faa45e4c978852c` **is** the real companyid: it is the constant shared by all
+four BroadLink licenses of the app, at bytes `[120:136]` of the blob — the same for every region.
+What changes per region is the `lid` (bytes `[0:16]`). Using `blob[16:32]` as the companyid — as
+some open source projects, and an earlier version of these notes, did — makes the cloud answer
+`-1008` ("wrong credentials" to perfectly correct credentials), which sends you hunting in the
+wrong place. Verified on 2026-08-21: a successful login on region eu echoed back
+`companyid: 8503b08f…`.
 
-With the wrong pair the cloud responds `-1008`, that is **"wrong credentials" to perfectly
-correct credentials** — a message that sends you hunting for the problem in the wrong place.
-To avoid repeating the mistake, `cloud.py` does not contain hand-copied identifiers: it keeps the
-license blobs extracted from the APK and derives licenseId and companyid at every startup (first 16
-bytes and next 16, in the clear).
+To avoid hand-copied identifiers, `cloud.py` keeps the license blobs extracted from the APK and
+derives `licenseId = blob[0:16]` and `companyid = blob[120:136]` at every startup.
 
 ## Next steps
 
-- test on a real system and fix whatever comes up
-- Android app on top of this library, compiled in CI
-- close the writing of schedules
+- ✅ tested on a real system (owner's Wisnow plant, `0x4e2e`): login, list, state, on/off,
+  setpoint and `querystate` all work over the cloud
+- ✅ Android app (Kotlin/Compose) on top of this library, built in CI — see `android/README.md`
+- ✅ schedules resolved: no native scheduler on this hardware → phone-side timers in the app
 - map the bits of `if_function`
 
 ## Legal note

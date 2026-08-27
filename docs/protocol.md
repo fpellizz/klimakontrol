@@ -1,8 +1,11 @@
 # Wisnow / "Intelligent AC" — reconstructed API specifications
 
-**Version 3** — 20 August 2026. Updated after the analysis of `classes.dex`.
-Status: **complete specifications**. Local control, remote control via cloud, data model,
-schedules and energy usage history: all documented. Nothing is missing anymore to build the app.
+**Version 3** — 20 August 2026, with hardware notes added 2026-08-27.
+Status: **complete specifications**, now validated on a real plant (`0x4e2e`). Local control,
+remote control via cloud, the data model, schedules and energy usage history are all documented —
+but mind the hardware caveats: on these modules local control is refused (cloud-only), energy is
+not metered, and there is no native scheduler (schedules are handled phone-side by the app).
+Details throughout and in `docs/open-questions.md`.
 
 ---
 
@@ -13,15 +16,16 @@ schedules and energy usage history: all documented. Nothing is missing anymore t
 | What platform it is | **Solved**: BroadLink DNA module, BroadLink cloud, TCL/ACSmart OEM app |
 | Control protocol on the LAN | **Complete**: UDP:80, AES-128-CBC, JSON |
 | Complete list of parameters | **Complete**: 84 parameters extracted from the app's code |
-| Timers and weekly programs | **Complete**: they live *inside* the air conditioner, 5 types of schedule |
+| Timers and weekly programs | Protocol documented (5 schedule types) — but these `0x4e2e` modules have **no native scheduler**; the app schedules phone-side (see §3) |
 | Energy usage history | **Identified** the cloud API `dataservice/v1/device/stats` |
 | Cloud login and device list | **Complete** (endpoint, signatures, salt, encryption) |
 | Control from outside the home | **Solved**: `POST /device/control/v2/sdkcontrol` on the BroadLink cloud |
 
-An important note that changes the project: **the schedules do not need anything to be
-always on**. They are programmed into the air conditioner's WiFi module, which runs them on its own
-even with the phone off and the internet down. This was the main doubt about the "cloud-only"
-architecture: solved.
+A note, corrected after testing on real hardware: in the BroadLink protocol schedules are meant to
+be programmed **into** the module and run there, phone off and internet down. That is the general
+design — but it does **not** hold for these `0x4e2e` modules: their firmware has no working
+scheduler (see §3 and `docs/open-questions.md` §2). On this hardware schedules are handled
+phone-side by the Android app instead.
 
 ---
 
@@ -127,7 +131,13 @@ Timeouts used by the app: 3 s locally, 5 s remotely, 3 repeated packets per comm
 
 ---
 
-## 3. Schedules: they are in the air conditioner
+## 3. Schedules (device-side format)
+
+> **Hardware caveat (2026-08-27):** this section documents the BroadLink device-side schedule
+> format, but the owner's `0x4e2e` modules do **not** run it — they have no native scheduler
+> (`dev_tasklist` returns the state, not tasks; the model's Lua has the timer commands removed).
+> See `docs/open-questions.md` §2. The Android app therefore schedules phone-side. The format below
+> is kept for reference and for modules that do support it.
 
 Five types, indexed by `type`:
 

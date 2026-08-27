@@ -99,7 +99,7 @@ klimakontrol/
   cli.py       CLI con trasporto automatico locale/cloud
 tools/         strumenti di analisi dell'APK (androguard) e estrazione dei sali
 docs/          protocollo, cronaca del reverse engineering, domande aperte, roadmap, ricette
-tests/         102 test, tutti offline
+tests/         136 test, tutti offline
 ```
 
 ---
