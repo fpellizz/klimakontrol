@@ -58,12 +58,14 @@ sealed interface Phase {
 /** Esito visibile di un comando per una singola unità. */
 enum class SendState { Idle, Sending, Ok, Error }
 
-/** Stato del wizard di onboarding (config SoftAP di un modulo vergine). */
+/** Stato del wizard di onboarding (config SoftAP + bind cloud di un modulo vergine). */
 data class OnboardingState(
     val busy: Boolean = false,
     val error: String? = null,
-    val sent: Boolean = false,        // invio riuscito
+    val sent: Boolean = false,        // config SoftAP inviata
     val responded: Boolean = false,   // il modulo ha risposto (diagnostica)
+    val bound: Boolean = false,       // registrato nell'account (bind riuscito)
+    val boundName: String? = null,    // nome dell'unità aggiunta
 )
 
 /** Stato della schermata pianificazioni (timer) di un'unità.
@@ -339,7 +341,22 @@ class KlimaViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
-    /** Chiude il wizard e rilegge l'elenco (la nuova unità, entrata in rete, comparirà). */
+    /** Registra nell'account il modulo appena configurato: discovery+auth in LAN → bind cloud.
+     *  Da chiamare col telefono tornato sulla WiFi di casa. */
+    fun onboardingBind(name: String) {
+        _onboarding.value = _onboarding.value.copy(busy = true, error = null)
+        viewModelScope.launch {
+            try {
+                val boundName = service.addNewModule(getApplication(), name.trim())
+                _onboarding.value = _onboarding.value.copy(busy = false, bound = true, boundName = boundName)
+                runCatching { _units.value = service.loadUnits() }   // rifletti subito la nuova unità
+            } catch (e: Exception) {
+                _onboarding.value = _onboarding.value.copy(busy = false, error = readable(e))
+            }
+        }
+    }
+
+    /** Chiude il wizard e rilegge l'elenco. */
     fun onboardingDone() {
         _onboarding.value = OnboardingState()
         refresh()

@@ -194,6 +194,7 @@ private fun Connected(vm: KlimaViewModel, units: List<AcUnit>) {
             OnboardingScreen(
                 state = onboarding,
                 onSend = { s, p, sec -> vm.onboardingSend(s, p, sec) },
+                onBind = { name -> vm.onboardingBind(name) },
                 onFinish = { vm.onboardingDone(); selected = null },
                 onBack = { selected = null },
             )

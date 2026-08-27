@@ -174,6 +174,12 @@
     <string name="onboarding_done_responded">The air conditioner received the configuration and is connecting to your network.</string>
     <string name="onboarding_done_no_response">We sent the credentials to the air conditioner (it usually doesn\'t reply: that\'s normal).</string>
     <string name="onboarding_done_hint">Now reconnect your phone to your home WiFi. If the module joins the network and is already linked to this account, the unit will appear in the list shortly; a module this account has never seen may need one more step.</string>
+    <string name="onboarding_add_title">Add to your account</string>
+    <string name="onboarding_add_desc">The module is now on your WiFi. Reconnect your phone to your home WiFi too, then search for the new air conditioner and add it.</string>
+    <string name="onboarding_reconnect_wifi">Open WiFi settings</string>
+    <string name="onboarding_name_label">Name (optional)</string>
+    <string name="onboarding_search_add">Search and add</string>
+    <string name="onboarding_bound">Done: “%1$s” was added to your account.</string>
     <string name="onboarding_finish">Done</string>
     <string name="security_open">Open</string>
     <string name="security_wep">WEP</string>

@@ -62,6 +62,7 @@ import net.klimakontrol.ui.theme.QuadType
 fun OnboardingScreen(
     state: OnboardingState,
     onSend: (String, String, Int) -> Unit,
+    onBind: (String) -> Unit,
     onFinish: () -> Unit,
     onBack: () -> Unit,
 ) {
@@ -73,8 +74,9 @@ fun OnboardingScreen(
     var password by remember { mutableStateOf("") }
     var security by rememberSaveable { mutableStateOf(3) }   // WPA2 di default
 
-    // quando l'invio riesce, avanza all'ultimo passo
+    // config inviata → passo "aggiungi all'account"; bind riuscito → passo finale
     LaunchedEffect(state.sent) { if (state.sent) step = 3 }
+    LaunchedEffect(state.bound) { if (state.bound) step = 4 }
 
     Column(Modifier.fillMaxSize().background(c.bg).windowInsetsPadding(WindowInsets.safeDrawing)) {
         // app bar: indietro fra i passi, o esci dal wizard
@@ -92,7 +94,7 @@ fun OnboardingScreen(
                 .padding(horizontal = 22.dp, vertical = 8.dp),
             verticalArrangement = Arrangement.spacedBy(18.dp),
         ) {
-            StepDots(current = step, total = 4, accent = accent)
+            StepDots(current = step, total = 5, accent = accent)
 
             when (step) {
                 0 -> IntroStep(accent) { step = 1 }
@@ -106,6 +108,7 @@ fun OnboardingScreen(
                     state = state, accent = accent,
                     onSend = { onSend(ssid.trim(), password, security) },
                 )
+                3 -> AddStep(state = state, accent = accent, onBind = onBind)
                 else -> DoneStep(state = state, accent = accent, onFinish = onFinish)
             }
 
@@ -178,18 +181,42 @@ private fun ConnectStep(state: OnboardingState, accent: Color, onSend: () -> Uni
 }
 
 @Composable
+private fun AddStep(state: OnboardingState, accent: Color, onBind: (String) -> Unit) {
+    val c = Klima.colors
+    val context = LocalContext.current
+    var name by rememberSaveable { mutableStateOf("") }
+
+    Text(stringResource(R.string.onboarding_add_title), style = QuadType.name, color = c.ink)
+    Text(stringResource(R.string.onboarding_add_desc), style = QuadType.body, color = c.ink2)
+
+    Text(stringResource(R.string.onboarding_reconnect_wifi), style = QuadType.name, color = accent,
+        modifier = Modifier.clickable {
+            context.startActivity(
+                Intent(Settings.ACTION_WIFI_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
+            )
+        }.padding(vertical = 4.dp))
+
+    OutlinedTextField(
+        value = name, onValueChange = { name = it },
+        label = { Text(stringResource(R.string.onboarding_name_label)) }, singleLine = true,
+        modifier = Modifier.fillMaxWidth(),
+    )
+
+    state.error?.let { Text(it, style = QuadType.micro, color = c.error) }
+
+    PrimaryButton(stringResource(R.string.onboarding_search_add), busy = state.busy, enabled = !state.busy,
+        accent = accent, onClick = { onBind(name.trim()) })
+}
+
+@Composable
 private fun DoneStep(state: OnboardingState, accent: Color, onFinish: () -> Unit) {
     val c = Klima.colors
     Text(stringResource(R.string.onboarding_done_title), style = QuadType.title, color = c.ink)
     Text(
-        if (state.responded)
-            stringResource(R.string.onboarding_done_responded)
-        else
-            stringResource(R.string.onboarding_done_no_response),
+        state.boundName?.let { stringResource(R.string.onboarding_bound, it) }
+            ?: stringResource(R.string.onboarding_done_hint),
         style = QuadType.body, color = c.ink2,
     )
-    Text(stringResource(R.string.onboarding_done_hint),
-        style = QuadType.micro, color = c.ink3)
     PrimaryButton(stringResource(R.string.onboarding_finish), busy = false, enabled = true, accent = accent, onClick = onFinish)
 }
 

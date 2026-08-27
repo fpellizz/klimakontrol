@@ -175,6 +175,12 @@
     <string name="onboarding_done_responded">Il climatizzatore ha ricevuto la configurazione e si sta connettendo alla tua rete.</string>
     <string name="onboarding_done_no_response">Abbiamo mandato le credenziali al climatizzatore (di solito non risponde: è normale).</string>
     <string name="onboarding_done_hint">Ora riconnetti il telefono al WiFi di casa. Se il modulo entra in rete ed è già associato a questo account, tra poco l\'unità comparirà nell\'elenco; un modulo mai visto da questo account potrebbe richiedere ancora un passaggio.</string>
+    <string name="onboarding_add_title">Aggiungi all\'account</string>
+    <string name="onboarding_add_desc">Il modulo è ora sul tuo WiFi. Riconnetti anche il telefono al WiFi di casa, poi cerca il nuovo climatizzatore e aggiungilo.</string>
+    <string name="onboarding_reconnect_wifi">Apri le impostazioni WiFi</string>
+    <string name="onboarding_name_label">Nome (facoltativo)</string>
+    <string name="onboarding_search_add">Cerca e aggiungi</string>
+    <string name="onboarding_bound">Fatto: «%1$s» è stato aggiunto al tuo account.</string>
     <string name="onboarding_finish">Fine</string>
     <string name="security_open">Aperta</string>
     <string name="security_wep">WEP</string>
