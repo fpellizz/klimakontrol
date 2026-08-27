@@ -1,6 +1,6 @@
 # Pubblicazione su Google Play — guida e checklist
 
-Stato: l'app ha già icona, versione (`0.5.1`/`versionCode 6`), privacy policy (`docs/privacy.html`)
+Stato: l'app ha già icona, versione (`0.6.0`/`versionCode 7`), privacy policy (`docs/privacy.html`)
 e un controllo aggiornamenti (`UpdateChecker`, via GitHub Releases). Qui c'è tutto il resto,
 **pronto da applicare**. Le modifiche a `build.gradle.kts`/CI richiedono un **keystore** (che generi
 tu) e vanno applicate insieme, guardando la CI.
