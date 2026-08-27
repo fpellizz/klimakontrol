@@ -13,7 +13,7 @@ shared constant `blob[120:136]` (`8503b08f…`). Fix in `cloud.py`; `docs/open-q
 
 ---
 
-## Step 2 — First field test
+## Step 2 — First field test — ✅ DONE (2026-08-21)
 
 ```bash
 python3 -m klimakontrol list
@@ -26,13 +26,11 @@ python3 -m klimakontrol online
 python3 -m klimakontrol energy 1 day
 ```
 
-What can break, in order of probability: the shape of the responses (§5), `devicetypeflag`
-(§3), the field names in the energy usage history.
-
-**Done when** an air conditioner turns on from a command given away from home.
-
-Then: update the status table in `CLAUDE.md`, add tests on the real (masked) responses
-as fixtures.
+Outcome: `list`, `status`, `on`/`off`, setpoint (`save_temp`) and `online` all work over the
+cloud on the owner's plant (`0x4e2e`). Two hardware surprises, now folded into the code: the
+setpoint is `save_temp` (not `temp`) and swing is `ac_vdir`/`ac_hdir` (not `tcl_*`) — see
+`CLAUDE.md` §5 pitfall 4. Energy usage came back empty (these units do not meter power). Real
+masked responses were captured; the status table in `CLAUDE.md` is kept up to date.
 
 ---
 
@@ -53,21 +51,27 @@ discovery. Reopen only if offline is truly needed: the native `SDKAuth` would ha
 
 ---
 
-## Step 4 — Writable schedules
+## Step 4 — Schedules — ✅ RESOLVED (2026-08-27): no native scheduler → phone-side
 
-`docs/open-questions.md` §2. A UDP capture is needed while the official app creates a timer.
+Tested on real hardware: these `0x4e2e` modules have **no native scheduler**. Device-side tasks
+(`dev_taskadd`/`dev_tasklist`) return the current state, not the tasks (the model's Lua script has
+the timer commands removed); the cloud timer API `/appfront/v1/timertask/*` is dead code; the
+parameter-based "reservation" is not in this model's profile. See `docs/open-questions.md` §2.
 
-**Done when** a weekly program written from here is executed by the module with the
-phone off.
-
-It is the function the official app gets most conspicuously wrong: doing it well is the reason
-this project exists.
+So the Android app keeps schedules **phone-side**: `AlarmManager` fires at the set time and sends
+the on/off command over the cloud (quick "in X" timers and weekly recurring ones). Verified on
+real hardware, including standby/Doze. The one thing lost is running with the phone off — but
+offline control does not exist on these modules anyway (the `-5`, see Step 3).
 
 ---
 
-## Step 5 — Android app
+## Step 5 — Android app — ✅ DONE (functioning, released)
 
-On top of the library, not in its place. Known constraints:
+Built on top of the library (Kotlin / Jetpack Compose), compiled in CI. Login (with region/vendor
+picker) and account registration, real cloud control of the air conditioners (power, temperature,
+mode, fan, eco/turbo/night, swing), optimistic commands with roll-back, persistent session,
+settings, bilingual IT/EN, onboarding wizard (SoftAP config), and phone-side timers (Step 4). See
+`android/README.md`. The constraints below shaped it and still hold:
 
 * the development machine does not have the Android SDK → **compile in CI** (GitHub Actions),
   the APK is downloaded from the artifacts and installed by hand;

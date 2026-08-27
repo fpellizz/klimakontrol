@@ -125,9 +125,9 @@ The ones that matter:
 
 For the salts: `python3 ../tools/extract_salts.py lib/libBLAccountEncryptAPI.so`.
 
-`libNetworkAPI.so` is the place to look for the encoding of the schedule commands,
-but it is much simpler to capture a UDP packet and decrypt it: the key is known
-(`docs/open-questions.md` §2).
+`libNetworkAPI.so` is where the schedule-command encoding would live — but this turned out to be
+moot: on these `0x4e2e` modules there is no native scheduler at all (tested on real hardware), so
+the Android app keeps schedules phone-side instead (`docs/open-questions.md` §2).
 
 ---
 

@@ -71,25 +71,29 @@ directives, including the `cookie` field that carries the device's AES key to th
 `timstamp` typo in the header — replicated on purpose in our code, because it is what
 the server expects.
 
-## 4. The licenses, and two wrong constants circulating online
+## 4. The licenses, and a constant that is easy to misread
 
 `com.tcl.smartdevice.AirApplication.initData` contains the app's four BroadLink licenses,
 one per region (`ab`, `cn`, `eu`, `ru`), as Base64 blobs. The blob **is not encrypted**: the first
-16 bytes are the `licenseId`, the next 16 the `companyid`.
+16 bytes are the `licenseId` (per region), and the `companyid` is the shared constant at bytes
+`[120:136]`.
 
 ```python
 raw = base64.b64decode(blob)
-license_id, company_id = raw[0:16].hex(), raw[16:32].hex()
+license_id, company_id = raw[0:16].hex(), raw[120:136].hex()
 ```
 
 Two consequences:
 
-1. The value `8503b08fa57729df9faa45e4c978852c`, which in open source projects appears as
-   the *company id* of the international region, appears identically in all four licenses:
-   it is a global constant, not a companyid. The real one is
-   `a8452a8f48ae707edc12e9c52e21f00f`.
-2. To avoid repeating the error, `cloud.py` keeps the blobs and derives the identifiers at each
-   startup, instead of copying them by hand.
+1. The value `8503b08fa57729df9faa45e4c978852c` appears identically in all four licenses: it **is**
+   the companyid, shared by every region. The trap is `blob[16:32]` (per region, e.g.
+   `a8452a8f…` for the international region): some open source projects — and an earlier version of
+   these notes — used that as the companyid, which makes the cloud answer `-1008`. Verified on
+   2026-08-21: a successful login on region eu echoed back `companyid: 8503b08f…`. See `CLAUDE.md`
+   §5 pitfall 1.
+2. To avoid repeating the error, `cloud.py` keeps the blobs and derives the identifiers
+   (`licenseId = blob[0:16]`, `companyid = blob[120:136]`) at each startup, instead of copying them
+   by hand.
 
 Also from `initData`: the `pid`s of the three machine types (split, portable, window) change per
 region — for the international region the split is `0x507c`, for Europe `0x507a`.
@@ -125,21 +129,23 @@ must not be taken for granted just because the string is there.
 * the password arrives raw from the interface: `LoginActivity$LoginTask.doInBackground` →
   `BLAccount.login(user, password)`, no intermediate hash.
 
-Despite all of this matching, the login is still rejected with `-1008`: see
-`docs/open-questions.md` §1.
+Everything above matched, yet the login kept returning `-1008` — because the **companyid** was
+being taken from `blob[16:32]` instead of the shared `blob[120:136]` (see §4). Fixed on 2026-08-21:
+login, unit list, `querystate` and cloud control all work. Details in `docs/open-questions.md` §1.
 
-## 7. What remains in the native layer
+## 7. Schedules: no native scheduler on this hardware (CLOSED)
 
-The schedules (`dev_taskadd`, `dev_tasklist`, `dev_taskdata`, `dev_taskdel`) do not go
-through a dedicated directive: they end up in `BLControllerDescParam.setCommand(...)` and from there into the
+The schedules (`dev_taskadd`, `dev_tasklist`, `dev_taskdata`, `dev_taskdel`) do not go through a
+dedicated directive: they end up in `BLControllerDescParam.setCommand(...)` and from there into the
 native layer, which builds the packet using the encrypted `.script` files in the assets.
 
-Two ways to close the gap:
-
-1. capture the local UDP packet while the official app creates a timer — a few
-   packets are enough, the AES key is known so it can be decrypted;
-2. use the cloud API `/appfront/v1/timertask/{add,query,modify,delete}`, which schedules
-   server-side instead of in the module.
+Tested on real hardware (2026-08-27), all three native paths turned out to be dead ends on these
+`0x4e2e` modules: `dev_tasklist` via `sdkcontrol` returns the current **state**, not the tasks (the
+model's Lua script has the timer commands removed); the cloud API
+`/appfront/v1/timertask/{add,query,modify,delete}` is **dead code** in the app; and the
+parameter-based "reservation" (`sub_*`) is not in this model's profile. So this hardware has **no
+native scheduler**. The Android app therefore keeps the schedules **phone-side** (`AlarmManager`
+sends the command at the set time). Full write-up in `docs/open-questions.md` §2.
 
 ## 8. Independent verification
 
