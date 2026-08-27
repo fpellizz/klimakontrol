@@ -1,3 +1,5 @@
+import java.io.File
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
@@ -12,8 +14,23 @@ android {
         applicationId = "net.klimakontrol"
         minSdk = 26
         targetSdk = 34
-        versionCode = 7
-        versionName = "0.6.0"
+        versionCode = 8
+        versionName = "0.7.0"
+    }
+
+    signingConfigs {
+        // Firma di release: la CI decodifica il keystore dai GitHub Secrets in un file e passa
+        // il percorso e le password via variabili d'ambiente. In locale o senza secret il config
+        // non viene creato → la build di release resta non firmata (si usa solo assembleDebug).
+        val ksPath = System.getenv("SIGNING_KEYSTORE_PATH")
+        if (ksPath != null && File(ksPath).exists()) {
+            create("release") {
+                storeFile = File(ksPath)
+                storePassword = System.getenv("SIGNING_KEYSTORE_PASSWORD")
+                keyAlias = System.getenv("SIGNING_KEY_ALIAS")
+                keyPassword = System.getenv("SIGNING_KEY_PASSWORD")
+            }
+        }
     }
 
     buildTypes {
@@ -23,6 +40,7 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
+            signingConfig = signingConfigs.findByName("release")
         }
     }
 

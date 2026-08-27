@@ -43,8 +43,9 @@ jobs:
           path: android/app/build/outputs/apk/debug/*.apk
           if-no-files-found: error
 
-  # Quando pubblichi una Release su GitHub, costruisce l'APK debug della versione taggata
-  # e lo allega alla release, così chi scarica trova il pacchetto (non solo il sorgente).
+  # Quando pubblichi una Release su GitHub, costruisce l'APK **firmato di release** della versione
+  # taggata e lo allega, così chi scarica trova il pacchetto installabile (non solo il sorgente).
+  # La chiave di firma arriva dai GitHub Secrets (vedi docs/distribution.md).
   attach-apk:
     if: github.event_name == 'release'
     runs-on: ubuntu-latest
@@ -69,13 +70,23 @@ jobs:
         with:
           gradle-version: '8.9'
 
-      - name: Build debug APK
-        run: gradle assembleDebug --no-daemon --stacktrace
+      - name: Decodifica il keystore dai secret
+        env:
+          SIGNING_KEYSTORE_BASE64: ${{ secrets.SIGNING_KEYSTORE_BASE64 }}
+        run: echo "$SIGNING_KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/release.jks"
+
+      - name: Build release APK firmato
+        env:
+          SIGNING_KEYSTORE_PATH: ${{ runner.temp }}/release.jks
+          SIGNING_KEYSTORE_PASSWORD: ${{ secrets.SIGNING_KEYSTORE_PASSWORD }}
+          SIGNING_KEY_ALIAS: ${{ secrets.SIGNING_KEY_ALIAS }}
+          SIGNING_KEY_PASSWORD: ${{ secrets.SIGNING_KEY_PASSWORD }}
+        run: gradle assembleRelease --no-daemon --stacktrace
 
       - name: Allega l'APK alla release
         env:
           GH_TOKEN: ${{ github.token }}
           TAG: ${{ github.event.release.tag_name }}
         run: |
-          cp app/build/outputs/apk/debug/*.apk "klimakontrol-${TAG}.apk"
+          cp app/build/outputs/apk/release/*.apk "klimakontrol-${TAG}.apk"
           gh release upload "${TAG}" "klimakontrol-${TAG}.apk" --clobber
