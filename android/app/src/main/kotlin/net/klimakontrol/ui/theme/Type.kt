@@ -1,44 +1,34 @@
 package net.klimakontrol.ui.theme
 
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.googlefonts.Font
-import androidx.compose.ui.text.googlefonts.GoogleFont
 import androidx.compose.ui.unit.sp
 import net.klimakontrol.R
 
 /**
- * Font del sistema "Quadrante", scaricati a runtime da Google Fonts (Downloadable Fonts):
- * Space Grotesk per numeri/display (cifre tabulari, carattere strumentale), Inter per la UI.
- * Nessun file binario nel repo; il provider è Google Play Services (certificati in font_certs.xml).
- * Se il download non è disponibile, Compose ripiega sul font di sistema.
+ * Font del sistema "Quadrante", **inclusi nell'app** (nessun Google Play Services, funzionano
+ * anche su dispositivi de-Googled → compatibile F-Droid). Space Grotesk per numeri/display (cifre
+ * tabulari, carattere strumentale), Inter per la UI, Outfit per il wordmark. Sono istanze statiche
+ * ai pesi usati, ricavate dai font variabili ufficiali (OFL); licenze in `assets/fonts/`.
+ * Vedi `docs/distribution.md`.
  */
-private val provider = GoogleFont.Provider(
-    providerAuthority = "com.google.android.gms.fonts",
-    providerPackage = "com.google.android.gms",
-    certificates = R.array.com_google_android_gms_fonts_certs,
-)
-
-private val spaceGrotesk = GoogleFont("Space Grotesk")
-private val inter = GoogleFont("Inter")
-private val outfit = GoogleFont("Outfit")   // wordmark del nome app
-
 private val Display = FontFamily(
-    Font(spaceGrotesk, provider, FontWeight.Light),
-    Font(spaceGrotesk, provider, FontWeight.Normal),
-    Font(spaceGrotesk, provider, FontWeight.Medium),
-    Font(spaceGrotesk, provider, FontWeight.Bold),
+    Font(R.font.space_grotesk_light, FontWeight.Light),
+    Font(R.font.space_grotesk_regular, FontWeight.Normal),
+    Font(R.font.space_grotesk_medium, FontWeight.Medium),
+    Font(R.font.space_grotesk_bold, FontWeight.Bold),
 )
 private val Wordmark = FontFamily(
-    Font(outfit, provider, FontWeight.Medium),
-    Font(outfit, provider, FontWeight.SemiBold),
-    Font(outfit, provider, FontWeight.Bold),
+    Font(R.font.outfit_medium, FontWeight.Medium),
+    Font(R.font.outfit_semibold, FontWeight.SemiBold),
+    Font(R.font.outfit_bold, FontWeight.Bold),
 )
 private val Body = FontFamily(
-    Font(inter, provider, FontWeight.Normal),
-    Font(inter, provider, FontWeight.Medium),
-    Font(inter, provider, FontWeight.SemiBold),
+    Font(R.font.inter_regular, FontWeight.Normal),
+    Font(R.font.inter_medium, FontWeight.Medium),
+    Font(R.font.inter_semibold, FontWeight.SemiBold),
 )
 
 private const val TNUM = "tnum"
