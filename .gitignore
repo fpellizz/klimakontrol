@@ -25,3 +25,6 @@ androguard.db
 *.keystore
 keystore.properties
 *.aab
+
+# Appunti di lavoro delle sessioni (scratch, non parte del repo)
+.superpowers/

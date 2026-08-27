@@ -118,6 +118,31 @@ Nota: la vecchia idea di catturare un **pacchetto UDP locale** dell'app **non fu
 non manda mai controllo/task in locale (solo discovery). Esiste anche l'API cloud
 `/appfront/v1/timertask/*` (pianificazione lato server), ma perde il pregio dell'offline.
 
+**Aggiornamento (2026-08-27) — CHIUSA: questo hardware non ha scheduler nativo.**
+Provate tutte e tre le vie native, tutte negative su `0x4e2e`:
+
+1. **Device-task** (`dev_taskadd`/`dev_tasklist` via `sdkcontrol`): provato su HW —
+   `dev_tasklist` **ritorna lo stato del climatizzatore, non i task** (il modulo tratta l'`act`
+   sconosciuto come "leggi tutto"). Coerente con lo script Lua del modello, che per questo
+   modello ha i comandi timer **rimossi**. Vicolo cieco.
+2. **API cloud `/appfront/v1/timertask/*`**: **codice morto** nell'app. RE del dex + dei bundle
+   JS: i 4 metodi SDK (`BLApiUrls$APPFront.URL_*_CLOUD_TIMER`) hanno **0 chiamanti**; nessun
+   bundle-pannello invia `serviceName:"timerservice"`; lo **schema del corpo non è ricavabile**
+   da questo APK (costruito in un modulo JS non incluso). Rischio anche che non sia abilitata
+   lato cloud per questa company. Non perseguita.
+3. **"Reservation" a parametri** (`if_subs`/`sub_on_off`/`if_cycle`/`sub_weekday`/`sub_time`/`cmd`,
+   con `set` normale): è il meccanismo vero per **altri** modelli TCL, ma il **profilo firmware
+   di `0x4e2e`** (`www/model/profile.js`) elenca solo i soliti 10 parametri e **non** i `sub_*`;
+   e il `get` ritorna sempre quei 10, quindi nemmeno l'app ufficiale rilegge una reservation su
+   queste unità. Non applicabile.
+
+**Decisione:** l'app tiene i timer **lato telefono** (`android/.../data/schedule/`): `AlarmManager`
+fa scattare un `BroadcastReceiver` all'ora giusta, che manda on/off via cloud (lo stesso
+`sdkcontrol` del controllo manuale), ri-arma il ricorrente / consuma il one-shot, riprogramma al
+reboot. Compromesso: a telefono spento può non scattare — ma il controllo **offline** su questi
+moduli non esiste comunque (il `-5`, §5 trappola 4 del CLAUDE), quindi non si perde nulla di reale.
+La lib+CLI Python resta device-side (riferimento), non funzionante su questo HW.
+
 ---
 
 ## 3. `devicetypeflag`

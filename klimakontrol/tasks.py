@@ -192,8 +192,20 @@ class Task:
 
 def parse_task_list(response: Dict[str, Any],
                     tz_offset: Optional[float] = None) -> List[Task]:
-    """Legge la risposta di `dev_tasklist` e restituisce tutte le pianificazioni."""
+    """Legge la risposta di `dev_tasklist` e restituisce tutte le pianificazioni.
+
+    La risposta di `sdkcontrol` arriva in `payload.data` come **stringa JSON** (come per
+    `get`): va ri-parsata prima di leggerne le liste.
+    """
+    import json
     data = response.get("data", response)
+    if isinstance(data, str):
+        try:
+            data = json.loads(data) if data.strip() else {}
+        except (ValueError, TypeError):
+            return []
+    if not isinstance(data, dict):
+        return []
     out: List[Task] = []
     for task_type, key in LIST_KEYS.items():
         for raw in (data.get(key) or []):

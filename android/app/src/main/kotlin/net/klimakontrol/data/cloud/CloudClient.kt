@@ -1,7 +1,6 @@
 package net.klimakontrol.data.cloud
 
 import android.util.Base64
-import net.klimakontrol.data.tasks.Timer
 import org.json.JSONArray
 import org.json.JSONObject
 import java.net.HttpURLConnection
@@ -311,38 +310,6 @@ class CloudClient(val region: Region = REGIONS.getValue("eu")) {
         }
         val payload = JSONObject().put("act", "set").put("params", paramsArr).put("vals", valsArr)
         return flatten(sdkControl(d, payload))
-    }
-
-    // ---------------- pianificazioni (dev_taskadd / dev_tasklist / dev_taskdel) ----------------
-    fun addTask(d: CloudDevice, timer: Timer): JSONObject =
-        sdkControl(d, timer.toWire().put("act", Timer.CMD_ADD))
-
-    fun listTasks(d: CloudDevice): List<Timer> =
-        parseTimers(sdkControl(d, JSONObject().put("act", Timer.CMD_LIST)))
-
-    fun deleteTask(d: CloudDevice, type: Int, index: Int): JSONObject =
-        sdkControl(d, JSONObject().put("act", Timer.CMD_DELETE).put("type", type).put("index", index))
-
-    private fun parseTimers(payload: JSONObject): List<Timer> {
-        val dataAny = payload.opt("data")
-        val data = when (dataAny) {
-            is String -> if (dataAny.isBlank()) return emptyList() else JSONObject(dataAny)
-            is JSONObject -> dataAny
-            else -> return emptyList()
-        }
-        val listKeys = linkedMapOf(
-            "timerlist" to Timer.TYPE_ONCE, "delaylist" to Timer.TYPE_DELAY,
-            "periodlist" to Timer.TYPE_PERIOD, "cyclelist" to Timer.TYPE_CYCLE,
-            "randomlist" to Timer.TYPE_RANDOM,
-        )
-        val out = mutableListOf<Timer>()
-        for ((key, type) in listKeys) {
-            val arr = data.optJSONArray(key) ?: continue
-            for (i in 0 until arr.length()) {
-                arr.optJSONObject(i)?.let { out.add(Timer.fromWire(it, type)) }
-            }
-        }
-        return out
     }
 
     private fun flatten(payload: JSONObject): Map<String, Int> {

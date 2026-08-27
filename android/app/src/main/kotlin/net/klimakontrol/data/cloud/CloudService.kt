@@ -119,22 +119,21 @@ class CloudService(context: Context) {
         Unit
     }
 
-    // ---- pianificazioni (timer) ----
-    suspend fun listTimers(unitId: String): List<net.klimakontrol.data.tasks.Timer> =
+    /**
+     * Esegue un'azione pianificata dal telefono (timer): assicura la sessione (riusa quella
+     * salvata o rientra con le credenziali), carica le unità e invia il comando. Usato dal
+     * ricevitore d'allarme, che gira in un'istanza a sé senza stato caricato. Lancia se non
+     * riesce (nessuna sessione o rete): il chiamante lo segnala come timer non riuscito.
+     */
+    suspend fun runScheduledAction(unitId: String, changes: Map<String, Int>) =
         withContext(Dispatchers.IO) {
-            val d = deviceFor(unitId) ?: throw CloudException("unità sconosciuta: $unitId")
-            client.listTasks(d)
-        }
-
-    suspend fun addTimer(unitId: String, timer: net.klimakontrol.data.tasks.Timer) =
-        withContext(Dispatchers.IO) {
-            val d = deviceFor(unitId) ?: throw CloudException("unità sconosciuta: $unitId")
-            client.addTask(d, timer); Unit
-        }
-
-    suspend fun deleteTimer(unitId: String, type: Int, index: Int) =
-        withContext(Dispatchers.IO) {
-            val d = deviceFor(unitId) ?: throw CloudException("unità sconosciuta: $unitId")
-            client.deleteTask(d, type, index); Unit
+            if (!restore() && !autoLogin()) throw CloudException("nessuna sessione salvata")
+            try {
+                loadUnits(); push(unitId, changes)
+            } catch (e: Exception) {
+                // sessione forse scaduta: un solo rientro con le credenziali salvate
+                if (autoLogin()) { loadUnits(); push(unitId, changes) } else throw e
+            }
+            Unit
         }
 }

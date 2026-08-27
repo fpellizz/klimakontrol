@@ -31,7 +31,11 @@ import net.klimakontrol.data.cloud.swingVWire
 import net.klimakontrol.data.cloud.targetWire
 import net.klimakontrol.data.cloud.turboWire
 import net.klimakontrol.data.softap.SoftApClient
-import net.klimakontrol.data.tasks.Timer
+import net.klimakontrol.data.schedule.Schedule
+import net.klimakontrol.data.schedule.ScheduleStore
+import net.klimakontrol.data.schedule.Scheduler
+import java.util.UUID
+import kotlin.math.roundToInt
 
 sealed interface Phase {
     data object Loading : Phase
@@ -62,11 +66,14 @@ data class OnboardingState(
     val responded: Boolean = false,   // il modulo ha risposto (diagnostica)
 )
 
-/** Stato della schermata pianificazioni (timer) di un'unità. */
-data class TimersState(
+/** Stato della schermata pianificazioni (timer) di un'unità.
+ *  `canExact` = il sistema concede gli allarmi esatti (Android 12+); se no, i timer scattano
+ *  comunque ma con precisione ridotta e la UI lo segnala. */
+data class SchedulesState(
     val busy: Boolean = false,
     val error: String? = null,
-    val timers: List<Timer> = emptyList(),
+    val schedules: List<Schedule> = emptyList(),
+    val canExact: Boolean = true,
 )
 
 private const val DEBOUNCE_MS = 400L
@@ -91,8 +98,9 @@ class KlimaViewModel(app: Application) : AndroidViewModel(app) {
     private val _onboarding = MutableStateFlow(OnboardingState())
     val onboarding = _onboarding.asStateFlow()
 
-    private val _timers = MutableStateFlow(TimersState())
-    val timers = _timers.asStateFlow()
+    private val scheduleStore = ScheduleStore(app)
+    private val _schedules = MutableStateFlow(SchedulesState())
+    val schedules = _schedules.asStateFlow()
 
     private val _update = MutableStateFlow<UpdateStatus>(UpdateStatus.Unknown)
     val update = _update.asStateFlow()
@@ -338,39 +346,59 @@ class KlimaViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     // ---- pianificazioni (timer) ----
-    fun loadTimers(unitId: String) {
-        _timers.value = TimersState(busy = true)
-        viewModelScope.launch {
-            try {
-                _timers.value = TimersState(timers = service.listTimers(unitId))
-            } catch (e: Exception) {
-                _timers.value = TimersState(error = readable(e))
-            }
-        }
+    // ---- pianificazioni lato telefono (l'hardware non ha scheduler nativo: vedi Schedule) ----
+
+    private fun app() = getApplication<Application>()
+
+    /** Ricarica l'elenco per l'unità dallo store locale (istantaneo, niente rete). */
+    fun loadSchedules(unitId: String) {
+        _schedules.value = SchedulesState(
+            schedules = scheduleStore.forUnit(unitId)
+                .sortedWith(compareBy({ it.recurring }, { it.hour * 60 + it.minute })),
+            canExact = Scheduler.canExact(app()),
+        )
     }
 
-    fun addTimer(unitId: String, timer: Timer) {
-        _timers.value = _timers.value.copy(busy = true, error = null)
-        viewModelScope.launch {
-            try {
-                service.addTimer(unitId, timer)
-                loadTimers(unitId)
-            } catch (e: Exception) {
-                _timers.value = _timers.value.copy(busy = false, error = readable(e))
-            }
-        }
+    private fun buildAction(turnOn: Boolean, temp: Float?): Map<String, Int> =
+        if (turnOn) buildMap {
+            put("pwr", 1)
+            temp?.let { put("save_temp", (it.coerceIn(AcUnit.TEMP_MIN, AcUnit.TEMP_MAX) * 10f).roundToInt()) }
+        } else mapOf("pwr" to 0)
+
+    /** Timer rapido "una volta": accende/spegne tra [delayMinutes] minuti. */
+    fun addQuickTimer(unitId: String, delayMinutes: Int, turnOn: Boolean, temp: Float?) {
+        val name = unit(unitId)?.name ?: unitId
+        val s = Schedule(
+            id = UUID.randomUUID().toString(), unitId = unitId, unitName = name,
+            recurring = false, fireAtMillis = System.currentTimeMillis() + delayMinutes * 60_000L,
+            action = buildAction(turnOn, temp),
+        )
+        scheduleStore.upsert(s); Scheduler.arm(app(), s); loadSchedules(unitId)
     }
 
-    fun deleteTimer(unitId: String, type: Int, index: Int) {
-        _timers.value = _timers.value.copy(busy = true, error = null)
-        viewModelScope.launch {
-            try {
-                service.deleteTimer(unitId, type, index)
-                loadTimers(unitId)
-            } catch (e: Exception) {
-                _timers.value = _timers.value.copy(busy = false, error = readable(e))
-            }
-        }
+    /** Timer ricorrente settimanale: accende/spegne a [hour]:[minute] nei giorni scelti. */
+    fun addWeeklyTimer(unitId: String, hour: Int, minute: Int, weekday: List<Int>,
+                       turnOn: Boolean, temp: Float?) {
+        val name = unit(unitId)?.name ?: unitId
+        val s = Schedule(
+            id = UUID.randomUUID().toString(), unitId = unitId, unitName = name,
+            recurring = true, hour = hour, minute = minute, weekday = weekday.sorted(),
+            action = buildAction(turnOn, temp),
+        )
+        scheduleStore.upsert(s); Scheduler.arm(app(), s); loadSchedules(unitId)
+    }
+
+    fun toggleSchedule(unitId: String, id: String) {
+        val s = scheduleStore.get(id) ?: return
+        val updated = s.copy(enabled = !s.enabled)
+        scheduleStore.upsert(updated)
+        if (updated.enabled) Scheduler.arm(app(), updated) else Scheduler.cancel(app(), updated)
+        loadSchedules(unitId)
+    }
+
+    fun deleteSchedule(unitId: String, id: String) {
+        scheduleStore.get(id)?.let { Scheduler.cancel(app(), it) }
+        scheduleStore.delete(id); loadSchedules(unitId)
     }
 
     /** Esci mantenendo le credenziali salvate (rientro automatico al prossimo avvio). */
