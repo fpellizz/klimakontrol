@@ -1,48 +1,48 @@
-# Onboarding Punto 1 — Bind cloud — Implementation Plan
+# Onboarding Step 1 — Bind cloud — Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Aggiungere alla libreria e alla CLI la capacità di **registrare un dispositivo nell'account cloud** (bind) dati `did/pid/mac/devkey`, così che una volta configurato via SoftAP (Punto 2) l'unità compaia in `list`/`status` e sia controllabile.
+**Goal:** Add to the library and to the CLI the ability to **register a device in the cloud account** (bind) given `did/pid/mac/devkey`, so that once configured via SoftAP (Step 2) the unit appears in `list`/`status` and is controllable.
 
-**Architecture:** Un solo nuovo metodo `CloudClient.bind_device()` che compone un POST JSON in chiaro a `<lid>appservice.ibroadlink.com/appsync/group/dev/manage?operation=add` (host e percorso ricavati dall'APK: `BLFamilyManager.addEndpoint`), con la chiave del dispositivo nel campo `cookie` (riuso di `build_cookie`, come `sdkcontrol`) e autenticazione negli header (`_control_headers`). Più un comando CLI `bind`. Tutto testato offline sostituendo `_request`.
+**Architecture:** A single new method `CloudClient.bind_device()` that composes a cleartext JSON POST to `<lid>appservice.ibroadlink.com/appsync/group/dev/manage?operation=add` (host and path derived from the APK: `BLFamilyManager.addEndpoint`), with the device key in the `cookie` field (reuse of `build_cookie`, like `sdkcontrol`) and authentication in the headers (`_control_headers`). Plus a CLI command `bind`. All tested offline by replacing `_request`.
 
-**Tech Stack:** Python 3.8+ stdlib soltanto (nessuna dipendenza a runtime). `unittest`.
+**Tech Stack:** Python 3.8+ stdlib only (no runtime dependencies). `unittest`.
 
-**Spec:** `docs/superpowers/specs/2026-08-25-onboarding-provisioning-design.md` (Punto 1, §3).
+**Spec:** `docs/superpowers/specs/2026-08-25-onboarding-provisioning-design.md` (Step 1, §3).
 
 ## Global Constraints
 
-- **Zero dipendenze a runtime**: solo la stdlib. Vietato `requests`/`cryptography`/`pycryptodome`.
-- **I test non toccano la rete**: mai. Si sostituisce `CloudClient._request` con un fake che cattura gli argomenti. `python3 -m unittest discover -s tests -q` deve restare tutto verde.
-- **I segreti non nei log né nell'output**: la `devkey` è una chiave AES → ogni stampa passa da `session.mask()`. Mai stampare `devkey`, `did`, `mac`, `cookie` in chiaro.
-- **Lingua**: commenti e messaggi utente in **italiano**; identificatori in **inglese**.
-- **Host del bind**: `https://<lid>appservice.ibroadlink.com` (== `self.base`). **Percorso**: `/appsync/group/dev/manage?operation=add`.
-- **Corpo del bind**: JSON in chiaro (l'app lo manda come `text/plain`, NON cifrato come `_ec4`).
+- **Zero runtime dependencies**: stdlib only. `requests`/`cryptography`/`pycryptodome` are forbidden.
+- **The tests do not touch the network**: never. `CloudClient._request` is replaced with a fake that captures the arguments. `python3 -m unittest discover -s tests -q` must stay all green.
+- **Secrets not in the logs nor in the output**: the `devkey` is an AES key → every print runs through `session.mask()`. Never print `devkey`, `did`, `mac`, `cookie` in cleartext.
+- **Language**: comments and user messages in **Italian**; identifiers in **English**.
+- **Bind host**: `https://<lid>appservice.ibroadlink.com` (== `self.base`). **Path**: `/appsync/group/dev/manage?operation=add`.
+- **Bind body**: cleartext JSON (the app sends it as `text/plain`, NOT encrypted like `_ec4`).
 
 ---
 
-### Task 1: `CloudClient.bind_device` (libreria)
+### Task 1: `CloudClient.bind_device` (library)
 
 **Files:**
-- Modify: `klimakontrol/cloud.py` (aggiungere il metodo nella classe `CloudClient`, vicino a `sdk_control`, dopo la riga ~550)
+- Modify: `klimakontrol/cloud.py` (add the method in the `CloudClient` class, near `sdk_control`, after line ~550)
 - Test: `tests/test_cloud.py`
 
 **Interfaces:**
-- Consumes (già esistenti in `cloud.py`):
+- Consumes (already existing in `cloud.py`):
   - `CloudDevice(did, pid, mac, aeskey, name="", local_id=1, ...)` — dataclass
-  - `CloudClient.build_cookie(dev: CloudDevice) -> str` — Base64 con la chiave del device
-  - `CloudClient._control_headers() -> Dict[str,str]` — header con userid/loginsession/licenseid/lid
-  - `CloudClient._request(url, headers, body: bytes) -> Dict` — POST, ritorna JSON dict
-  - `CloudClient._ensure_ok(resp, what) -> Dict` — solleva su codice != 0
-  - `CloudClient.family_ids() -> List[str]` — id delle famiglie dell'account
-  - `_jd(obj) -> str` — `json.dumps` compatto (modulo `cloud`)
+  - `CloudClient.build_cookie(dev: CloudDevice) -> str` — Base64 with the device key
+  - `CloudClient._control_headers() -> Dict[str,str]` — headers with userid/loginsession/licenseid/lid
+  - `CloudClient._request(url, headers, body: bytes) -> Dict` — POST, returns a JSON dict
+  - `CloudClient._ensure_ok(resp, what) -> Dict` — raises on code != 0
+  - `CloudClient.family_ids() -> List[str]` — the ids of the account's families
+  - `_jd(obj) -> str` — compact `json.dumps` (module `cloud`)
   - `self.base` — host `https://<lid>appservice.ibroadlink.com`
-- Produces (usato da Task 2 e dal Punto 2):
+- Produces (used by Task 2 and by Step 2):
   - `CloudClient.bind_device(dev: CloudDevice, name: str = "", family_id: Optional[str] = None, room_id: str = "") -> Dict[str, Any]`
 
 - [ ] **Step 1: Write the failing test**
 
-Aggiungi in `tests/test_cloud.py` (in fondo, riusa l'helper `_client()` già presente a riga 12):
+Add to `tests/test_cloud.py` (at the bottom, reusing the `_client()` helper already present at line 12):
 
 ```python
 class BindDevice(unittest.TestCase):
@@ -98,7 +98,7 @@ class BindDevice(unittest.TestCase):
             c.bind_device(CloudDevice(did="d", pid="p", mac="m", aeskey="k"))
 ```
 
-Verifica che `CloudError` e `CloudDevice` siano già importati in cima a `tests/test_cloud.py`; se manca `CloudError`, aggiungilo all'import esistente `from klimakontrol.cloud import ...`.
+Check that `CloudError` and `CloudDevice` are already imported at the top of `tests/test_cloud.py`; if `CloudError` is missing, add it to the existing import `from klimakontrol.cloud import ...`.
 
 - [ ] **Step 2: Run test to verify it fails**
 
@@ -107,7 +107,7 @@ Expected: FAIL — `AttributeError: 'CloudClient' object has no attribute 'bind_
 
 - [ ] **Step 3: Write minimal implementation**
 
-In `klimakontrol/cloud.py`, dentro `class CloudClient`, subito dopo `sdk_control` (~riga 550):
+In `klimakontrol/cloud.py`, inside `class CloudClient`, right after `sdk_control` (~line 550):
 
 ```python
     def bind_device(self, dev: CloudDevice, name: str = "",
@@ -141,12 +141,12 @@ In `klimakontrol/cloud.py`, dentro `class CloudClient`, subito dopo `sdk_control
 - [ ] **Step 4: Run test to verify it passes**
 
 Run: `python3 -m unittest tests.test_cloud -q`
-Expected: PASS (i 4 nuovi test verdi).
+Expected: PASS (the 4 new tests green).
 
 - [ ] **Step 5: Run the full suite**
 
 Run: `python3 -m unittest discover -s tests -q`
-Expected: tutti verdi (nessuna regressione; il conteggio sale di 4).
+Expected: all green (no regression; the count goes up by 4).
 
 - [ ] **Step 6: Commit**
 
@@ -161,24 +161,24 @@ famiglia. Coperto da test offline (nessuna rete)."
 
 ---
 
-### Task 2: comando CLI `bind`
+### Task 2: CLI command `bind`
 
 **Files:**
-- Modify: `klimakontrol/cli.py` (nuova `cmd_bind` vicino alle altre `cmd_*`, e un `add_parser("bind", ...)` nel costruttore degli argomenti, dopo `register` ~riga 254)
-- Test: `tests/test_cli.py` se esiste; altrimenti aggiungi il test in `tests/test_cloud.py` come funzione che invoca `cmd_bind` con un client fittizio.
+- Modify: `klimakontrol/cli.py` (new `cmd_bind` near the other `cmd_*`, and an `add_parser("bind", ...)` in the argument builder, after `register` ~line 254)
+- Test: `tests/test_cli.py` if it exists; otherwise add the test in `tests/test_cloud.py` as a function that invokes `cmd_bind` with a fake client.
 
 **Interfaces:**
 - Consumes:
-  - `session.load() -> (CloudClient, List[CloudDevice])` (modulo `klimakontrol.session`, già usato da `cmd_list`)
-  - `session.mask(obj) -> obj` — maschera segreti
+  - `session.load() -> (CloudClient, List[CloudDevice])` (module `klimakontrol.session`, already used by `cmd_list`)
+  - `session.mask(obj) -> obj` — masks secrets
   - `CloudClient.bind_device(...)` (Task 1)
   - `CloudDevice(...)` dataclass
 - Produces:
-  - subcomando `klimakontrol bind --did … --pid … --mac … --key … [--name …] [--family …]`
+  - subcommand `klimakontrol bind --did … --pid … --mac … --key … [--name …] [--family …]`
 
 - [ ] **Step 1: Write the failing test**
 
-Crea `tests/test_cli.py` (se non c'è) con:
+Create `tests/test_cli.py` (if it is not there) with:
 
 ```python
 import json
@@ -230,7 +230,7 @@ Expected: FAIL — `AttributeError: module 'klimakontrol.cli' has no attribute '
 
 - [ ] **Step 3: Write minimal implementation**
 
-In `klimakontrol/cli.py`, aggiungi la funzione (vicino a `cmd_register`, ~riga 145):
+In `klimakontrol/cli.py`, add the function (near `cmd_register`, ~line 145):
 
 ```python
 def cmd_bind(args) -> None:
@@ -243,7 +243,7 @@ def cmd_bind(args) -> None:
     session.save(cli, devices)
 ```
 
-E registra il subcomando nel costruttore del parser, dopo il blocco `register` (~riga 254):
+And register the subcommand in the parser builder, after the `register` block (~line 254):
 
 ```python
     sp = sub.add_parser("bind", help="registra un modulo gia' configurato nell'account")
@@ -261,10 +261,10 @@ E registra il subcomando nel costruttore del parser, dopo il blocco `register` (
 Run: `python3 -m unittest tests.test_cli -q`
 Expected: PASS.
 
-- [ ] **Step 5: Run the full suite + smoke della CLI**
+- [ ] **Step 5: Run the full suite + CLI smoke test**
 
-Run: `python3 -m unittest discover -s tests -q` → tutti verdi.
-Run: `python3 -m klimakontrol bind --help` → mostra le opzioni senza errori.
+Run: `python3 -m unittest discover -s tests -q` → all green.
+Run: `python3 -m klimakontrol bind --help` → shows the options without errors.
 
 - [ ] **Step 6: Commit**
 
@@ -278,8 +278,8 @@ registra l'unita' e compare in list/status. Output mascherato."
 
 ---
 
-## Note per l'esecutore
+## Notes for the executor
 
-- **`Optional` import**: `bind_device` usa `Optional[str]`. `cloud.py` importa già `Optional` da `typing` (usato altrove); verifica e, se mancasse, aggiungilo.
-- **Nomi dei campi endpoint**: `productId/endpointId/mac/friendlyName/cookie/roomId/order` sono ricavati da `BLEndpointInfo` (dex). Sono la nostra ipotesi verificata staticamente; la **conferma sul server reale** avviene al Punto 3 (HW) con `KLIMAKONTROL_DEBUG=1`. Se il cloud rifiuta il bind, leggere il messaggio del server e correggere il set di campi qui — è l'unico punto da toccare.
-- Questo piano copre **solo il Punto 1**. Il Punto 2 (config SoftAP) richiede prima il disassembly di `apk/split_config.arm64_v8a.apk!libNetworkAPI.so` per ricavare il pacchetto e scriverne il **test dorato**: avrà il suo piano dedicato. Punti 3 (HW) e 4 (wizard app) seguono.
+- **`Optional` import**: `bind_device` uses `Optional[str]`. `cloud.py` already imports `Optional` from `typing` (used elsewhere); check and, if it is missing, add it.
+- **Endpoint field names**: `productId/endpointId/mac/friendlyName/cookie/roomId/order` are derived from `BLEndpointInfo` (dex). They are our statically-verified hypothesis; the **confirmation on the real server** happens at Step 3 (HW) with `KLIMAKONTROL_DEBUG=1`. If the cloud rejects the bind, read the server message and correct the field set here — it is the only point to touch.
+- This plan covers **only Step 1**. Step 2 (SoftAP config) first requires the disassembly of `apk/split_config.arm64_v8a.apk!libNetworkAPI.so` to derive the packet and write its **golden test**: it will have its own dedicated plan. Steps 3 (HW) and 4 (app wizard) follow.

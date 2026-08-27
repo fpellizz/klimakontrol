@@ -1,71 +1,71 @@
 # klimakontrol
 
-Controllo dei climatizzatori **Wisnow / TCL** con modulo WiFi **BroadLink DNA**, senza
-l'app ufficiale.
+Control of **Wisnow / TCL** air conditioners with the **BroadLink DNA** WiFi module, without
+the official app.
 
-L'app in commercio (`com.ab.smartDevice`, "Intelligent AC") è lenta, perde i comandi e
-sbaglia i timer. Questo progetto parla direttamente con i climatizzatori: in casa via UDP
-sulla rete locale, da fuori casa attraverso lo stesso cloud che usa l'app.
+The commercial app (`com.ab.smartDevice`, "Intelligent AC") is slow, loses commands and
+gets timers wrong. This project talks directly to the air conditioners: at home via UDP
+on the local network, away from home through the same cloud the app uses.
 
-Il protocollo è stato ricostruito dall'APK ufficiale — che include per errore le source map
-del pannello di controllo, e quindi il suo codice sorgente. Le specifiche complete sono in
+The protocol was reconstructed from the official APK — which by mistake includes the source maps
+of the control panel, and therefore its source code. The complete specifications are in
 [`docs/protocol.md`](docs/protocol.md).
 
-Se ci lavori con Claude Code, parti da [`CLAUDE.md`](CLAUDE.md): stato reale, convenzioni e le
-trappole in cui si cade tirando a indovinare. Poi [`docs/open-questions.md`](docs/open-questions.md)
-per il lavoro aperto e [`docs/roadmap.md`](docs/roadmap.md) per l'ordine.
+If you work on it with Claude Code, start from [`CLAUDE.md`](CLAUDE.md): the real status, conventions and the
+traps you fall into by guessing. Then [`docs/open-questions.md`](docs/open-questions.md)
+for the open work and [`docs/roadmap.md`](docs/roadmap.md) for the order.
 
-## Cosa fa oggi
+## What it does today
 
 | | |
 | --- | --- |
-| Controllo locale | UDP porta 80, AES-128-CBC. Risposta in millisecondi, funziona senza internet |
-| Controllo remoto | HTTPS verso `appservice.ibroadlink.com`, da qualsiasi rete |
-| Trasporto automatico | prova la rete locale, ripiega sul cloud |
-| Modello dati | 79 parametri documentati: controllo, sensori, comfort, diagnostica, energia |
-| Storico consumi | report orari, giornalieri e mensili, con ore di funzionamento |
-| Pianificazioni | modello e conversione di fuso completi (vedi *Limiti*) |
-| Sicurezza operativa | output mascherabile, sessione salvata con permessi 0600, password mai scritta |
+| Local control | UDP port 80, AES-128-CBC. Response in milliseconds, works without internet |
+| Remote control | HTTPS to `appservice.ibroadlink.com`, from any network |
+| Automatic transport | tries the local network, falls back to the cloud |
+| Data model | 79 documented parameters: control, sensors, comfort, diagnostics, energy |
+| Energy usage history | hourly, daily and monthly reports, with operating hours |
+| Schedules | complete model and timezone conversion (see *Limitations*) |
+| Operational security | maskable output, session saved with 0600 permissions, password never written |
 
-Niente dipendenze esterne: solo Python 3.8+. L'AES è implementato nel pacchetto e verificato
-contro i vettori FIPS-197, così il codice gira anche dove non si può compilare nulla.
+No external dependencies: only Python 3.8+. AES is implemented in the package and verified
+against the FIPS-197 vectors, so the code runs even where nothing can be compiled.
 
-## Installazione
+## Installation
 
 ```bash
-git clone <questo repo> klimakontrol
+git clone <this repo> klimakontrol
 cd klimakontrol
 python3 -m klimakontrol --help
 ```
 
-Volendo, `pip install -e .` per avere il comando `klimakontrol` nel PATH.
+Optionally, `pip install -e .` to get the `klimakontrol` command in your PATH.
 
-## Uso
+## Usage
 
 ```bash
-python3 -m klimakontrol login                     # chiede email e password, prova tutte le regioni
+python3 -m klimakontrol login                     # asks for email and password, tries all regions
 python3 -m klimakontrol list
 python3 -m klimakontrol status 1
-python3 -m klimakontrol status 1 --full           # anche diagnostica e sensori
+python3 -m klimakontrol status 1 --full           # diagnostics and sensors too
 python3 -m klimakontrol on 1
 python3 -m klimakontrol set 1 temp=23 tcl_mode=freddo tcl_mark=auto
 python3 -m klimakontrol off 1
-python3 -m klimakontrol online                    # stato di tutte le unità, una chiamata
+python3 -m klimakontrol online                    # state of all units, one call
 python3 -m klimakontrol energy 1 day
-python3 -m klimakontrol discover                  # cerca moduli sulla rete locale
-python3 -m klimakontrol raw 1                     # JSON grezzo, per il debug
+python3 -m klimakontrol discover                  # search for modules on the local network
+python3 -m klimakontrol raw 1                     # raw JSON, for debugging
 ```
 
-La regione (`ab`, `eu`, `ru`, `cn`) si scegle al primo avvio dell'app ufficiale e poi non
-è più visibile: se non la ricordi, `login` le prova in ordine e ti dice quale ha funzionato.
-Con `--region eu` la forzi.
+The region (`ab`, `eu`, `ru`, `cn`) is chosen the first time the official app is launched and then
+is no longer visible: if you don't remember it, `login` tries them in order and tells you which one worked.
+With `--region eu` you force it.
 
-La password non viene salvata. La sessione sì, in `~/.config/klimakontrol/session.json`:
-il cloud blocca temporaneamente chi rifà il login troppo spesso (errore `-1036`).
+The password is not saved. The session is, in `~/.config/klimakontrol/session.json`:
+the cloud temporarily blocks anyone who logs in again too often (error `-1036`).
 
-Per forzare un trasporto: `--transport local` oppure `--transport cloud`.
+To force a transport: `--transport local` or `--transport cloud`.
 
-## Come libreria
+## As a library
 
 ```python
 from klimakontrol import CloudClient, LocalClient, Device
@@ -77,57 +77,57 @@ salotto = cloud.devices()[0]
 cloud.set_state(salotto, {"pwr": 1, "temp": 230, "tcl_mode": 3})
 print(cloud.get_state(salotto))
 
-# in casa, senza passare da nessun cloud
+# at home, without going through any cloud
 locale = LocalClient(Device(host=salotto.lanaddr, mac=salotto.mac, key=salotto.aeskey))
 print(locale.get_state())
 ```
 
-## Struttura
+## Structure
 
 ```
 klimakontrol/
-  aes.py       AES-128-CBC in Python puro (nessuna dipendenza)
-  local.py     protocollo UDP BroadLink/DNA: pacchetti, discovery, autenticazione LAN
-  cloud.py     login, elenco dispositivi, controllo remoto, consumi
-  params.py    dizionario dei 79 parametri, con etichette, unità ed enumerati
-  tasks.py     pianificazioni e la conversione di fuso che l'app sbaglia
-  session.py   persistenza e mascheramento dei dati sensibili
-  cli.py       interfaccia a riga di comando
+  aes.py       AES-128-CBC in pure Python (no dependencies)
+  local.py     BroadLink/DNA UDP protocol: packets, discovery, LAN authentication
+  cloud.py     login, device list, remote control, energy usage
+  params.py    dictionary of the 79 parameters, with labels, units and enums
+  tasks.py     schedules and the timezone conversion the app gets wrong
+  session.py   persistence and masking of sensitive data
+  cli.py       command-line interface
 docs/
-  protocol.md  le specifiche complete del protocollo
-tests/         88 test, tutti offline
+  protocol.md  the complete protocol specifications
+tests/         88 tests, all offline
 ```
 
-## Limiti attuali, dichiarati
+## Current limitations, stated plainly
 
-1. **Non ancora provato su un impianto vero.** Ogni byte è verificato contro le specifiche e
-   contro i pacchetti documentati (il payload di `set temp 23.0` esce identico, checksum
-   incluso), ma la prova sul campo è il prossimo passo.
-2. **Le pianificazioni si leggono e si modellano, ma non si scrivono ancora.** I comandi
-   `dev_taskadd` / `dev_tasklist` passano dal livello nativo dell'SDK (`libNetworkAPI.so`),
-   che costruisce il pacchetto usando i file `.script` cifrati dentro l'APK. Due strade per
-   chiudere il buco: catturare un pacchetto UDP mentre l'app ufficiale crea un timer, oppure
-   usare l'API cloud `/appfront/v1/timertask/*`. Il modello dati e la conversione di fuso
-   sono già pronti.
-3. **`if_function`** è la maschera di bit delle funzioni che il singolo modello supporta
-   davvero. Il valore si legge; la corrispondenza bit → funzione va ancora ricavata.
-4. **`devicetypeflag`** viene passato come 0 se il cloud non lo fornisce. Da confermare sul
-   campo.
+1. **Not yet tested on a real system.** Every byte is verified against the specifications and
+   against the documented packets (the payload of `set temp 23.0` comes out identical, checksum
+   included), but the field test is the next step.
+2. **Schedules can be read and modeled, but not yet written.** The commands
+   `dev_taskadd` / `dev_tasklist` go through the native layer of the SDK (`libNetworkAPI.so`),
+   which builds the packet using the encrypted `.script` files inside the APK. Two ways to
+   close the gap: capture a UDP packet while the official app creates a timer, or
+   use the cloud API `/appfront/v1/timertask/*`. The data model and the timezone conversion
+   are already ready.
+3. **`if_function`** is the bitmask of the functions the individual model actually
+   supports. The value can be read; the bit → function correspondence still has to be derived.
+4. **`devicetypeflag`** is passed as 0 if the cloud does not provide it. To be confirmed in the
+   field.
 
-### I sali dell'autenticazione: il pezzo che manca davvero
+### The authentication salts: the piece that really is missing
 
-Il login manda `password = SHA1(password + sale)`, firma il corpo con un secondo sale e lo
-cifra con una chiave derivata da un terzo. L'app non tiene questi tre valori nel codice Java:
-li chiede a tre funzioni native di `libBLAccountEncryptAPI.so`, che non fanno altro che
-restituire una costante.
+The login sends `password = SHA1(password + sale)`, signs the body with a second salt and
+encrypts it with a key derived from a third. The app does not keep these three values in the Java code:
+it asks three native functions of `libBLAccountEncryptAPI.so`, which do nothing but
+return a constant.
 
-Dei tre, **uno solo è verificato**: quello della firma del corpo (`xgx3d*fe3478$ukx`), che
-compare nel dex perché lo usano anche le chiamate `/ec4` e `dataservice`. Gli altri due sono
-i valori che circolano nei progetti open source, e **non compaiono in questo APK**: vengono
-da un altro build dell'SDK.
+Of the three, **only one is verified**: the one for the body signature (`xgx3d*fe3478$ukx`), which
+appears in the dex because the `/ec4` and `dataservice` calls also use it. The other two are
+the values that circulate in open source projects, and **do not appear in this APK**: they come
+from another build of the SDK.
 
-Con un sale sbagliato il cloud risponde `-1008` — di nuovo "credenziali errate" a credenziali
-corrette. Per questo i tre sali sono sostituibili senza toccare il codice:
+With a wrong salt the cloud responds `-1008` — again "wrong credentials" to correct
+credentials. That is why the three salts are replaceable without touching the code:
 
 ```bash
 export KLIMAKONTROL_SALT_PASSWORD='...'
@@ -135,41 +135,41 @@ export KLIMAKONTROL_SALT_TOKEN='...'
 export KLIMAKONTROL_SALT_BODY='...'
 ```
 
-E per ricavarli dal `.so`, che è l'unico posto dove stanno:
+And to derive them from the `.so`, which is the only place they live:
 
 ```bash
 python3 tools/extract_salts.py libBLAccountEncryptAPI.so
 ```
 
-La libreria vive in `lib/<abi>/` dello **split APK** (`split_config.arm64_v8a.apk`), non
-dell'APK base: è per questo che nell'APK base la cartella `lib` non c'è.
+The library lives in `lib/<abi>/` of the **split APK** (`split_config.arm64_v8a.apk`), not
+of the base APK: that is why the `lib` folder is not in the base APK.
 
-### Una nota sugli identificativi di regione
+### A note on the region identifiers
 
-I progetti open source esistenti usano `8503b08fa57729df9faa45e4c978852c` come *company id*
-della regione internazionale. Non lo è: quel valore compare identico in tutte e quattro le
-licenze BroadLink dell'app, è una costante globale. Il company id vero della regione
-internazionale è `a8452a8f48ae707edc12e9c52e21f00f`.
+The existing open source projects use `8503b08fa57729df9faa45e4c978852c` as the *company id*
+of the international region. It is not: that value appears identical in all four
+BroadLink licenses of the app, it is a global constant. The real company id of the
+international region is `a8452a8f48ae707edc12e9c52e21f00f`.
 
-Con la coppia sbagliata il cloud risponde `-1008`, cioè **"credenziali errate" a credenziali
-perfettamente corrette** — un messaggio che manda a caccia del problema nel posto sbagliato.
-Per non ripetere l'errore, `cloud.py` non contiene identificativi ricopiati a mano: tiene i
-blob di licenza estratti dall'APK e ne ricava licenseId e companyid a ogni avvio (primi 16
-byte e successivi 16, in chiaro).
+With the wrong pair the cloud responds `-1008`, that is **"wrong credentials" to perfectly
+correct credentials** — a message that sends you hunting for the problem in the wrong place.
+To avoid repeating the mistake, `cloud.py` does not contain hand-copied identifiers: it keeps the
+license blobs extracted from the APK and derives licenseId and companyid at every startup (first 16
+bytes and next 16, in the clear).
 
-## Prossimi passi
+## Next steps
 
-- provare su un impianto reale e correggere quello che emerge
-- app Android sopra questa libreria, compilata in CI
-- chiudere la scrittura delle pianificazioni
-- mappare i bit di `if_function`
+- test on a real system and fix whatever comes up
+- Android app on top of this library, compiled in CI
+- close the writing of schedules
+- map the bits of `if_function`
 
-## Nota legale
+## Legal note
 
-Interoperabilità con hardware di proprietà: in UE la decompilazione a questo scopo è
-espressamente consentita (direttiva 2009/24/CE, art. 6). Questo progetto non ridistribuisce
-codice altrui e non clona l'app ufficiale: parla con i climatizzatori del suo proprietario.
+Interoperability with owned hardware: in the EU, decompilation for this purpose is
+expressly allowed (Directive 2009/24/EC, art. 6). This project does not redistribute
+someone else's code and does not clone the official app: it talks to its owner's air conditioners.
 
-## Licenza
+## License
 
 MIT.

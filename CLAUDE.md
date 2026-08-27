@@ -3,8 +3,10 @@
 Leggi questo file **prima** di toccare qualsiasi cosa. Contiene lo stato reale del progetto,
 le convenzioni, e le trappole (§5) in cui si cade se si tira a indovinare.
 
-Rispondi e scrivi commenti/documentazione **in italiano**. Gli identificatori nel codice
-restano in inglese.
+Rispondi all'utente e scrivi i **commenti nel codice in italiano**. Gli identificatori nel codice
+restano in inglese. La **documentazione** (README e `docs/*.md`) è invece **in inglese** (scelta del
+proprietario, 2026-08-27): i file `.md` esistenti sono stati tradotti; quelli nuovi vanno scritti in
+inglese. Questo file `CLAUDE.md` resta in italiano.
 
 ---
 

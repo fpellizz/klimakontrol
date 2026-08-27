@@ -1,218 +1,218 @@
-# Domande aperte, con la procedura per chiuderle
+# Open questions, with the procedure to close them
 
-Ogni voce ha: cosa manca, perché manca, e i comandi esatti per risolverla. Quando una si chiude,
-spostala in `docs/reverse-engineering.md` con la risposta e aggiorna la tabella di stato in
+Each entry has: what is missing, why it is missing, and the exact commands to solve it. When one
+is closed, move it to `docs/reverse-engineering.md` with the answer and update the status table in
 `CLAUDE.md`.
 
 ---
 
-## 1. Il login viene rifiutato con -1008 — ✅ RISOLTO (2026-08-21)
+## 1. Login is rejected with -1008 — ✅ RESOLVED (2026-08-21)
 
-**Causa.** Il `companyid` era derivato da `blob[16:32]` (per-regione); quello vero è la
-**costante condivisa** `8503b08fa57729df9faa45e4c978852c` (`blob[120:136]`), uguale per tutte le
-regioni. Il `lid` per-regione era invece corretto. Fix in `cloud.py::_region_from_license`. Un
-login su region eu ha restituito, echeggiato dal server, `companyid: 8503b08f…`. Dettagli in
-`CLAUDE.md` §5 trappola 1. Login, elenco unità, `querystate`, lettura e controllo via cloud
-provati su HW reale.
+**Cause.** The `companyid` was derived from `blob[16:32]` (per-region); the real one is the
+**shared constant** `8503b08fa57729df9faa45e4c978852c` (`blob[120:136]`), the same for all
+regions. The per-region `lid` was in fact correct. Fix in `cloud.py::_region_from_license`. A
+login on region eu returned, echoed by the server, `companyid: 8503b08f…`. Details in
+`CLAUDE.md` §5 pitfall 1. Login, unit list, `querystate`, reading and control via cloud
+tested on real hardware.
 
-Quanto segue è la vecchia analisi, tenuta come cronaca (portava su una pista sbagliata: la forma
-della richiesta era giusta, mancava solo il companyid corretto).
+What follows is the old analysis, kept as a chronicle (it led to a wrong track: the shape of the
+request was correct, only the correct companyid was missing).
 
-**Sintomo (storico).** `login` restituiva `-1008` su tutte e quattro le regioni, con credenziali
-che nell'app ufficiale funzionano.
+**Symptom (historical).** `login` returned `-1008` on all four regions, with credentials
+that work in the official app.
 
-**Cosa è già stato escluso** (tutto letto dal dex, non dedotto):
+**What has already been ruled out** (all read from the dex, not inferred):
 
-* i tre sali: confermati estraendoli da `libBLAccountEncryptAPI.so` con `tools/extract_salts.py`
-  — sono `4969fj#k23#` (password), `kdixkdqp54545^#*` (chiave), `xgx3d*fe3478$ukx` (firma);
-* l'host: `https://<lid>appservice.ibroadlink.com`, perché l'app inizializza l'SDK con
-  `APP_SERVICE_ENABLE=1` e quindi `setAppServiceHost` sovrascrive tutti gli host `biz*`;
-* il percorso `/account/login` e il corpo `{email|phone, password, companyid, lid}`;
-* gli header `lid` e `licenseId` più quelli comuni (`system`, `appPlatform`, `language`,
+* the three salts: confirmed by extracting them from `libBLAccountEncryptAPI.so` with `tools/extract_salts.py`
+  — they are `4969fj#k23#` (password), `kdixkdqp54545^#*` (key), `xgx3d*fe3478$ukx` (signature);
+* the host: `https://<lid>appservice.ibroadlink.com`, because the app initializes the SDK with
+  `APP_SERVICE_ENABLE=1` and therefore `setAppServiceHost` overrides all `biz*` hosts;
+* the `/account/login` path and the body `{email|phone, password, companyid, lid}`;
+* the `lid` and `licenseId` headers plus the common ones (`system`, `appPlatform`, `language`,
   `timestamp`, `appVersion`, `messageId`, `Content-type: application/x-java-serialized-object`);
-* la cifratura: `AES/CBC/ZeroBytePadding`, IV `eaaaaa3abb5862a21918b5771d1615aa`, chiave
-  `md5(timestamp + sale)` interpretata come esadecimale;
-* la password arriva grezza dall'interfaccia (`LoginActivity$LoginTask` → `BLAccount.login`):
-  nessun hash intermedio;
-* le coppie `licenseId`/`companyid`, ricavate dai blob di licenza dell'APK.
+* the encryption: `AES/CBC/ZeroBytePadding`, IV `eaaaaa3abb5862a21918b5771d1615aa`, key
+  `md5(timestamp + salt)` interpreted as hexadecimal;
+* the password arrives raw from the interface (`LoginActivity$LoginTask` → `BLAccount.login`):
+  no intermediate hash;
+* the `licenseId`/`companyid` pairs, derived from the APK's license blobs.
 
-**Ipotesi rimaste, in ordine di probabilità.**
+**Remaining hypotheses, in order of probability.**
 
-1. **L'account non esiste in questo scope.** `-1008` potrebbe voler dire "utente non trovato per
-   questa coppia companyid/lid", non "password sbagliata". Se l'account è stato creato con una
-   versione precedente dell'app o con un'altra app OEM della stessa piattaforma, vive sotto un
-   altro `companyid`.
-2. **Un header che il server pretende e noi non mandiamo.** Candidati visti nel dex:
-   `datatrace` (Base64 di un JSON), `loginmode: mutuallyexclusive`, e gli header comuni presi da
-   `HTTP_COMMON_HEADER` (che l'app riempie con `BLSettingUnits.getCompany()`).
-3. **Una versione minima dell'app.** Mandiamo `appVersion: 1.0.12`; l'APK installato è più
-   recente. Si prova con `KLIMAKONTROL_APP_VERSION`.
-4. **Orologio.** Se il `timestamp` è troppo lontano da quello del server, la chiave derivata è
-   valida ma la richiesta viene scartata. Verificare `date -u`.
+1. **The account does not exist in this scope.** `-1008` might mean "user not found for
+   this companyid/lid pair", not "wrong password". If the account was created with an earlier
+   version of the app or with another OEM app on the same platform, it lives under a
+   different `companyid`.
+2. **A header the server requires and we do not send.** Candidates seen in the dex:
+   `datatrace` (Base64 of a JSON), `loginmode: mutuallyexclusive`, and the common headers taken from
+   `HTTP_COMMON_HEADER` (which the app fills in with `BLSettingUnits.getCompany()`).
+3. **A minimum app version.** We send `appVersion: 1.0.12`; the installed APK is more
+   recent. Try with `KLIMAKONTROL_APP_VERSION`.
+4. **Clock.** If the `timestamp` is too far from the server's, the derived key is
+   valid but the request is discarded. Check `date -u`.
 
-**Come si chiude.**
+**How it is closed.**
 
-Primo passo, gratis: **leggere il messaggio del server**, non solo il codice.
+First step, free: **read the server's message**, not just the code.
 
 ```bash
 KLIMAKONTROL_DEBUG=1 python3 -m klimakontrol login --region eu
 ```
 
-Stampa richiesta e risposta grezze. Se il messaggio dice "user not exist" siamo nell'ipotesi 1;
-se dice "password error" siamo nella 2 o nella 3.
+It prints the raw request and response. If the message says "user not exist" we are in hypothesis 1;
+if it says "password error" we are in 2 or 3.
 
-Secondo passo, decisivo: **confrontare con la richiesta vera dell'app**.
+Second step, decisive: **compare with the app's real request**.
 
 ```bash
 adb logcat -c && adb logcat | grep -iE 'Json Param|Http Url|BroadLink|LoginActivity'
 ```
 
-e fare il login dall'app ufficiale. L'SDK logga il corpo in chiaro con il prefisso
-`Json Param:` — se il livello di log lo permette. Altrimenti cattura del traffico
-(`docs/recipes-adb.md` §5): si vedono gli header veri e la lunghezza del corpo, e il confronto
-con i nostri chiude la questione in un minuto.
+and log in from the official app. The SDK logs the body in cleartext with the prefix
+`Json Param:` — if the log level allows it. Otherwise a traffic capture
+(`docs/recipes-adb.md` §5): you see the real headers and the body length, and the comparison
+with ours closes the question in a minute.
 
-Terzo passo, se serve la certezza assoluta: hook a runtime con Frida
-(`docs/recipes-adb.md` §6) sulla funzione che costruisce il corpo.
+Third step, if you need absolute certainty: runtime hook with Frida
+(`docs/recipes-adb.md` §6) on the function that builds the body.
 
-**Attenzione al rate limit.** Dopo pochi tentativi ravvicinati il cloud risponde `-1036` e
-blocca i login per qualche minuto. Cambia **una** variabile per tentativo, e non ciclare.
+**Watch out for the rate limit.** After a few close attempts the cloud responds `-1036` and
+blocks logins for a few minutes. Change **one** variable per attempt, and do not loop.
 
-## 2. La scrittura delle pianificazioni sul filo — bloccata dal nativo (indagine 2026-08-21)
+## 2. Writing schedules on the wire — blocked by the native layer (investigation 2026-08-21)
 
-**Cosa manca.** La codifica sul filo di `dev_taskadd`, `dev_tasklist`, `dev_taskdata`,
-`dev_taskdel`. Il modello dati e la conversione di fuso sono già in `tasks.py`; il payload del
-task è costruito dal JS della WebView (`app.html`/`main.*.js`) con lo stesso transform
-encode(1)/decode(2) di `to_wire`/`from_wire`. Manca il **byte di azione** e l'esatto
-impacchettamento.
+**What is missing.** The on-the-wire encoding of `dev_taskadd`, `dev_tasklist`, `dev_taskdata`,
+`dev_taskdel`. The data model and the timezone conversion are already in `tasks.py`; the task
+payload is built by the WebView JS (`app.html`/`main.*.js`) with the same encode(1)/decode(2)
+transform of `to_wire`/`from_wire`. What is missing is the **action byte** and the exact
+packaging.
 
-**Cosa ho scoperto (perché è dura).**
+**What I discovered (why it is hard).**
 
-* La UI usa i task **device-side** via il bridge `devicecontrol(deviceID, subDeviceID, payload,
-  "dev_taskadd", cfg)`: `dev_tasklist` manda payload `{}`, `dev_taskadd` il task codificato.
-* Siccome l'app è **cloud-only** (cattura PCAPdroid: nessun controllo locale, solo discovery),
-  i comandi task NON usano `KeyValueControl` come `dev_ctrl`. Nel dex (`cn.com.broadlink.sdk.b`)
-  i comandi diversi da `dev_ctrl` vanno per la via `dev_passthrough` / `DNA.TransmissionControl`,
-  dove il payload è il **pacchetto grezzo del dispositivo in Base64**, costruito dal nativo.
-* Il pacchetto grezzo lo costruisce `libNetworkAPI.so` eseguendo lo **script Lua del modello**
-  (`…2e4e0000.script`). Ma il `.script` è **cifrato con un cifrario proprietario BroadLink "tfb"**
-  (NON AES): funzioni native `networkapi_scriptfile_read` → `broadlink_tfb_decrypt`,
-  `broadlink_tfb_setkey_dec`, `broadlink_tfb_crypt_cfb128/…`; VM **Lua 5.3** integrata.
+* The UI uses the **device-side** tasks via the bridge `devicecontrol(deviceID, subDeviceID, payload,
+  "dev_taskadd", cfg)`: `dev_tasklist` sends payload `{}`, `dev_taskadd` the encoded task.
+* Since the app is **cloud-only** (PCAPdroid capture: no local control, only discovery),
+  the task commands do NOT use `KeyValueControl` like `dev_ctrl`. In the dex (`cn.com.broadlink.sdk.b`)
+  the commands other than `dev_ctrl` go via the `dev_passthrough` / `DNA.TransmissionControl`
+  route, where the payload is the **raw device packet in Base64**, built by the native layer.
+* The raw packet is built by `libNetworkAPI.so` running the **model's Lua script**
+  (`…2e4e0000.script`). But the `.script` is **encrypted with a proprietary BroadLink cipher "tfb"**
+  (NOT AES): native functions `networkapi_scriptfile_read` → `broadlink_tfb_decrypt`,
+  `broadlink_tfb_setkey_dec`, `broadlink_tfb_crypt_cfb128/…`; embedded **Lua 5.3** VM.
 
-Quindi il byte di azione + la struttura del task stanno dietro un **cifrario proprietario + Lua**
-nel nativo: non derivabili dal dex né dal JS.
+So the action byte + the task structure are behind a **proprietary cipher + Lua**
+in the native layer: not derivable from the dex nor from the JS.
 
-**Come si chiuderebbe** — nessuna è banale.
+**How it would be closed** — none is trivial.
 
-1. **RE del cifrario `tfb`**: estrarre la chiave da `networkapi_scriptfile_read` e reimplementare
-   `broadlink_tfb_decrypt` (dall'assembly ARM) per decifrare il `.script`, poi leggere il Lua.
-   Bonus: sblocca anche `if_function` e i limiti di temperatura (§4).
-2. **Brute-force del byte di azione** via cloud passthrough (`DNA.TransmissionControl`): costruire
-   un `dev_tasklist` grezzo con byte di azione indovinato (get=1, set=2 → i task 3-8) e vedere
-   quale il modulo accetta. Non serve il `.script`, ma va replicato il formato passthrough e si
-   scrive alla cieca sul modulo.
-3. **Cattura TLS** della richiesta reale (serve APK ripacchettizzato per il cert utente, o Frida),
-   poi Base64-decode + decifra con la chiave del dispositivo.
+1. **RE of the `tfb` cipher**: extract the key from `networkapi_scriptfile_read` and reimplement
+   `broadlink_tfb_decrypt` (from the ARM assembly) to decrypt the `.script`, then read the Lua.
+   Bonus: it also unlocks `if_function` and the temperature limits (§4).
+2. **Brute-force of the action byte** via cloud passthrough (`DNA.TransmissionControl`): build
+   a raw `dev_tasklist` with a guessed action byte (get=1, set=2 → tasks 3-8) and see
+   which one the module accepts. It does not need the `.script`, but the passthrough format must be
+   replicated and you write to the module blind.
+3. **TLS capture** of the real request (needs a repackaged APK for the user cert, or Frida),
+   then Base64-decode + decrypt with the device key.
 
-Nota: la vecchia idea di catturare un **pacchetto UDP locale** dell'app **non funziona** — l'app
-non manda mai controllo/task in locale (solo discovery). Esiste anche l'API cloud
-`/appfront/v1/timertask/*` (pianificazione lato server), ma perde il pregio dell'offline.
+Note: the old idea of capturing a **local UDP packet** from the app **does not work** — the app
+never sends control/task locally (only discovery). There is also the cloud API
+`/appfront/v1/timertask/*` (server-side scheduling), but it loses the offline advantage.
 
-**Aggiornamento (2026-08-27) — CHIUSA: questo hardware non ha scheduler nativo.**
-Provate tutte e tre le vie native, tutte negative su `0x4e2e`:
+**Update (2026-08-27) — CLOSED: this hardware has no native scheduler.**
+All three native routes tried, all negative on `0x4e2e`:
 
-1. **Device-task** (`dev_taskadd`/`dev_tasklist` via `sdkcontrol`): provato su HW —
-   `dev_tasklist` **ritorna lo stato del climatizzatore, non i task** (il modulo tratta l'`act`
-   sconosciuto come "leggi tutto"). Coerente con lo script Lua del modello, che per questo
-   modello ha i comandi timer **rimossi**. Vicolo cieco.
-2. **API cloud `/appfront/v1/timertask/*`**: **codice morto** nell'app. RE del dex + dei bundle
-   JS: i 4 metodi SDK (`BLApiUrls$APPFront.URL_*_CLOUD_TIMER`) hanno **0 chiamanti**; nessun
-   bundle-pannello invia `serviceName:"timerservice"`; lo **schema del corpo non è ricavabile**
-   da questo APK (costruito in un modulo JS non incluso). Rischio anche che non sia abilitata
-   lato cloud per questa company. Non perseguita.
-3. **"Reservation" a parametri** (`if_subs`/`sub_on_off`/`if_cycle`/`sub_weekday`/`sub_time`/`cmd`,
-   con `set` normale): è il meccanismo vero per **altri** modelli TCL, ma il **profilo firmware
-   di `0x4e2e`** (`www/model/profile.js`) elenca solo i soliti 10 parametri e **non** i `sub_*`;
-   e il `get` ritorna sempre quei 10, quindi nemmeno l'app ufficiale rilegge una reservation su
-   queste unità. Non applicabile.
+1. **Device-task** (`dev_taskadd`/`dev_tasklist` via `sdkcontrol`): tested on real hardware —
+   `dev_tasklist` **returns the air conditioner's state, not the tasks** (the module treats the unknown
+   `act` as "read everything"). Consistent with the model's Lua script, which for this
+   model has the timer commands **removed**. Dead end.
+2. **Cloud API `/appfront/v1/timertask/*`**: **dead code** in the app. RE of the dex + the JS
+   bundles: the 4 SDK methods (`BLApiUrls$APPFront.URL_*_CLOUD_TIMER`) have **0 callers**; no
+   panel bundle sends `serviceName:"timerservice"`; the **body schema is not derivable**
+   from this APK (built in a JS module that is not included). There is also a risk it is not enabled
+   cloud-side for this company. Not pursued.
+3. **Parameter-based "reservation"** (`if_subs`/`sub_on_off`/`if_cycle`/`sub_weekday`/`sub_time`/`cmd`,
+   with a normal `set`): it is the real mechanism for **other** TCL models, but the **firmware profile
+   of `0x4e2e`** (`www/model/profile.js`) lists only the usual 10 parameters and **not** the `sub_*`;
+   and the `get` always returns those 10, so not even the official app reads back a reservation on
+   these units. Not applicable.
 
-**Decisione:** l'app tiene i timer **lato telefono** (`android/.../data/schedule/`): `AlarmManager`
-fa scattare un `BroadcastReceiver` all'ora giusta, che manda on/off via cloud (lo stesso
-`sdkcontrol` del controllo manuale), ri-arma il ricorrente / consuma il one-shot, riprogramma al
-reboot. Compromesso: a telefono spento può non scattare — ma il controllo **offline** su questi
-moduli non esiste comunque (il `-5`, §5 trappola 4 del CLAUDE), quindi non si perde nulla di reale.
-La lib+CLI Python resta device-side (riferimento), non funzionante su questo HW.
+**Decision:** the app keeps the timers **phone-side** (`android/.../data/schedule/`): `AlarmManager`
+fires a `BroadcastReceiver` at the right time, which sends on/off via cloud (the same
+`sdkcontrol` as manual control), re-arms the recurring one / consumes the one-shot, reschedules at
+reboot. Compromise: with the phone off it may not fire — but **offline** control on these
+modules does not exist anyway (the `-5`, §5 pitfall 4 of CLAUDE), so nothing real is lost.
+The Python lib+CLI stays device-side (reference), not working on this hardware.
 
 ---
 
 ## 3. `devicetypeflag`
 
-Nel corpo di `sdkcontrol` c'è `devicePairedInfo.devicetypeflag`, letto dall'SDK con
-`BLDNADevice.getDeviceFlag()`. Non è chiaro da quale campo di `getallinfo` arrivi: oggi
-`cloud.py` prende `devicetypeflag`/`devicetypeFlag` se presenti, altrimenti 0.
+In the `sdkcontrol` body there is `devicePairedInfo.devicetypeflag`, read by the SDK with
+`BLDNADevice.getDeviceFlag()`. It is unclear which field of `getallinfo` it comes from: today
+`cloud.py` takes `devicetypeflag`/`devicetypeFlag` if present, otherwise 0.
 
-**Come si chiude.** Al primo login riuscito, guardare il record grezzo del dispositivo:
+**How it is closed.** At the first successful login, look at the device's raw record:
 
 ```bash
 python3 -m klimakontrol raw 1
 ```
 
-Nel dex c'è un ramo che tratta il valore `4` in modo speciale (`getDeviceFlag() == 4` forza il
-percorso remoto), quindi il campo conta almeno in qualche caso.
+In the dex there is a branch that treats the value `4` in a special way (`getDeviceFlag() == 4` forces the
+remote path), so the field matters at least in some cases.
 
 ---
 
-## 4. La maschera `if_function`
+## 4. The `if_function` mask
 
-`if_function` dice quali funzioni il singolo modello supporta davvero. Il valore si legge; la
-corrispondenza bit → funzione no.
+`if_function` says which functions the individual model actually supports. The value can be read; the
+bit → function correspondence cannot.
 
-**Aggiornamento (2026-08-22):** su questi moduli `0x4e2e` `if_function` **non viene nemmeno
-riportato** nel set fisso del `get`. In compenso quel set fisso (10 parametri, §5) *è* di fatto la
-lista di capacità: include entrambi gli swing e omette mute/salute/display. Provato a nascondere i
-controlli in base al set riportato: funziona, ma solo con le chiavi giuste (`ac_vdir`/`ac_hdir`,
-non `tcl_*`) — con quelle sbagliate spariva anche lo swing reale. Per ora l'app espone esattamente
-i 10 del set, senza euristiche.
+**Update (2026-08-22):** on these `0x4e2e` modules `if_function` **is not even
+reported** in the fixed set of the `get`. On the other hand, that fixed set (10 parameters, §5) *is* in fact the
+capability list: it includes both swings and omits mute/health/display. Tried to hide the
+controls based on the reported set: it works, but only with the right keys (`ac_vdir`/`ac_hdir`,
+not `tcl_*`) — with the wrong ones the real swing disappeared too. For now the app exposes exactly
+the 10 of the set, without heuristics.
 
-**Come si chiude.** Leggere `if_function` sull'impianto, poi confrontare con i pulsanti che
-l'app ufficiale mostra per quel modello. Da lì si ricava a quale bit corrisponde ogni funzione.
-Serve per costruire un'interfaccia che mostra solo il vero, invece di riempire lo schermo di
-comandi morti come fa l'app.
+**How it is closed.** Read `if_function` on the system, then compare with the buttons that
+the official app shows for that model. From there you derive which bit corresponds to each function.
+It is needed to build an interface that shows only the real ones, instead of filling the screen with
+dead commands as the app does.
 
-Alternativa più rapida: i file `.script` negli assets (uno per `pid`) contengono la definizione
-del modello. Sono cifrati, ma la chiave è probabilmente derivabile: se si aprono, danno
-`if_function`, i limiti di temperatura e l'elenco dei parametri per modello, tutto insieme.
+Quicker alternative: the `.script` files in the assets (one per `pid`) contain the definition
+of the model. They are encrypted, but the key is probably derivable: if they are opened, they give
+`if_function`, the temperature limits and the list of parameters per model, all together.
 
 ---
 
-## 5. La forma esatta delle risposte del cloud — ✅ in parte RISOLTA (2026-08-21)
+## 5. The exact shape of the cloud responses — ✅ partly RESOLVED (2026-08-21)
 
-`sdk_control` legge `event.payload.data`. **Visto su risposta reale**: `data` arriva come
-**stringa JSON** (non oggetto), del tipo
+`sdk_control` reads `event.payload.data`. **Seen on a real response**: `data` arrives as a
+**JSON string** (not an object), of the type
 `'{"params":["pwr","tcl_mode","save_temp",...],"vals":[[{"val":1,"idx":1}],...]}'`. `get_state`
-e `set_state` ora ne fanno `json.loads`. Nota: il `get` ignora i `params` richiesti e ritorna
-sempre un set fisso di parametri deciso dal modulo. `querystate` ritorna
-`event.payload.data` come lista `[{"did":..., "state":0|1}]`.
+and `set_state` now `json.loads` it. Note: the `get` ignores the requested `params` and always
+returns a fixed set of parameters decided by the module. `querystate` returns
+`event.payload.data` as a list `[{"did":..., "state":0|1}]`.
 
-**Set fisso visto sul filo (2026-08-22, devtype `0x4e2e`, identico su tutte le unità):**
+**Fixed set seen on the wire (2026-08-22, devtype `0x4e2e`, identical on all units):**
 `pwr, tcl_mode, save_temp, tcl_mark, ecomode, pwfmode, tcl_slp, ac_vdir, ac_hdir, ac_errcode`.
-Due sorprese: lo swing è `ac_vdir`/`ac_hdir` (non `tcl_vdir`/`tcl_hdir`); e `qtmode`, `ac_health`,
-`bglight`, `envtemp`, `if_function` **non** vi compaiono — su questo modello non sono gestiti.
+Two surprises: the swing is `ac_vdir`/`ac_hdir` (not `tcl_vdir`/`tcl_hdir`); and `qtmode`, `ac_health`,
+`bglight`, `envtemp`, `if_function` do **not** appear — on this model they are not handled.
 
-Lo stesso vale per `dataservice`: il pannello dell'app legge `table[0].values`, ma la forma
-delle singole righe (nomi dei campi per kWh, ore di funzionamento, buchi di rete) va vista.
+The same holds for `dataservice`: the app's panel reads `table[0].values`, but the shape
+of the individual rows (field names for kWh, running hours, network gaps) has yet to be seen.
 
 ---
 
-## 6. Gli altri endpoint individuati e non studiati
+## 6. The other endpoints identified and not studied
 
-Trovati nel dex, mai provati. In ordine di utilità per questo progetto:
+Found in the dex, never tried. In order of usefulness for this project:
 
-| Endpoint | A cosa servirebbe |
+| Endpoint | What it would be for |
 | --- | --- |
-| `/appfront/v1/timertask/*` | pianificazioni lato cloud (vedi §2) |
-| `/appfront/v1/scene/*`, `/appfront/v1/trigger/upsert` | scene e automazioni a trigger |
-| `/ec4/v1/electricinfo/config` | configurazione del monitoraggio consumi |
-| `/device/control/v3/sdkcontrol` | controllo di gruppo (più unità in una chiamata) |
-| `/ec4/v1/dev/*`, `/ec4/v1/module/*` | rinominare unità e stanze, condivisioni |
-| `/dataservice/v1/device/status` | storico di stato (implementato, mai provato) |
+| `/appfront/v1/timertask/*` | cloud-side schedules (see §2) |
+| `/appfront/v1/scene/*`, `/appfront/v1/trigger/upsert` | scenes and trigger-based automations |
+| `/ec4/v1/electricinfo/config` | configuration of energy usage monitoring |
+| `/device/control/v3/sdkcontrol` | group control (multiple units in one call) |
+| `/ec4/v1/dev/*`, `/ec4/v1/module/*` | rename units and rooms, sharing |
+| `/dataservice/v1/device/status` | state history (implemented, never tried) |

@@ -1,99 +1,99 @@
-# klimakontrol — app Android (scheletro)
+# klimakontrol — Android app (skeleton)
 
-App nativa **Kotlin + Jetpack Compose** che implementa il sistema di design **"Quadrante"**
-(vedi il mockup e `docs/`), sopra la stessa logica cloud della libreria Python.
+Native **Kotlin + Jetpack Compose** app that implements the **"Quadrante"** design system
+(see the mockup and `docs/`), on top of the same cloud logic as the Python library.
 
-> Su questa macchina non c'è l'SDK Android: **si compila in CI** (GitHub Actions,
-> `.github/workflows/android.yml`). Ad ogni push su `android/**` viene prodotto un APK debug,
-> scaricabile dagli *artifact* della run (`klimakontrol-debug-apk`).
+> This machine does not have the Android SDK: **it compiles in CI** (GitHub Actions,
+> `.github/workflows/android.yml`). On every push to `android/**` a debug APK is produced,
+> downloadable from the run's *artifacts* (`klimakontrol-debug-apk`).
 
-## Stato — collegato al cloud
+## Status — connected to the cloud
 
-L'app fa **login** e controlla i climatizzatori **veri** via cloud.
+The app performs **login** and controls the **real** air conditioners via cloud.
 
-- ✅ Tema Quadrante (token chiaro/scuro, colore per modalità) — `ui/theme/`
-- ✅ **Rifinitura grafica**: quadrante **animato** (l'arco scivola con una molla), **micro-pressione**
-  coerente su tutte le superfici toccabili (`ui/Pressable.kt`, senza ripple), transizioni schermata
-  fade + micro-scala
-- ✅ **Login** + **selettore regione/vendor** (eu/ab/cn/ru, da `REGIONS`) + **mostra password** +
-  sessione persistente (senza password, come `session.py`) — `ui/LoginScreen.kt`, `data/cloud/SessionStore.kt`.
-  Il campo password con toggle Mostra/Nascondi (`PasswordField`) è condiviso da login/registrazione/impostazioni
-- ✅ **Registrazione nuovo account** (due passi: invio codice email/SMS → codice+password) —
-  `ui/RegisterScreen.kt`, `CloudClient.sendRegisterCode()/register()` (multipart). La `register` è
-  anche login: al successo la sessione è già pronta. Ricostruita dal dex, come la libreria Python
-- ✅ **Home** (panoramica multi-split, stati acceso/spento/offline) — `ui/HomeScreen.kt`
-- ✅ **Case (locali)**: gruppi definiti dall'utente, **non** letti dal cloud. Crea/rinomina/elimina
-  case e assegna i dispositivi in **Impostazioni → Gestisci case** (`ui/HomesScreen.kt`), poi in
-  Home **filtri** con i chip per casa. Le azioni "Rinfresca/Spegni tutte" agiscono sulla casa vista.
-  **Export/Import** della configurazione (JSON, via condivisione). Persistenza in `data/homes/HomesStore.kt`
-- ✅ **Dettaglio** col **quadrante** (`Canvas`) **trascinabile** (slider circolare: tocca/trascina
-  l'anello per impostare la temperatura, oltre ai pulsanti +/−), modalità/ventola/funzioni,
-  fascia pollice — `ui/DetailScreen.kt`, `ui/Dial.kt`
-- ✅ **Client cloud** in Kotlin (companyid condiviso, `getallinfo`, `sdkcontrol` con `save_temp`)
-  collegato via `CloudService` + `KlimaViewModel` — `data/cloud/`
-- ✅ **Comandi ottimistici** con roll-back sull'errore (aggiorna subito, invia, torna indietro se fallisce)
-- ✅ **Feedback per-comando** (`invio… / ✓ confermato / comando non riuscito`) + **debounce** sulla
-  temperatura (un solo comando dopo 400 ms di quiete: niente comandi persi, cloud non intasato)
-- ✅ **Font veri** — Space Grotesk (numeri/display) e Inter (UI) via *Downloadable Fonts* di Google
-  (nessun binario nel repo; provider Play Services, certificati in `res/values/font_certs.xml`)
-- ✅ **"Ricorda le credenziali"** — email+password cifrate nel Keystore (`EncryptedSharedPreferences`),
-  auto-login quando la sessione scade; se disattivato, si salva solo la sessione (mai la password)
+- ✅ Quadrante theme (light/dark tokens, per-mode color) — `ui/theme/`
+- ✅ **Graphic polish**: **animated** dial (the arc glides with a spring), **micro-press**
+  consistent across all touchable surfaces (`ui/Pressable.kt`, without ripple), screen transitions
+  fade + micro-scale
+- ✅ **Login** + **region/vendor selector** (eu/ab/cn/ru, from `REGIONS`) + **show password** +
+  persistent session (without password, like `session.py`) — `ui/LoginScreen.kt`, `data/cloud/SessionStore.kt`.
+  The password field with a Show/Hide toggle (`PasswordField`) is shared by login/registration/settings
+- ✅ **New account registration** (two steps: send email/SMS code → code+password) —
+  `ui/RegisterScreen.kt`, `CloudClient.sendRegisterCode()/register()` (multipart). `register` is
+  also login: on success the session is already ready. Reconstructed from the dex, like the Python library
+- ✅ **Home** (multi-split overview, on/off/offline states) — `ui/HomeScreen.kt`
+- ✅ **Homes (local)**: user-defined groups, **not** read from the cloud. Create/rename/delete
+  homes and assign devices in **Settings → Manage homes** (`ui/HomesScreen.kt`), then in
+  Home you **filter** with the per-home chips. The "Refresh/Turn all off" actions act on the viewed home.
+  **Export/Import** of the configuration (JSON, via sharing). Persistence in `data/homes/HomesStore.kt`
+- ✅ **Detail** with the **draggable** **dial** (`Canvas`) (circular slider: touch/drag
+  the ring to set the temperature, in addition to the +/− buttons), mode/fan/functions,
+  thumb strip — `ui/DetailScreen.kt`, `ui/Dial.kt`
+- ✅ **Cloud client** in Kotlin (shared companyid, `getallinfo`, `sdkcontrol` with `save_temp`)
+  wired via `CloudService` + `KlimaViewModel` — `data/cloud/`
+- ✅ **Optimistic commands** with roll-back on error (updates immediately, sends, rolls back if it fails)
+- ✅ **Per-command feedback** (`invio… / ✓ confermato / comando non riuscito`) + **debounce** on the
+  temperature (a single command after 400 ms of quiet: no lost commands, cloud not congested)
+- ✅ **Real fonts** — Space Grotesk (numbers/display) and Inter (UI) via Google's *Downloadable Fonts*
+  (no binary in the repo; Play Services provider, certificates in `res/values/font_certs.xml`)
+- ✅ **"Remember credentials"** — email+password encrypted in the Keystore (`EncryptedSharedPreferences`),
+  auto-login when the session expires; if disabled, only the session is saved (never the password)
 
-- ✅ **Ventola completa**: Auto + **slider a scatti** (bassa → alta), trascinabile
-- ⚠️ **Stato in tempo reale**: rilettura periodica (10s in foreground) + al ritorno dell'app —
-  `KlimaViewModel.startPolling()`, `MainActivity.LifecycleBridge`. **In verifica**: se il modulo non
-  riflette i cambi fatti col telecomando IR (come per il controllo locale `-5`), non c'è polling che
-  tenga. Diagnostica: `adb logcat -s klima-poll` mostra ogni tick e `cambiate=N` (0 = il modulo non
-  vede il cambio)
-- ❌ **Bip del climatizzatore**: *tolto*. Il modulo **ignora** il parametro `beep` (non è nel set
-  gestito, come mute/salute/display): l'unità suona a ogni comando ricevuto e **non si può zittire
-  dall'app**. La feature causava solo beep in più (un push per unità): rimossa.
-- 🖼️ **Branding produttore** (Impostazioni → Hardware): inserendo il **codice costruttore** (es.
-  `WISNOW`) l'app scarica il **logo** dal cloud del produttore (`/neutralapp/companyinfo?code=…`) e
-  lo mostra. Nessun asset impacchettato: arriva a runtime dal *loro* server (interop) —
+- ✅ **Complete fan**: Auto + **stepped slider** (low → high), draggable
+- ⚠️ **Real-time status**: periodic re-read (10s in foreground) + on the app's return —
+  `KlimaViewModel.startPolling()`, `MainActivity.LifecycleBridge`. **Under verification**: if the module does not
+  reflect the changes made with the IR remote (as for local control `-5`), no polling can
+  help. Diagnostics: `adb logcat -s klima-poll` shows every tick and `cambiate=N` (0 = the module does not
+  see the change)
+- ❌ **Air conditioner beep**: *removed*. The module **ignores** the `beep` parameter (it is not in the
+  managed set, like mute/health/display): the unit beeps at every command received and **cannot be silenced
+  from the app**. The feature only caused extra beeps (one push per unit): removed.
+- 🖼️ **Manufacturer branding** (Settings → Hardware): by entering the **manufacturer code** (e.g.
+  `WISNOW`) the app downloads the **logo** from the manufacturer's cloud (`/neutralapp/companyinfo?code=…`) and
+  displays it. No packaged asset: it arrives at runtime from *their* server (interop) —
   `data/branding/VendorBranding.kt`
-- ✅ **Oscillazione** — swing **verticale** (`ac_vdir`) e **orizzontale** (`ac_hdir`), i due tasti
-  SWING del telecomando. Il modulo riporta lo swing con questi nomi `ac_*` (NON `tcl_vdir`/`tcl_hdir`
-  come nell'estrazione APK): visto sul filo il 2026-08-22
-- ✅ **Icona app** (`res/mipmap-*`, adattiva: sfondo blu + motivo caldo/freddo nella safe zone)
+- ✅ **Oscillation** — **vertical** swing (`ac_vdir`) and **horizontal** (`ac_hdir`), the two
+  SWING keys of the remote. The module reports the swing with these `ac_*` names (NOT `tcl_vdir`/`tcl_hdir`
+  as in the APK extraction): seen on the wire on 2026-08-22
+- ✅ **App icon** (`res/mipmap-*`, adaptive: blue background + warm/cold motif in the safe zone)
 
-**Set fisso reale del modulo (0x4e2e), identico su tutte le unità** — è la sua lista di funzioni:
+**Real fixed set of the module (0x4e2e), identical on all units** — it is its list of functions:
 `pwr · tcl_mode · save_temp · tcl_mark · ecomode · pwfmode · tcl_slp · ac_vdir · ac_hdir · ac_errcode`.
-L'app espone esattamente questi. **Silenzioso** (`qtmode`), **Salute** (`ac_health`) e **Display**
-(`bglight`) sono stati **tolti**: non compaiono nel set → il modulo non li gestisce (sono funzioni
-solo-telecomando IR).
+The app exposes exactly these. **Silent** (`qtmode`), **Health** (`ac_health`) and **Display**
+(`bglight`) have been **removed**: they do not appear in the set → the module does not manage them (they are
+IR-remote-only functions).
 
-Corrispondenza con il telecomando fisico: MODE→Modalità, FAN→Ventola, ECO→Eco, TURBO→Turbo,
-SLEEP→Notte, SWING↕↔→Oscillazione. Non pilotabili via cloud (assenti dal set): **MUTE**, **HEALTH**,
-**DISPLAY**, **I FEEL**, e **TIMER** (le pianificazioni, feature a parte).
+Correspondence with the physical remote: MODE→Mode, FAN→Fan, ECO→Eco, TURBO→Turbo,
+SLEEP→Night, SWING↕↔→Oscillation. Not drivable via cloud (absent from the set): **MUTE**, **HEALTH**,
+**DISPLAY**, **I FEEL**, and **TIMER** (the schedules, a separate feature).
 
-- ✅ **Impostazioni** (⚙ nell'header) — profilo (email), **cambia nome** (`modifynickname`) e
-  **cambia password** (`modifypwd`, ricostruiti dal dex), versione app, **controllo aggiornamenti**
-  (confronto con l'ultima GitHub Release), logout e "dimentica credenziali" — `ui/SettingsScreen.kt`
-- ✅ **Rinfresca casa** / **Spegni tutte** — barra azioni rapide in Home
-- ✅ **Controllo aggiornamenti** — `data/update/UpdateChecker.kt` (GitHub Releases API, `BuildConfig.VERSION_NAME`);
-  banner in Home se c'è una versione più recente
+- ✅ **Settings** (⚙ in the header) — profile (email), **change name** (`modifynickname`) and
+  **change password** (`modifypwd`, reconstructed from the dex), app version, **update check**
+  (comparison with the latest GitHub Release), logout and "forget credentials" — `ui/SettingsScreen.kt`
+- ✅ **Refresh home** / **Turn all off** — quick actions bar in Home
+- ✅ **Update check** — `data/update/UpdateChecker.kt` (GitHub Releases API, `BuildConfig.VERSION_NAME`);
+  banner in Home if there is a newer version
 
-Fuso orario: **nessuna impostazione server** (i moduli sono fissi a UTC+8, la conversione è locale);
-in Impostazioni c'è solo la nota informativa.
+Timezone: **no server setting** (the modules are fixed at UTC+8, the conversion is local);
+in Settings there is only the informational note.
 
-## Note
+## Notes
 
-- **Temperatura ambiente**: questi moduli **non la espongono** (`envtemp` non è nel set fisso). In
-  UI si mostra solo se disponibile.
-- **Valore "on" dello swing**: verticale=7, orizzontale=1 (derivati dal sorgente dell'app). Il nome
-  del parametro (`ac_vdir`/`ac_hdir`) è confermato dal filo; il valore no. Se un asse non oscilla,
-  il log dice il valore giusto.
-- **Diagnostica**: a ogni caricamento l'app logga in Logcat (tag `klima-caps`) l'intero set che il
-  modulo ritorna, chiavi e valori: `adb logcat -s klima-caps`.
+- **Ambient temperature**: these modules **do not expose it** (`envtemp` is not in the fixed set). In
+  the UI it is shown only if available.
+- **Swing "on" value**: vertical=7, horizontal=1 (derived from the app's source). The parameter
+  name (`ac_vdir`/`ac_hdir`) is confirmed from the wire; the value is not. If an axis does not oscillate,
+  the log says the right value.
+- **Diagnostics**: on every load the app logs to Logcat (tag `klima-caps`) the entire set that the
+  module returns, keys and values: `adb logcat -s klima-caps`.
 
-## Prossimi passi
+## Next steps
 
-1. **Pianificazioni** (il tasto TIMER): manca la scrittura sul filo — vedi `docs/open-questions.md` §2.
-2. **Pubblicazione Play Store**: build release firmata (AAB), R8, versioning da tag, privacy policy — vedi `docs/play-store.md`.
-3. `WindowSizeClass` per griglia su tablet/foldable; abbinamento dispositivi in-app.
+1. **Schedules** (the TIMER button): writing on the wire is missing — see `docs/open-questions.md` §2.
+2. **Play Store publication**: signed release build (AAB), R8, versioning from tag, privacy policy — see `docs/play-store.md`.
+3. `WindowSizeClass` for a grid on tablet/foldable; in-app device pairing.
 
-## Struttura
+## Structure
 
 ```
 android/
@@ -103,11 +103,11 @@ android/
     data/          Model, KlimaRepository (Sample), cloud/CloudClient
 ```
 
-## Compilare in locale (se hai l'SDK)
+## Building locally (if you have the SDK)
 
 ```bash
 cd android
-gradle wrapper --gradle-version 8.9   # genera ./gradlew la prima volta
+gradle wrapper --gradle-version 8.9   # generates ./gradlew the first time
 ./gradlew assembleDebug
-# APK in app/build/outputs/apk/debug/
+# APK is in app/build/outputs/apk/debug/
 ```

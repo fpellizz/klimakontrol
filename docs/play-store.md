@@ -1,34 +1,34 @@
-# Pubblicazione su Google Play — guida e checklist
+# Publishing on Google Play — guide and checklist
 
-Stato: l'app ha già icona, versione (`0.6.0`/`versionCode 7`), privacy policy (`docs/privacy.html`)
-e un controllo aggiornamenti (`UpdateChecker`, via GitHub Releases). Qui c'è tutto il resto,
-**pronto da applicare**. Le modifiche a `build.gradle.kts`/CI richiedono un **keystore** (che generi
-tu) e vanno applicate insieme, guardando la CI.
+Status: the app already has an icon, version (`0.6.0`/`versionCode 7`), privacy policy (`docs/privacy.html`)
+and an update check (`UpdateChecker`, via GitHub Releases). Here is everything else,
+**ready to apply**. The changes to `build.gradle.kts`/CI require a **keystore** (that you generate)
+and must be applied together, watching the CI.
 
-## Checklist (in ordine di priorità)
+## Checklist (in order of priority)
 
-**Bloccanti per caricare su Play**
-1. Alzare `compileSdk`/`targetSdk` a **35** (obbligo dal 31/08/2025) o **36** (dal 31/08/2026) — con
-   bump AGP (8.6 per 35, **8.9.1** per 36) e Gradle (8.7 / **8.11.1**). È l'unica modifica che può
-   rompere la build: farla da sola e verificare la CI.
-2. `signingConfigs.release` + firma nel `release` (sotto); generare la **upload key** e
-   `keystore.properties` (fuori dal repo, già in `.gitignore`).
-3. Privacy policy a URL pubblico: `docs/privacy.html` + **Settings → Pages → branch `main`, `/docs`**
-   → `https://fpellizz.github.io/klimakontrol/privacy.html` (sostituire il contatto PLACEHOLDER).
-4. **Data Safety form** coerente con la privacy (vedi sotto).
-5. Fornire **credenziali di test** in "App access" (l'app è dietro login cloud).
+**Blockers for uploading to Play**
+1. Raise `compileSdk`/`targetSdk` to **35** (mandatory from 31/08/2025) or **36** (from 31/08/2026) — with
+   an AGP bump (8.6 for 35, **8.9.1** for 36) and Gradle (8.7 / **8.11.1**). It is the only change that can
+   break the build: do it on its own and verify the CI.
+2. `signingConfigs.release` + signing in `release` (below); generate the **upload key** and
+   `keystore.properties` (outside the repo, already in `.gitignore`).
+3. Privacy policy at a public URL: `docs/privacy.html` + **Settings → Pages → branch `main`, `/docs`**
+   → `https://fpellizz.github.io/klimakontrol/privacy.html` (replace the PLACEHOLDER contact).
+4. **Data Safety form** consistent with the privacy policy (see below).
+5. Provide **test credentials** in "App access" (the app is behind a cloud login).
 
-**Release pulita**
-6. `isMinifyEnabled = true` + `isShrinkResources = true` + keep rules Tink (già in `proguard-rules.pro`);
-   **testare un login reale** sulla release (R8 può rompere reflection non coperta).
-7. Job CI `release` su tag → **AAB firmato** da secret base64.
-8. Versioning da git tag (opzionale, vedi sotto).
-9. Asset listing: icona 512×512, feature graphic 1024×500, ≥2 screenshot, testi.
-10. Se l'account developer è nuovo: **closed testing 12 tester × 14 giorni** prima della produzione.
+**Clean release**
+6. `isMinifyEnabled = true` + `isShrinkResources = true` + Tink keep rules (already in `proguard-rules.pro`);
+   **test a real login** on the release (R8 can break uncovered reflection).
+7. CI `release` job on tag → **signed AAB** from a base64 secret.
+8. Versioning from git tag (optional, see below).
+9. Listing assets: 512×512 icon, 1024×500 feature graphic, ≥2 screenshots, texts.
+10. If the developer account is new: **closed testing 12 testers × 14 days** before production.
 
-## build.gradle.kts — firma + R8 (da applicare col keystore)
+## build.gradle.kts — signing + R8 (to apply with the keystore)
 
-Caricamento proprietà (niente import in cima: uso nomi completi per non rischiare la sintassi .kts):
+Loading properties (no imports at the top: I use fully-qualified names to not risk the .kts syntax):
 
 ```kotlin
 val keystorePropsFile = rootProject.file("keystore.properties")
@@ -39,7 +39,7 @@ fun signingValue(prop: String, env: String): String? =
     keystoreProps.getProperty(prop) ?: System.getenv(env)
 ```
 
-Dentro `android { }`:
+Inside `android { }`:
 
 ```kotlin
 signingConfigs {
@@ -63,7 +63,7 @@ buildTypes {
 }
 ```
 
-`keystore.properties` (creare, NON committare — già in `.gitignore`):
+`keystore.properties` (create it, do NOT commit — already in `.gitignore`):
 
 ```properties
 storeFile=klimakontrol-release.jks
@@ -72,9 +72,9 @@ keyAlias=klimakontrol
 keyPassword=********
 ```
 
-## Versioning da git tag (opzionale)
+## Versioning from git tag (optional)
 
-`versionName` dal tag, `versionCode` monotòno derivato. Con fallback se non ci sono tag:
+`versionName` from the tag, a monotonic derived `versionCode`. With a fallback if there are no tags:
 
 ```kotlin
 fun gitVersionName(): String = runCatching {
@@ -88,14 +88,14 @@ fun gitVersionCode(): Int {
 }
 ```
 
-Poi in `defaultConfig`: `versionCode = gitVersionCode()` / `versionName = gitVersionName()`.
-Flusso release: `git tag v0.3.0 && git push --tags`. (Se preferisci, tieni la versione manuale
-come ora: è più semplice e non aggiunge rischi.)
+Then in `defaultConfig`: `versionCode = gitVersionCode()` / `versionName = gitVersionName()`.
+Release flow: `git tag v0.3.0 && git push --tags`. (If you prefer, keep the version manual
+as now: it is simpler and adds no risks.)
 
-## CI — job release su tag → AAB firmato
+## CI — release job on tag → signed AAB
 
-Secrets nel repo: `KEYSTORE_BASE64`, `KEYSTORE_PASSWORD`, `KEY_ALIAS`, `KEY_PASSWORD`.
-Creare il primo con `base64 -w0 klimakontrol-release.jks | gh secret set KEYSTORE_BASE64`.
+Secrets in the repo: `KEYSTORE_BASE64`, `KEYSTORE_PASSWORD`, `KEY_ALIAS`, `KEY_PASSWORD`.
+Create the first with `base64 -w0 klimakontrol-release.jks | gh secret set KEYSTORE_BASE64`.
 
 ```yaml
   release:
@@ -104,14 +104,14 @@ Creare il primo con `base64 -w0 klimakontrol-release.jks | gh secret set KEYSTOR
     defaults: { run: { working-directory: android } }
     steps:
       - uses: actions/checkout@v4
-        with: { fetch-depth: 0 }        # per git describe
+        with: { fetch-depth: 0 }        # for git describe
       - uses: actions/setup-java@v4
         with: { distribution: temurin, java-version: '17' }
       - uses: gradle/actions/setup-gradle@v4
-        with: { gradle-version: '8.11.1' }   # 8.9 se resti su compileSdk 35
-      - name: Decodifica keystore
+        with: { gradle-version: '8.11.1' }   # 8.9 if you stay on compileSdk 35
+      - name: Decode keystore
         run: echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 --decode > "$RUNNER_TEMP/release.jks"
-      - name: Build AAB firmato
+      - name: Build signed AAB
         env:
           KEYSTORE_FILE: ${{ runner.temp }}/release.jks
           KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
@@ -123,45 +123,45 @@ Creare il primo con `base64 -w0 klimakontrol-release.jks | gh secret set KEYSTOR
           name: klimakontrol-release-aab
           path: android/app/build/outputs/bundle/release/*.aab
           if-no-files-found: error
-      - name: Pulisci il keystore
+      - name: Clean up the keystore
         if: always()
         run: rm -f "$RUNNER_TEMP/release.jks"
 ```
 
 ## Data Safety form (Play Console)
 
-- Raccolta di **Email address** e **Password** (Personal info / App activity).
-- Finalità: **App functionality / Account management**.
-- **Non condivisi** con terze parti (il cloud BroadLink è il provider di funzionamento, non un
-  terzo pubblicitario).
-- **Cifrati in transito** (HTTPS) e **a riposo** (Android Keystore).
-- **Cancellabili** dall'utente (logout / "Dimentica credenziali"; account cloud lato produttore).
-- Permessi: solo `INTERNET`, `ACCESS_NETWORK_STATE` (nessun permesso sensibile → niente
+- Collection of **Email address** and **Password** (Personal info / App activity).
+- Purpose: **App functionality / Account management**.
+- **Not shared** with third parties (the BroadLink cloud is the operating provider, not an
+  advertising third party).
+- **Encrypted in transit** (HTTPS) and **at rest** (Android Keystore).
+- **Deletable** by the user (logout / "Forget credentials"; cloud account on the manufacturer side).
+- Permissions: only `INTERNET`, `ACCESS_NETWORK_STATE` (no sensitive permission → no
   Permissions Declaration Form).
 
-## Asset del listing
+## Listing assets
 
-- Icona **512×512 PNG** (32-bit con alpha), feature graphic **1024×500**, **≥2 screenshot**
-  telefono (min 320px lato corto).
-- Titolo ≤ 30 char, breve descrizione ≤ 80, completa ≤ 4000. Categoria: *Tools* o *House & Home*.
-- Content rating: questionario IARC (utility → "Everyone").
-- Formato di pubblicazione: **AAB** (non APK). Consigliato **Play App Signing**.
+- **512×512 PNG** icon (32-bit with alpha), **1024×500** feature graphic, **≥2 screenshots**
+  phone (min 320px short side).
+- Title ≤ 30 chars, short description ≤ 80, full ≤ 4000. Category: *Tools* or *House & Home*.
+- Content rating: IARC questionnaire (utility → "Everyone").
+- Publishing format: **AAB** (not APK). **Play App Signing** recommended.
 
-## Nota legale (segnalazione, non parere)
+## Legal note (a heads-up, not advice)
 
-- Interoperabilità con hardware di proprietà (direttiva UE 2009/24/CE art. 6). Non ridistribuisce
-  codice altrui.
-- **Nessun marchio altrui** in nome/package (`net.klimakontrol`)/icona/listing (no BroadLink, TCL,
-  Wisnow, "Intelligent AC"). Descrivere la compatibilità con formule neutre.
-- **Client di terze parti**: Play può rimuovere app che accedono a un servizio senza autorizzazione
-  del titolare. Rischio concreto per un client non ufficiale del cloud BroadLink. Mitigazione:
-  chiarire natura indipendente e uso su hardware proprio; in alternativa/complemento, distribuire
-  via **GitHub Releases** (che è anche il canale del controllo aggiornamenti in-app).
+- Interoperability with owned hardware (EU directive 2009/24/CE art. 6). It does not redistribute
+  anyone else's code.
+- **No third-party trademark** in name/package (`net.klimakontrol`)/icon/listing (no BroadLink, TCL,
+  Wisnow, "Intelligent AC"). Describe compatibility with neutral wording.
+- **Third-party client**: Play can remove apps that access a service without the owner's
+  authorization. A concrete risk for an unofficial client of the BroadLink cloud. Mitigation:
+  clarify the independent nature and use on your own hardware; alternatively/additionally, distribute
+  via **GitHub Releases** (which is also the channel of the in-app update check).
 
-## Controllo aggiornamenti (già implementato)
+## Update check (already implemented)
 
-`UpdateChecker` confronta `BuildConfig.VERSION_NAME` con l'ultima **GitHub Release**
-(`api.github.com/repos/fpellizz/klimakontrol/releases/latest`, campo `tag_name`). Perché funzioni
-servono delle **Release** su GitHub: crea un tag `vX.Y.Z` e una Release con l'APK allegato (a mano
-o via CI). Più avanti, per la variante Play, si può passare alla **Play In-App Updates API**
-(introduce però una dipendenza runtime Play Core) tenendo `UpdateChecker` per le build sideload.
+`UpdateChecker` compares `BuildConfig.VERSION_NAME` with the latest **GitHub Release**
+(`api.github.com/repos/fpellizz/klimakontrol/releases/latest`, `tag_name` field). For it to work
+you need **Releases** on GitHub: create a `vX.Y.Z` tag and a Release with the APK attached (by hand
+or via CI). Later, for the Play variant, you can switch to the **Play In-App Updates API**
+(it introduces, however, a Play Core runtime dependency) keeping `UpdateChecker` for sideload builds.

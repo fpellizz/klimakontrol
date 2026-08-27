@@ -1,13 +1,13 @@
-# Campioni
+# Samples
 
-Qui vanno le risposte reali del cloud e dei dispositivi, **mascherate** con
-`klimakontrol.session.mask()` prima di essere salvate.
+Here go the real responses from the cloud and the devices, **masked** with
+`klimakontrol.session.mask()` before being saved.
 
-Servono a due cose: adeguare il parsing a quello che il server manda davvero (oggi la forma
-delle risposte è dedotta dal codice dell'SDK, non osservata), e diventare fixture dei test.
+They serve two purposes: to adapt the parsing to what the server actually sends (today the shape
+of the responses is inferred from the SDK code, not observed), and to become test fixtures.
 
-Convenzione dei nomi: `<comando>-<esito>.json`, per esempio `login-ok.json`,
+Naming convention: `<comando>-<esito>.json`, for example `login-ok.json`,
 `sdkcontrol-get-ok.json`, `energy-day-ok.json`.
 
-I `.json` di questa cartella sono esclusi dal repo tranne questo README: contengono dati
-dell'impianto. Committali solo dopo aver controllato che il mascheramento abbia coperto tutto.
+The `.json` files in this folder are excluded from the repo except this README: they contain data
+from the system. Commit them only after checking that the masking has covered everything.
